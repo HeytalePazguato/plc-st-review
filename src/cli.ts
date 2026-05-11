@@ -7,12 +7,21 @@ import { renderJson } from './output/json.js';
 import { renderMarkdown } from './output/markdown.js';
 import { renderTerminal } from './output/terminal.js';
 import { loadPathPair, loadRefSnapshot } from './platforms/local.js';
+import {
+  loadGitlabMrSnapshot,
+  postGitlabReview,
+  resolveGitlabOptionsFromEnv,
+} from './platforms/gitlab.js';
 import { SEVERITY_RANK, type Severity } from './engine/types.js';
 
 interface CliOptions {
   base?: string;
   head?: string;
   files?: string[];
+  gitlab?: boolean;
+  mr?: string;
+  project?: string;
+  gitlabUrl?: string;
   output: 'json' | 'markdown' | 'terminal';
   severity: Severity;
   config?: string;
@@ -30,6 +39,10 @@ async function main(): Promise<void> {
     .option('--base <ref>', 'git base ref (e.g. main)')
     .option('--head <ref>', 'git head ref (e.g. feature/x)', 'HEAD')
     .option('--files <before> <after>', 'review two specific files', collectFiles, [])
+    .option('--gitlab', 'review a GitLab merge request (requires --mr)')
+    .option('--mr <iid>', 'GitLab MR IID to review')
+    .option('--project <id>', 'GitLab project ID or path (overrides env)')
+    .option('--gitlab-url <url>', 'GitLab base URL (overrides env)')
     .option('--output <fmt>', 'terminal|markdown|json', 'terminal')
     .option('--severity <level>', 'minimum severity to print', 'info')
     .option('--config <path>', 'path to .plc-st-review.yml')
@@ -47,6 +60,11 @@ async function main(): Promise<void> {
 
   const config = await loadConfig(opts.config ?? null);
 
+  if (opts.gitlab) {
+    await runGitlabMode(opts, config);
+    return;
+  }
+
   let snap;
   if (opts.files && opts.files.length === 2) {
     snap = await loadPathPair(opts.files[0], opts.files[1]);
@@ -56,7 +74,7 @@ async function main(): Promise<void> {
       head: opts.head ?? 'HEAD',
     });
   } else {
-    fail('Provide either --base <ref> or --files <old> <new>.');
+    fail('Provide one of: --base <ref>, --files <old> <new>, or --gitlab --mr <iid>.');
   }
 
   const findings = runReview({
@@ -74,6 +92,44 @@ async function main(): Promise<void> {
     await writeFile(opts.outFile, rendered + (rendered.endsWith('\n') ? '' : '\n'), 'utf8');
   } else {
     process.stdout.write(rendered + '\n');
+  }
+
+  if (shouldFail(findings, config.failOnSeverity)) {
+    process.exitCode = 1;
+  }
+}
+
+async function runGitlabMode(
+  opts: CliOptions,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+): Promise<void> {
+  if (!opts.mr) fail('--gitlab requires --mr <iid>');
+  const mrIid = Number.parseInt(opts.mr, 10);
+  if (!Number.isFinite(mrIid)) fail(`Invalid --mr: ${String(opts.mr)}`);
+
+  const gl = resolveGitlabOptionsFromEnv({
+    mrIid,
+    projectId: opts.project,
+    host: opts.gitlabUrl,
+  });
+
+  const { before, after, context } = await loadGitlabMrSnapshot(gl);
+  const findings = runReview({
+    beforeFiles: before,
+    afterFiles: after,
+    config,
+  }).filter((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[opts.severity]);
+
+  const result = await postGitlabReview(findings, context, {
+    ...gl,
+    commentStyle: config.commentStyle,
+  });
+
+  const summary = `plc-st-review (gitlab): ${result.mode}, ${result.created} created, ${result.updated} updated, ${result.resolved} resolved`;
+  process.stdout.write(summary + '\n');
+
+  if (opts.outFile) {
+    await writeFile(opts.outFile, renderJson(findings) + '\n', 'utf8');
   }
 
   if (shouldFail(findings, config.failOnSeverity)) {

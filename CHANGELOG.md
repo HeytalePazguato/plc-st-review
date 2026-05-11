@@ -37,3 +37,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Symbol extractor now correctly identifies user-defined types and system
   function blocks (TON/TOF/TP) declared as bare identifiers in the AST,
   not only as `elementary_type` nodes.
+
+### Phase 2
+
+- GitLab MR integration via `@gitbeaker/rest`:
+  - `loadGitlabMrSnapshot` — fetches MR changes, filters to `.st` files,
+    parses before/after revisions at the MR's base/head SHAs.
+  - `postGitlabReview` — posts findings as inline discussions with an
+    HTML-comment marker for dedup. On re-run, updates discussions whose
+    body changed, leaves identical ones alone, and resolves discussions
+    whose findings no longer apply. Falls back to a single summary
+    comment above the inline-cap threshold (default 100 findings) or
+    when `reporting.comment_style: summary` is set.
+- CLI: new flags `--gitlab`, `--mr <iid>`, `--project <id>`,
+  `--gitlab-url <url>`. Honors `GITLAB_TOKEN` / `CI_JOB_TOKEN`,
+  `GITLAB_URL` / `CI_SERVER_URL`, `GITLAB_PROJECT_ID` / `CI_PROJECT_ID`.
+- `Dockerfile` (two-stage: build → slim runtime) for use in CI.
+- `examples/gitlab-ci.yml` reference job configuration.
+- 9 new tests cover snapshot filtering, create/update/resolve flows, and
+  the summary fallback.

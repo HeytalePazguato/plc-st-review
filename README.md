@@ -15,11 +15,40 @@ Catches the bugs reviewers miss on visual scan:
 
 ## Status
 
-Phase 1 — engine, eight checks, CLI, three output formats — is feature-complete
-and tested (30 unit tests, all passing). GitLab and GitHub integrations are the
-next two phases.
+- **Phase 1** — engine, eight checks, CLI, three output formats. Done.
+- **Phase 2** — GitLab MR integration (`--gitlab --mr <iid>`), Dockerfile,
+  inline discussions with dedup and resolve-on-disappear, summary-only fallback
+  above 100 findings, self-hosted GitLab support via `GITLAB_URL`. Done.
+- **Phase 3** — GitHub Action + remaining 10 check categories. Next.
 
-## Quick start (CLI)
+Total tests: 42 across 13 files, all passing.
+
+## Quick start
+
+### GitLab merge request
+
+Drop this into `.gitlab-ci.yml` (full example at
+[`examples/gitlab-ci.yml`](examples/gitlab-ci.yml)):
+
+```yaml
+plc-st-review:
+  image: ghcr.io/heytalepazguato/plc-st-review:latest
+  stage: review
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GITLAB_TOKEN: $CI_JOB_TOKEN
+    GITLAB_URL: $CI_SERVER_URL
+    GITLAB_PROJECT_ID: $CI_PROJECT_ID
+  script:
+    - plc-st-review --gitlab --mr "$CI_MERGE_REQUEST_IID"
+```
+
+The job fetches the MR's changed `.st` files, runs the review, posts
+findings as inline discussions, and updates them (rather than creating
+duplicates) on re-runs. Self-hosted GitLab is supported via `GITLAB_URL`.
+
+### CLI
 
 ```sh
 npm install -g plc-st-review            # once published

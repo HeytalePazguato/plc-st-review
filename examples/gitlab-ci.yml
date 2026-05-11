@@ -1,0 +1,26 @@
+# Drop into .gitlab-ci.yml at the root of your ST project to run plc-st-review
+# on every merge request. Findings are posted as inline discussions on the MR.
+# The job exits non-zero (and therefore blocks merge, if you configure that)
+# when any finding meets or exceeds your config's fail_on_severity threshold.
+
+plc-st-review:
+  image: ghcr.io/heytalepazguato/plc-st-review:latest
+  stage: review
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "**/*.st"
+        - "**/*.ST"
+  variables:
+    # GITLAB_TOKEN can be a project access token with `api` scope, or
+    # CI_JOB_TOKEN if your project allows it.
+    GITLAB_TOKEN: $CI_JOB_TOKEN
+    GITLAB_URL: $CI_SERVER_URL
+    GITLAB_PROJECT_ID: $CI_PROJECT_ID
+  script:
+    - plc-st-review --gitlab --mr "$CI_MERGE_REQUEST_IID"
+  artifacts:
+    when: always
+    paths:
+      - findings.json
+    expire_in: 1 week
