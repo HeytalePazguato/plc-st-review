@@ -34,10 +34,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Honors `GITLAB_TOKEN` / `CI_JOB_TOKEN`, `GITLAB_URL` / `CI_SERVER_URL`,
     and `GITLAB_PROJECT_ID` / `CI_PROJECT_ID` so the same image works for
     both gitlab.com and self-hosted instances.
+- GitHub PR integration via `@octokit/rest`:
+  - Fetches PR changed files, parses before/after revisions at the PR's
+    base/head SHAs.
+  - Posts findings as inline review comments (editable individually, unlike
+    formal reviews). Re-runs edit changed bodies, leave identical ones
+    alone, and delete review comments whose findings disappear.
+  - Falls back to a single summary issue comment above the inline cap.
+  - Composite Docker-based GitHub Action at `action/action.yml` that picks
+    up PR context from the workflow environment.
+  - `examples/github-workflow.yml` drop-in workflow.
+- Ten additional check categories (18 total): `ARRAY_BOUNDS_CHANGED`,
+  `STATE_UNHANDLED`, `UNREACHABLE_CODE`, `LOOP_BOUNDS_CHANGED`,
+  `POU_DELETED`, `POU_RENAMED`, `METHOD_ADDED_TO_INTERFACE`,
+  `INHERITANCE_CHANGED`, `PRAGMA_CHANGED`, `UNUSED_VAR_INTRODUCED`.
+- `docs/writing-custom-checks.md`, `docs/tuning-severities.md`,
+  `docs/gitlab-setup.md`, `docs/github-setup.md`.
 - `Dockerfile` (multi-stage: build → slim runtime) for use in GitLab CI and
   other container-based pipelines.
 - `examples/gitlab-ci.yml` drop-in job; `examples/demo/` round-trip fixtures.
-- Vitest suite covering each check and platform module (42 tests total, 3 of
+- Vitest suite covering each check and platform module (72 tests total, 3 of
   which drive the real tree-sitter parser end-to-end).
 - `patches/tree-sitter+0.25.0.patch` (auto-applied via `patch-package`)
   bumps the binding's C++ standard from C++17 to C++20 so it compiles

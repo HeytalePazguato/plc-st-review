@@ -12,16 +12,20 @@ import {
   VAR_SECTION_NODES,
 } from './grammar.js';
 import type {
+  ArrayDecl,
   AstFile,
   CallSite,
   EnumDef,
+  ForLoop,
   GlobalVar,
+  LocalVar,
   Parameter,
   Pou,
   PouKind,
   StNode,
   SymbolTable,
   TimerInstance,
+  UnreachableStmt,
   VarReference,
 } from './types.js';
 
@@ -43,6 +47,11 @@ export function emptySymbolTable(): SymbolTable {
     caseStatements: [],
     varReferences: [],
     timerPtAssignments: [],
+    arrayDecls: [],
+    forLoops: [],
+    pragmas: [],
+    unreachable: [],
+    pouLocals: new Map(),
   };
 }
 
@@ -63,12 +72,27 @@ function extractFile(file: AstFile, t: SymbolTable): void {
       collectPou(file, decl, t, undefined);
     } else if (decl.type === NODE.NAMESPACE) {
       collectNamespace(file, decl, t);
+    } else if (decl.type === NODE.PRAGMA) {
+      t.pragmas.push({
+        file: file.path,
+        line: lineOf(decl),
+        text: decl.text,
+      });
     }
   }
   collectCallSites(file, t);
   collectCaseStatements(file, t);
   collectTimerPtAssignments(file, t);
   collectVarReferences(file, t);
+  // pragmas inside POUs
+  for (const p of descendantsOfType(root, NODE.PRAGMA)) {
+    if (childrenOf(root).includes(p)) continue; // already collected at top level
+    t.pragmas.push({
+      file: file.path,
+      line: lineOf(p),
+      text: p.text,
+    });
+  }
 }
 
 function collectNamespace(file: AstFile, ns: StNode, t: SymbolTable): void {
@@ -183,12 +207,21 @@ function collectPou(
     }
   }
 
-  // Timer instances inside this POU.
+  const locals: LocalVar[] = [];
+  // Timer instances + array decls + locals catalogue for this POU.
   for (const varBlock of descendantsOfAnyType(node, VAR_SECTION_NODES)) {
     for (const decl of findChildren(varBlock, NODE.VARIABLE_DECLARATION)) {
       const declName = findIdentifierText(decl);
       const typeNode = pickTypeNode(decl);
       const typeText = typeNode?.text?.trim().toUpperCase() ?? '';
+      if (declName) {
+        locals.push({
+          name: declName,
+          scope: qualified,
+          file: file.path,
+          line: lineOf(decl),
+        });
+      }
       if (declName && TIMER_TYPE_NAMES.has(typeText)) {
         const timer: TimerInstance = {
           name: declName,
@@ -199,6 +232,110 @@ function collectPou(
         };
         t.timerInstances.push(timer);
       }
+      const arrType =
+        typeNode?.type === NODE.ARRAY_TYPE ? typeNode : findChild(decl, NODE.ARRAY_TYPE);
+      if (declName && arrType) {
+        const sr = findChild(arrType, NODE.SUBRANGE);
+        const elem = findChild(arrType, NODE.ELEMENTARY_TYPE);
+        if (sr) {
+          const ints = childrenOf(sr).filter(
+            (c) => c.type === NODE.INTEGER_LITERAL || c.type === NODE.REAL_LITERAL,
+          );
+          if (ints.length >= 2) {
+            const arr: ArrayDecl = {
+              varName: declName,
+              scope: qualified,
+              file: file.path,
+              line: lineOf(decl),
+              lower: ints[0].text,
+              upper: ints[1].text,
+              elementType: (elem?.text ?? '').trim(),
+            };
+            t.arrayDecls.push(arr);
+          }
+        }
+      }
+    }
+  }
+  t.pouLocals.set(qualified, locals);
+
+  collectForLoops(file, node, qualified, t);
+  collectUnreachable(file, node, qualified, t);
+}
+
+function collectForLoops(
+  file: AstFile,
+  pouNode: StNode,
+  scope: string,
+  t: SymbolTable,
+): void {
+  for (const fs of descendantsOfType(pouNode, NODE.FOR_STATEMENT)) {
+    const ints = childrenOf(fs).filter(
+      (c) => c.type === NODE.INTEGER_LITERAL || c.type === NODE.REAL_LITERAL,
+    );
+    if (ints.length < 2) continue;
+    const loop: ForLoop = {
+      scope,
+      file: file.path,
+      line: lineOf(fs),
+      start: ints[0].text,
+      end: ints[1].text,
+      by: ints[2]?.text,
+    };
+    t.forLoops.push(loop);
+  }
+}
+
+const TERMINATOR_TYPES = new Set<string>([
+  NODE.RETURN_STATEMENT,
+  NODE.EXIT_STATEMENT,
+  NODE.CONTINUE_STATEMENT,
+]);
+
+const STATEMENT_TYPES = new Set<string>([
+  NODE.ASSIGNMENT_STATEMENT,
+  NODE.INVOCATION_STATEMENT,
+  NODE.IF_STATEMENT,
+  NODE.CASE_STATEMENT,
+  NODE.FOR_STATEMENT,
+  NODE.WHILE_STATEMENT,
+  NODE.REPEAT_STATEMENT,
+  NODE.RETURN_STATEMENT,
+  NODE.EXIT_STATEMENT,
+  NODE.CONTINUE_STATEMENT,
+]);
+
+function collectUnreachable(
+  file: AstFile,
+  pouNode: StNode,
+  scope: string,
+  t: SymbolTable,
+): void {
+  // Walk every node that holds an ordered list of statements as direct children.
+  const stack: StNode[] = [pouNode];
+  while (stack.length) {
+    const n = stack.pop()!;
+    const kids = childrenOf(n);
+    let terminator: StNode | null = null;
+    for (const child of kids) {
+      if (terminator && STATEMENT_TYPES.has(child.type)) {
+        const reason =
+          terminator.type === NODE.RETURN_STATEMENT
+            ? 'after_return'
+            : terminator.type === NODE.EXIT_STATEMENT
+              ? 'after_exit'
+              : 'after_continue';
+        const u: UnreachableStmt = {
+          scope,
+          file: file.path,
+          line: lineOf(child),
+          reason,
+        };
+        t.unreachable.push(u);
+        terminator = null; // only flag the immediate next statement
+      }
+      if (TERMINATOR_TYPES.has(child.type)) terminator = child;
+      stack.push(child);
     }
   }
 }

@@ -1,0 +1,31 @@
+# Drop into .github/workflows/plc-st-review.yml to run plc-st-review on every
+# pull request that touches an .st file. Findings appear as inline review
+# comments on the PR; re-runs update existing comments rather than duplicating.
+
+name: PLC ST Review
+
+on:
+  pull_request:
+    paths:
+      - '**/*.st'
+      - '**/*.ST'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: HeytalePazguato/plc-st-review@v0
+        # Optional inputs (all have sensible defaults inferred from the PR
+        # context):
+        #
+        # with:
+        #   pr-number: ${{ github.event.pull_request.number }}
+        #   repo: ${{ github.repository }}
+        #   severity: info

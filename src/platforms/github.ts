@@ -1,0 +1,388 @@
+import { Buffer } from 'node:buffer';
+import { Octokit } from '@octokit/rest';
+import { parseSource } from '../engine/parse.js';
+import type { AstFile, Finding, ResolvedConfig, Severity } from '../engine/types.js';
+
+const ST_EXTENSIONS = new Set<string>(['.st', '.ST', '.iecst', '.IECST']);
+const MARKER_PREFIX = '<!-- plc-st-review:v1';
+const SUMMARY_MARKER = `${MARKER_PREFIX} kind=summary -->`;
+const SEVERITY_BADGE: Record<Severity, string> = {
+  error: '🟥 error',
+  warn: '🟧 warn',
+  info: '🟦 info',
+};
+const INLINE_CAP = 100;
+
+export interface GitHubOptions {
+  token: string;
+  baseUrl?: string;
+  owner: string;
+  repo: string;
+  pullNumber: number;
+}
+
+export interface GitHubChange {
+  oldPath: string;
+  newPath: string;
+  renamed: boolean;
+  removed: boolean;
+  added: boolean;
+}
+
+export interface PrContext {
+  baseSha: string;
+  headSha: string;
+  baseRef: string;
+  headRef: string;
+  changes: GitHubChange[];
+}
+
+export interface ReviewComment {
+  id: number;
+  body: string;
+  path: string;
+  line: number | null;
+}
+
+export interface IssueComment {
+  id: number;
+  body: string;
+}
+
+export interface GitHubApi {
+  fetchPrContext(): Promise<PrContext>;
+  fetchFile(ref: string, path: string): Promise<string | null>;
+  listReviewComments(): Promise<ReviewComment[]>;
+  listIssueComments(): Promise<IssueComment[]>;
+  createReviewComment(args: {
+    body: string;
+    commitId: string;
+    path: string;
+    line: number;
+  }): Promise<void>;
+  updateReviewComment(id: number, body: string): Promise<void>;
+  deleteReviewComment(id: number): Promise<void>;
+  createIssueComment(body: string): Promise<void>;
+  updateIssueComment(id: number, body: string): Promise<void>;
+}
+
+export function createOctokitClient(opts: GitHubOptions): GitHubApi {
+  const octokit = new Octokit({
+    auth: opts.token,
+    baseUrl: opts.baseUrl ?? 'https://api.github.com',
+  });
+
+  return {
+    async fetchPrContext() {
+      const pr = await octokit.pulls.get({
+        owner: opts.owner,
+        repo: opts.repo,
+        pull_number: opts.pullNumber,
+      });
+      const filesPaged = await octokit.paginate(octokit.pulls.listFiles, {
+        owner: opts.owner,
+        repo: opts.repo,
+        pull_number: opts.pullNumber,
+        per_page: 100,
+      });
+      return {
+        baseSha: pr.data.base.sha,
+        headSha: pr.data.head.sha,
+        baseRef: pr.data.base.ref,
+        headRef: pr.data.head.ref,
+        changes: filesPaged.map((f) => ({
+          oldPath: f.previous_filename ?? f.filename,
+          newPath: f.filename,
+          renamed: f.status === 'renamed',
+          removed: f.status === 'removed',
+          added: f.status === 'added',
+        })),
+      };
+    },
+    async fetchFile(ref, path) {
+      try {
+        const res = await octokit.repos.getContent({
+          owner: opts.owner,
+          repo: opts.repo,
+          path,
+          ref,
+        });
+        const data = res.data as { content?: string; encoding?: string };
+        if (typeof data.content === 'string' && data.encoding === 'base64') {
+          return Buffer.from(data.content, 'base64').toString('utf8');
+        }
+        return null;
+      } catch (err) {
+        if (isNotFound(err)) return null;
+        throw err;
+      }
+    },
+    async listReviewComments() {
+      const all = await octokit.paginate(octokit.pulls.listReviewComments, {
+        owner: opts.owner,
+        repo: opts.repo,
+        pull_number: opts.pullNumber,
+        per_page: 100,
+      });
+      return all.map((c) => ({
+        id: c.id,
+        body: c.body,
+        path: c.path,
+        line: c.line ?? null,
+      }));
+    },
+    async listIssueComments() {
+      const all = await octokit.paginate(octokit.issues.listComments, {
+        owner: opts.owner,
+        repo: opts.repo,
+        issue_number: opts.pullNumber,
+        per_page: 100,
+      });
+      return all.map((c) => ({ id: c.id, body: c.body ?? '' }));
+    },
+    async createReviewComment(args) {
+      await octokit.pulls.createReviewComment({
+        owner: opts.owner,
+        repo: opts.repo,
+        pull_number: opts.pullNumber,
+        body: args.body,
+        commit_id: args.commitId,
+        path: args.path,
+        line: args.line,
+        side: 'RIGHT',
+      });
+    },
+    async updateReviewComment(id, body) {
+      await octokit.pulls.updateReviewComment({
+        owner: opts.owner,
+        repo: opts.repo,
+        comment_id: id,
+        body,
+      });
+    },
+    async deleteReviewComment(id) {
+      await octokit.pulls.deleteReviewComment({
+        owner: opts.owner,
+        repo: opts.repo,
+        comment_id: id,
+      });
+    },
+    async createIssueComment(body) {
+      await octokit.issues.createComment({
+        owner: opts.owner,
+        repo: opts.repo,
+        issue_number: opts.pullNumber,
+        body,
+      });
+    },
+    async updateIssueComment(id, body) {
+      await octokit.issues.updateComment({
+        owner: opts.owner,
+        repo: opts.repo,
+        comment_id: id,
+        body,
+      });
+    },
+  };
+}
+
+function isNotFound(err: unknown): boolean {
+  const status = (err as { status?: number }).status;
+  return status === 404;
+}
+
+function endsWithStExt(path: string): boolean {
+  const dot = path.lastIndexOf('.');
+  if (dot < 0) return false;
+  return ST_EXTENSIONS.has(path.slice(dot));
+}
+
+export async function loadGitHubPrSnapshot(
+  opts: GitHubOptions,
+  api: GitHubApi = createOctokitClient(opts),
+): Promise<{ before: AstFile[]; after: AstFile[]; context: PrContext }> {
+  const context = await api.fetchPrContext();
+  const before: AstFile[] = [];
+  const after: AstFile[] = [];
+  for (const change of context.changes) {
+    if (!endsWithStExt(change.newPath) && !endsWithStExt(change.oldPath)) continue;
+    if (!change.removed) {
+      const src = await api.fetchFile(context.headSha, change.newPath);
+      if (src !== null) after.push(await parseSource(src, change.newPath));
+    }
+    if (!change.added) {
+      const src = await api.fetchFile(context.baseSha, change.oldPath);
+      if (src !== null) before.push(await parseSource(src, change.oldPath));
+    }
+  }
+  return { before, after, context };
+}
+
+export interface GitHubPostOptions extends GitHubOptions {
+  commentStyle: ResolvedConfig['commentStyle'];
+  inlineCap?: number;
+}
+
+export interface PostReviewResult {
+  created: number;
+  updated: number;
+  deleted: number;
+  mode: 'inline' | 'summary-only';
+}
+
+function findingKey(f: Finding): string {
+  return `${f.category}|${f.file}|${f.line}`;
+}
+
+function findingMarker(f: Finding): string {
+  return `${MARKER_PREFIX} kind=finding key=${findingKey(f)} -->`;
+}
+
+function renderFindingBody(f: Finding): string {
+  const lines: string[] = [
+    findingMarker(f),
+    `**${SEVERITY_BADGE[f.severity]} \`${f.category}\`** — ${f.summary}`,
+  ];
+  if (f.detail) {
+    lines.push('');
+    lines.push('```');
+    lines.push(f.detail);
+    lines.push('```');
+  }
+  if (f.related && f.related.length > 0) {
+    lines.push('');
+    lines.push('Related:');
+    for (const r of f.related) {
+      lines.push(`- \`${r.file}:${r.line}\`${r.note ? ' — ' + r.note : ''}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function renderSummaryBody(findings: Finding[], context: PrContext): string {
+  const lines: string[] = [SUMMARY_MARKER, '## plc-st-review'];
+  if (findings.length === 0) {
+    lines.push('');
+    lines.push('No semantic findings. ✅');
+    return lines.join('\n');
+  }
+  const counts = { error: 0, warn: 0, info: 0 };
+  for (const f of findings) counts[f.severity] += 1;
+  lines.push('');
+  lines.push(
+    `**${counts.error} error${plural(counts.error)}, ${counts.warn} warning${plural(counts.warn)}, ${counts.info} info** ` +
+      `on \`${context.headRef}\` → \`${context.baseRef}\` (${context.headSha.slice(0, 8)}).`,
+  );
+  lines.push('');
+  lines.push('| Severity | Category | Location | Summary |');
+  lines.push('|---|---|---|---|');
+  for (const f of findings) {
+    lines.push(
+      `| ${SEVERITY_BADGE[f.severity]} | \`${f.category}\` | \`${f.file}:${f.line}\` | ${escape(f.summary)} |`,
+    );
+  }
+  return lines.join('\n');
+}
+
+function plural(n: number): string {
+  return n === 1 ? '' : 's';
+}
+
+function escape(text: string): string {
+  return text.replace(/\|/g, '\\|');
+}
+
+export async function postGitHubReview(
+  findings: Finding[],
+  context: PrContext,
+  opts: GitHubPostOptions,
+  api: GitHubApi = createOctokitClient(opts),
+): Promise<PostReviewResult> {
+  const inlineCap = opts.inlineCap ?? INLINE_CAP;
+  const mode: PostReviewResult['mode'] =
+    findings.length > inlineCap || opts.commentStyle === 'summary'
+      ? 'summary-only'
+      : 'inline';
+
+  const result: PostReviewResult = { created: 0, updated: 0, deleted: 0, mode };
+
+  if (mode === 'inline' && opts.commentStyle !== 'summary') {
+    const existing = await api.listReviewComments();
+    const ours = new Map<string, ReviewComment>();
+    for (const c of existing) {
+      if (!c.body.startsWith(MARKER_PREFIX)) continue;
+      const m = /key=([^\s]+)/.exec(c.body);
+      if (m) ours.set(m[1], c);
+    }
+    const incoming = new Set<string>();
+    for (const f of findings) {
+      const key = findingKey(f);
+      incoming.add(key);
+      const body = renderFindingBody(f);
+      const prior = ours.get(key);
+      if (prior) {
+        if (prior.body !== body) {
+          await api.updateReviewComment(prior.id, body);
+          result.updated += 1;
+        }
+      } else {
+        await api.createReviewComment({
+          body,
+          commitId: context.headSha,
+          path: f.file,
+          line: f.line,
+        });
+        result.created += 1;
+      }
+    }
+    for (const [key, prior] of ours) {
+      if (incoming.has(key)) continue;
+      await api.deleteReviewComment(prior.id);
+      result.deleted += 1;
+    }
+  }
+
+  if (opts.commentStyle !== 'inline' || mode === 'summary-only') {
+    const issueComments = await api.listIssueComments();
+    const summary =
+      issueComments.find((c) => c.body.startsWith(SUMMARY_MARKER)) ?? null;
+    const body = renderSummaryBody(findings, context);
+    if (summary) {
+      if (summary.body !== body) {
+        await api.updateIssueComment(summary.id, body);
+        result.updated += 1;
+      }
+    } else {
+      await api.createIssueComment(body);
+      result.created += 1;
+    }
+  }
+
+  return result;
+}
+
+export function resolveGitHubOptionsFromEnv(
+  override: Partial<GitHubOptions>,
+): GitHubOptions {
+  const token = override.token ?? process.env.GITHUB_TOKEN ?? null;
+  if (!token) throw new Error('GITHUB_TOKEN must be set');
+  let owner = override.owner;
+  let repo = override.repo;
+  if ((!owner || !repo) && process.env.GITHUB_REPOSITORY) {
+    const parts = process.env.GITHUB_REPOSITORY.split('/');
+    if (parts.length === 2) {
+      owner = owner ?? parts[0];
+      repo = repo ?? parts[1];
+    }
+  }
+  if (!owner || !repo) throw new Error('--repo <owner>/<name> or GITHUB_REPOSITORY must be set');
+  const pullNumber = override.pullNumber;
+  if (pullNumber === undefined) throw new Error('--pr <number> must be provided');
+  return {
+    token,
+    baseUrl: override.baseUrl ?? process.env.GITHUB_API_URL,
+    owner,
+    repo,
+    pullNumber,
+  };
+}

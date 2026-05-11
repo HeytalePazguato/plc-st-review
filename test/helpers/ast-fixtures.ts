@@ -349,3 +349,89 @@ export function sourceFile(
     root,
   };
 }
+
+export interface ArrayDeclOpts {
+  name: string;
+  lower: string;
+  upper: string;
+  elementType: string;
+}
+
+export function arrayVarDecl(opts: ArrayDeclOpts): StNode {
+  const subrange = node(NODE.SUBRANGE, {
+    text: `${opts.lower}..${opts.upper}`,
+    children: [
+      node(NODE.INTEGER_LITERAL, { text: opts.lower }),
+      node(NODE.INTEGER_LITERAL, { text: opts.upper }),
+    ],
+  });
+  const elem = node(NODE.ELEMENTARY_TYPE, { text: opts.elementType });
+  const arrType = node(NODE.ARRAY_TYPE, {
+    text: `ARRAY [${opts.lower}..${opts.upper}] OF ${opts.elementType}`,
+    children: [subrange, elem],
+  });
+  return node(NODE.VARIABLE_DECLARATION, {
+    text: `${opts.name} : ARRAY [${opts.lower}..${opts.upper}] OF ${opts.elementType};`,
+    children: [node(NODE.IDENTIFIER, { text: opts.name }), arrType],
+  });
+}
+
+export interface ForLoopOpts {
+  loopVar: string;
+  start: string;
+  end: string;
+  by?: string;
+  body?: StNode[];
+}
+
+export function forStatement(opts: ForLoopOpts): StNode {
+  const kids: StNode[] = [
+    node(NODE.IDENTIFIER, { text: opts.loopVar }),
+    node(NODE.INTEGER_LITERAL, { text: opts.start }),
+    node(NODE.INTEGER_LITERAL, { text: opts.end }),
+  ];
+  if (opts.by !== undefined) {
+    kids.push(node(NODE.INTEGER_LITERAL, { text: opts.by }));
+  }
+  if (opts.body) {
+    kids.push(...opts.body);
+  }
+  return node(NODE.FOR_STATEMENT, {
+    text: `FOR ${opts.loopVar} := ${opts.start} TO ${opts.end}${opts.by ? ' BY ' + opts.by : ''} DO ... END_FOR;`,
+    children: kids,
+  });
+}
+
+export function returnStmt(): StNode {
+  return node(NODE.RETURN_STATEMENT, { text: 'RETURN;' });
+}
+
+export function pragma(text: string): StNode {
+  return node(NODE.PRAGMA, { text });
+}
+
+export function assignmentStmt(target: string, value: string): StNode {
+  return node(NODE.ASSIGNMENT_STATEMENT, {
+    text: `${target} := ${value};`,
+    children: [
+      node(NODE.IDENTIFIER, { text: target }),
+      node(NODE.IDENTIFIER, { text: value }),
+    ],
+  });
+}
+
+export function interfaceDecl(name: string, methods: StNode[] = []): StNode {
+  return node(NODE.INTERFACE, {
+    text: `INTERFACE ${name} ... END_INTERFACE`,
+    children: [node(NODE.IDENTIFIER, { text: name }), ...methods],
+  });
+}
+
+export function methodSignature(name: string, returnType?: string): StNode {
+  const kids: StNode[] = [node(NODE.IDENTIFIER, { text: name })];
+  if (returnType) kids.push(node(NODE.ELEMENTARY_TYPE, { text: returnType }));
+  return node(NODE.METHOD_SIGNATURE, {
+    text: `METHOD ${name}${returnType ? ' : ' + returnType : ''}\nEND_METHOD`,
+    children: kids,
+  });
+}

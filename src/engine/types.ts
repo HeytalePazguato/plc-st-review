@@ -14,7 +14,17 @@ export type Category =
   | 'ENUM_VALUE_ADDED'
   | 'TIMER_VALUE_CHANGED'
   | 'CONSTANT_VALUE_CHANGED'
-  | 'COMMENT_ONLY';
+  | 'COMMENT_ONLY'
+  | 'ARRAY_BOUNDS_CHANGED'
+  | 'STATE_UNHANDLED'
+  | 'UNREACHABLE_CODE'
+  | 'LOOP_BOUNDS_CHANGED'
+  | 'POU_DELETED'
+  | 'POU_RENAMED'
+  | 'METHOD_ADDED_TO_INTERFACE'
+  | 'INHERITANCE_CHANGED'
+  | 'PRAGMA_CHANGED'
+  | 'UNUSED_VAR_INTRODUCED';
 
 export const ALL_CATEGORIES: Category[] = [
   'SIGNATURE_CHANGED',
@@ -25,6 +35,16 @@ export const ALL_CATEGORIES: Category[] = [
   'TIMER_VALUE_CHANGED',
   'CONSTANT_VALUE_CHANGED',
   'COMMENT_ONLY',
+  'ARRAY_BOUNDS_CHANGED',
+  'STATE_UNHANDLED',
+  'UNREACHABLE_CODE',
+  'LOOP_BOUNDS_CHANGED',
+  'POU_DELETED',
+  'POU_RENAMED',
+  'METHOD_ADDED_TO_INTERFACE',
+  'INHERITANCE_CHANGED',
+  'PRAGMA_CHANGED',
+  'UNUSED_VAR_INTRODUCED',
 ];
 
 export interface Position {
@@ -84,6 +104,11 @@ export interface SymbolTable {
   caseStatements: CaseSite[];
   varReferences: VarReference[];
   timerPtAssignments: TimerPtAssignment[];
+  arrayDecls: ArrayDecl[];
+  forLoops: ForLoop[];
+  pragmas: Pragma[];
+  unreachable: UnreachableStmt[];
+  pouLocals: Map<string, LocalVar[]>; // by POU qualified name
 }
 
 export type PouKind =
@@ -171,6 +196,45 @@ export interface VarReference {
   file: string;
   line: number;
   context: 'read' | 'write' | 'unknown';
+}
+
+export interface ArrayDecl {
+  varName: string;
+  scope: string; // qualified POU name or '__global'
+  file: string;
+  line: number;
+  lower: string;
+  upper: string;
+  elementType: string;
+}
+
+export interface ForLoop {
+  scope: string;
+  file: string;
+  line: number;
+  start: string;
+  end: string;
+  by?: string;
+}
+
+export interface Pragma {
+  file: string;
+  line: number;
+  text: string;
+}
+
+export interface UnreachableStmt {
+  scope: string;
+  file: string;
+  line: number;
+  reason: 'after_return' | 'after_exit' | 'after_continue';
+}
+
+export interface LocalVar {
+  name: string;
+  scope: string;
+  file: string;
+  line: number;
 }
 
 export interface ReviewContext {

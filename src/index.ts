@@ -9,6 +9,11 @@ export {
   postGitlabReview,
   resolveGitlabOptionsFromEnv,
 } from './platforms/gitlab.js';
+export {
+  loadGitHubPrSnapshot,
+  postGitHubReview,
+  resolveGitHubOptionsFromEnv,
+} from './platforms/github.js';
 export { parseSource, parseFile, astFileFromRoot } from './engine/parse.js';
 export type {
   AstFile,

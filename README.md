@@ -16,14 +16,39 @@ Catches the bugs reviewers miss on visual scan:
 ## Status
 
 - **Phase 1** — engine, eight checks, CLI, three output formats. Done.
-- **Phase 2** — GitLab MR integration (`--gitlab --mr <iid>`), Dockerfile,
-  inline discussions with dedup and resolve-on-disappear, summary-only fallback
-  above 100 findings, self-hosted GitLab support via `GITLAB_URL`. Done.
-- **Phase 3** — GitHub Action + remaining 10 check categories. Next.
+- **Phase 2** — GitLab MR integration. Done.
+- **Phase 3** — GitHub Action + 10 additional check categories
+  (18 total). Done.
 
-Total tests: 42 across 13 files, all passing.
+Total tests: 72 across 24 files, all passing.
 
 ## Quick start
+
+### GitHub pull request
+
+Drop this into `.github/workflows/plc-st-review.yml` (full example at
+[`examples/github-workflow.yml`](examples/github-workflow.yml)):
+
+```yaml
+name: PLC ST Review
+on:
+  pull_request:
+    paths: ['**/*.st', '**/*.ST']
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: HeytalePazguato/plc-st-review@v0
+```
+
+The action posts findings as inline review comments. Re-runs update
+existing comments rather than duplicating.
 
 ### GitLab merge request
 
@@ -74,6 +99,16 @@ The CLI exits non-zero when at least one finding meets or exceeds the
 | `TIMER_VALUE_CHANGED` | `info`/`warn`/`error` by ratio | `TON`/`TOF`/`TP` PT changed; severity scales with the change magnitude (≥2× = warn, ≥10× = error). |
 | `CONSTANT_VALUE_CHANGED` | `info` (`warn` for safety-prefixed names) | A `VAR_GLOBAL CONSTANT`'s initial value changed. Prefixes like `SAFETY_`, `INTERLOCK_`, `SIL_` elevate severity. |
 | `COMMENT_ONLY` | `info` | The AST is structurally identical between revisions; only comments/whitespace changed. |
+| `ARRAY_BOUNDS_CHANGED` | `error` (shrink) / `warn` (grow) | An array declaration's `[lower..upper]` bounds changed. |
+| `STATE_UNHANDLED` | `info` | A `CASE` on an enum has no `ELSE` and doesn't cover every enum value, regardless of whether the enum changed. |
+| `UNREACHABLE_CODE` | `warn` | A new statement was added after `RETURN`/`EXIT`/`CONTINUE` in the same block. |
+| `LOOP_BOUNDS_CHANGED` | `info`/`warn` by ratio | A `FOR` loop's bounds changed; severity rises when the iteration count moves ≥10×. |
+| `POU_DELETED` | `error` (with callers) / `warn` | A POU was deleted; severity depends on whether call sites in the new revision still reference it. |
+| `POU_RENAMED` | `info` | Heuristic: a POU was deleted and another with an identical signature was added; suggests a rename. |
+| `METHOD_ADDED_TO_INTERFACE` | `error` | An `INTERFACE` gained a method but a `FUNCTION_BLOCK` that `IMPLEMENTS` it doesn't have one. |
+| `INHERITANCE_CHANGED` | `warn` | An `EXTENDS` clause was added, removed, or changed. |
+| `PRAGMA_CHANGED` | `info` | The set of pragmas in a file changed (added or removed). |
+| `UNUSED_VAR_INTRODUCED` | `info` | A new local variable was declared but isn't referenced in its scope. |
 
 ## Configuration
 

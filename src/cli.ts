@@ -12,6 +12,11 @@ import {
   postGitlabReview,
   resolveGitlabOptionsFromEnv,
 } from './platforms/gitlab.js';
+import {
+  loadGitHubPrSnapshot,
+  postGitHubReview,
+  resolveGitHubOptionsFromEnv,
+} from './platforms/github.js';
 import { SEVERITY_RANK, type Severity } from './engine/types.js';
 
 interface CliOptions {
@@ -22,6 +27,9 @@ interface CliOptions {
   mr?: string;
   project?: string;
   gitlabUrl?: string;
+  github?: boolean;
+  pr?: string;
+  repo?: string;
   output: 'json' | 'markdown' | 'terminal';
   severity: Severity;
   config?: string;
@@ -43,6 +51,9 @@ async function main(): Promise<void> {
     .option('--mr <iid>', 'GitLab MR IID to review')
     .option('--project <id>', 'GitLab project ID or path (overrides env)')
     .option('--gitlab-url <url>', 'GitLab base URL (overrides env)')
+    .option('--github', 'review a GitHub pull request (requires --pr)')
+    .option('--pr <number>', 'GitHub PR number to review')
+    .option('--repo <owner/name>', 'GitHub repo in owner/name form (overrides env)')
     .option('--output <fmt>', 'terminal|markdown|json', 'terminal')
     .option('--severity <level>', 'minimum severity to print', 'info')
     .option('--config <path>', 'path to .plc-st-review.yml')
@@ -64,6 +75,10 @@ async function main(): Promise<void> {
     await runGitlabMode(opts, config);
     return;
   }
+  if (opts.github) {
+    await runGitHubMode(opts, config);
+    return;
+  }
 
   let snap;
   if (opts.files && opts.files.length === 2) {
@@ -74,7 +89,9 @@ async function main(): Promise<void> {
       head: opts.head ?? 'HEAD',
     });
   } else {
-    fail('Provide one of: --base <ref>, --files <old> <new>, or --gitlab --mr <iid>.');
+    fail(
+      'Provide one of: --base <ref>, --files <old> <new>, --gitlab --mr <iid>, or --github --pr <number>.',
+    );
   }
 
   const findings = runReview({
@@ -92,6 +109,48 @@ async function main(): Promise<void> {
     await writeFile(opts.outFile, rendered + (rendered.endsWith('\n') ? '' : '\n'), 'utf8');
   } else {
     process.stdout.write(rendered + '\n');
+  }
+
+  if (shouldFail(findings, config.failOnSeverity)) {
+    process.exitCode = 1;
+  }
+}
+
+async function runGitHubMode(
+  opts: CliOptions,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+): Promise<void> {
+  if (!opts.pr) fail('--github requires --pr <number>');
+  const pullNumber = Number.parseInt(opts.pr, 10);
+  if (!Number.isFinite(pullNumber)) fail(`Invalid --pr: ${String(opts.pr)}`);
+
+  let owner: string | undefined;
+  let repo: string | undefined;
+  if (opts.repo) {
+    const parts = opts.repo.split('/');
+    if (parts.length !== 2) fail(`Invalid --repo: ${String(opts.repo)} (expected owner/name)`);
+    owner = parts[0];
+    repo = parts[1];
+  }
+  const gh = resolveGitHubOptionsFromEnv({ pullNumber, owner, repo });
+
+  const { before, after, context } = await loadGitHubPrSnapshot(gh);
+  const findings = runReview({
+    beforeFiles: before,
+    afterFiles: after,
+    config,
+  }).filter((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[opts.severity]);
+
+  const result = await postGitHubReview(findings, context, {
+    ...gh,
+    commentStyle: config.commentStyle,
+  });
+
+  const summary = `plc-st-review (github): ${result.mode}, ${result.created} created, ${result.updated} updated, ${result.deleted} deleted`;
+  process.stdout.write(summary + '\n');
+
+  if (opts.outFile) {
+    await writeFile(opts.outFile, renderJson(findings) + '\n', 'utf8');
   }
 
   if (shouldFail(findings, config.failOnSeverity)) {
