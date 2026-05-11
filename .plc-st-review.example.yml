@@ -1,0 +1,27 @@
+# Copy to .plc-st-review.yml and tweak. Pass to the CLI with --config.
+
+# Skip whole check categories.
+disabled_checks:
+  - COMMENT_ONLY
+
+# Override the default severity of any check.
+severity_overrides:
+  TIMER_VALUE_CHANGED: error
+
+# Glob patterns relative to repo root. Files matching any pattern are skipped.
+ignore_paths:
+  - "deprecated/**"
+  - "third_party/**"
+
+# Identifier prefixes that elevate CONSTANT_VALUE_CHANGED to warn-level.
+safety_critical_prefixes:
+  - SAFETY_
+  - INTERLOCK_
+  - SIL_
+  - LIMIT_
+  - MAX_
+  - MIN_
+
+reporting:
+  fail_on_severity: error    # exit nonzero when any finding meets/exceeds this
+  comment_style: inline      # inline | summary | both (used by Phase 2/3 platforms)

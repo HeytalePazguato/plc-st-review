@@ -1,4 +1,4 @@
-# Contributing to {{PROJECT_NAME}}
+# Contributing to plc-st-review
 
 Thanks for your interest! Contributions of any size are welcome — bug
 reports, fixes, new features, doc improvements.
@@ -47,7 +47,7 @@ A minimal reproducing example is gold.
 
 ## Asking questions / proposing ideas
 
-Use [Discussions](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/discussions)
+Use [Discussions](https://github.com/HeytalePazguato/plc-st-review/discussions)
 for open-ended questions and ideas. Reserve issues for actionable bugs and
 concrete feature requests.
 

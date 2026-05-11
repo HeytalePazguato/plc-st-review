@@ -2,11 +2,11 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in {{PROJECT_NAME}}, please report it
+If you discover a security vulnerability in plc-st-review, please report it
 responsibly.
 
 **Preferred channel:** open a private security advisory through GitHub:
-[Report a vulnerability](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/security/advisories/new).
+[Report a vulnerability](https://github.com/HeytalePazguato/plc-st-review/security/advisories/new).
 
 **Do NOT** open a public GitHub issue for security vulnerabilities.
 
@@ -16,7 +16,12 @@ you prefer to remain anonymous).
 
 ## Scope
 
-<!-- TODO: describe what your project does and what's in/out of scope. -->
+`plc-st-review` parses Structured Text source files locally and (in later
+phases) posts review comments to GitLab/GitHub. Reportable vulnerabilities
+include: parser crashes triggered by crafted input, code injection via
+configuration or argument values, and credential leakage through logs or
+network calls. Out of scope: behavior of upstream tools (`tree-sitter`,
+`tree-sitter-iec61131-3-st`, `simple-git`) — report those upstream.
 
 ## Supported Versions
 

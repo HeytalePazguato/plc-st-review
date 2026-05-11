@@ -1,0 +1,67 @@
+{
+  "name": "plc-st-review",
+  "version": "0.0.1",
+  "description": "Semantic code review for IEC 61131-3 Structured Text pull requests",
+  "type": "module",
+  "bin": {
+    "plc-st-review": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "keywords": [
+    "iec61131",
+    "structured-text",
+    "plc",
+    "code-review",
+    "tree-sitter",
+    "static-analysis"
+  ],
+  "author": "HeytalePazguato",
+  "license": "MIT",
+  "homepage": "https://github.com/HeytalePazguato/plc-st-review",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HeytalePazguato/plc-st-review.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HeytalePazguato/plc-st-review/issues"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1",
+    "simple-git": "^3.27.0",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-iec61131-3-st": "github:HeytalePazguato/tree-sitter-iec61131-3-st",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

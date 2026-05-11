@@ -1,23 +1,27 @@
 ---
 layout: default
-title: "{{PROJECT_NAME}}"
-description: "{{DESCRIPTION}}"
+title: "plc-st-review"
+description: "Semantic code review for IEC 61131-3 Structured Text pull requests"
 ---
 
-# {{PROJECT_NAME}}
+# plc-st-review
 
-{{DESCRIPTION}}
+Semantic code review for IEC 61131-3 Structured Text pull/merge requests.
 
-[View on GitHub](https://github.com/{{OWNER}}/{{PROJECT_NAME}}){: .btn }
-[Download latest release](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/releases/latest){: .btn }
+[View on GitHub](https://github.com/HeytalePazguato/plc-st-review){: .btn }
 
 ## Install
 
-<!-- TODO: add install instructions for your project -->
+```sh
+npm install -g plc-st-review
+```
+
+See the [README](https://github.com/HeytalePazguato/plc-st-review#readme) for
+the full check catalog and configuration reference.
 
 ## Links
 
-- [Issues](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/issues)
-- [Discussions](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/discussions)
-- [Releases](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/releases)
-- [Security policy](https://github.com/{{OWNER}}/{{PROJECT_NAME}}/blob/main/SECURITY.md)
+- [Issues](https://github.com/HeytalePazguato/plc-st-review/issues)
+- [Discussions](https://github.com/HeytalePazguato/plc-st-review/discussions)
+- [Releases](https://github.com/HeytalePazguato/plc-st-review/releases)
+- [Security policy](https://github.com/HeytalePazguato/plc-st-review/blob/main/SECURITY.md)

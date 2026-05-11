@@ -9,37 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `hotfix/<version>` branch convention for emergency patches cut directly
-  from `main` when `develop` has unfinished work that can't ship.
-- Repo settings now enable `delete_branch_on_merge=true` via `gh repo edit`.
-
-### Changed
-
-- Branch flow diagram now shows two paths to `main`: `release/*` for
-  planned releases and `hotfix/*` for emergency patches. PRs to `main`
-  must originate from one of these two — never from `develop` directly,
-  because the `delete_branch_on_merge` setting would wipe `develop` on
-  the remote on every release.
-
-### Why
-
-Discovered while shipping the first 0.0.1 of a project that used this
-blueprint: when CI/release-workflow fixes were PR'd from `develop`
-directly to `main`, the auto-delete-on-merge setting deleted `develop`
-on the remote each time. The fix is procedural — always route through
-`release/*` or `hotfix/*` — so the blueprint now codifies that.
-
-<!--
-  Add entries here while working on `develop` or `release/*`. The heading
-  carries the next target version (`next: X.Y.Z`) so it's obvious what
-  these entries will ship as. On release, rename to `[X.Y.Z] - YYYY-MM-DD`
-  and start a new `[Unreleased] — next: X.Y.Z+1` block.
-
-  Use these subsections, omitting any that don't apply:
-    ### Added       — new features
-    ### Changed     — changes in existing functionality
-    ### Deprecated  — soon-to-be removed features
-    ### Removed     — removed features
-    ### Fixed       — bug fixes
-    ### Security    — vulnerability fixes
--->
+- Initial Phase 1 implementation: TypeScript engine that parses two ST file
+  revisions with the `tree-sitter-iec61131-3-st` grammar, builds per-revision
+  symbol tables (POUs, globals, enums, timers, call sites, CASE statements),
+  and runs eight checks.
+- Eight check categories: `SIGNATURE_CHANGED`, `CALL_SITE_OUTDATED`,
+  `TYPE_MISMATCH`, `ENUM_VALUE_REMOVED`, `ENUM_VALUE_ADDED`,
+  `TIMER_VALUE_CHANGED`, `CONSTANT_VALUE_CHANGED`, `COMMENT_ONLY`.
+- CLI with `--base/--head` and `--files` modes.
+- Three output formats: ANSI terminal, Markdown, JSON.
+- Local-git diff platform via `simple-git`.
+- `.plc-st-review.yml` config loader with disabled-checks, severity overrides,
+  ignore-paths, safety-critical prefixes, and fail-on-severity threshold.
+- Vitest suite covering each check (30 tests).
