@@ -29,3 +29,5 @@ jobs:
 
       - name: Run plc-st-review on this PR
         uses: ./
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

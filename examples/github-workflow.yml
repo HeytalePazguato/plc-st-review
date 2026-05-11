@@ -22,10 +22,13 @@ jobs:
         with:
           fetch-depth: 0
       - uses: HeytalePazguato/plc-st-review@v0
+        env:
+          # GITHUB_TOKEN is read inside the container; setting it here is the
+          # most reliable way to forward it (action.yml's `env:` block
+          # doesn't always propagate to docker-based actions).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Optional inputs (all have sensible defaults inferred from the PR
         # context):
         #
         # with:
-        #   pr-number: ${{ github.event.pull_request.number }}
-        #   repo: ${{ github.repository }}
         #   severity: info
