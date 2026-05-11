@@ -85,37 +85,42 @@ Every change is reduced to an AST diff. The engine:
 
 No LLM is involved. Findings are deterministic.
 
-## Grammar build status (Phase 1 caveat)
+## Install
 
-`tree-sitter-iec61131-3-st` is not yet published on npm — at the time of this
-release, the maintainer is waiting for npm to whitelist the package name. The
-project's `package.json` installs it from GitHub:
-
-```json
-"tree-sitter-iec61131-3-st": "github:HeytalePazguato/tree-sitter-iec61131-3-st"
+```sh
+npm run bootstrap
 ```
 
-When installed from GitHub on Windows, the native binding requires:
+`bootstrap` runs `npm install --ignore-scripts`, applies the local
+`tree-sitter` C++20 patch, and rebuilds the two native deps in the right
+order. This dance is needed because `tree-sitter` 0.25.0's `binding.gyp`
+specifies `/std:c++17`, but Node 20+'s V8 headers require C++20 — and a
+plain `npm install` triggers tree-sitter's source build before
+`postinstall: patch-package` ever gets a chance to fix it.
 
-- Visual Studio 2022 Build Tools (or VS2019 Build Tools with the **C++ Clang
-  tools for Windows** component installed — Clang is required by
-  `node-addon-api` 8.5+).
-- A recent `npm` (≥10), which bundles a modern `node-gyp`.
+A plain `npm install` works once `node_modules/` already exists and the
+patch has been applied (the `postinstall` hook keeps the patch fresh on
+subsequent installs).
 
-On Linux/macOS the standard build chain (gcc/clang + make) is sufficient.
+### Native build prerequisites
 
-Once the grammar is published to npm, the dependency line becomes a normal
-semver pin and the build step goes away.
+- **Windows:** Visual Studio 2022 with the **Desktop development with C++**
+  workload, plus the individual components **C++ Clang Compiler for Windows**
+  and **MSBuild support for LLVM (clang-cl) toolset**. Both are required:
+  `node-addon-api` 8.5+ uses the `ClangCL` MSBuild platform toolset.
+- **Linux/macOS:** standard `gcc`/`clang` + `make` chain.
+- **All platforms:** npm ≥ 10 (bundles `node-gyp` ≥ 10 with VS2022 detection
+  on Windows).
 
-If the binding fails to load, `plc-st-review` surfaces a clear error pointing
-to this section.
+The `patches/tree-sitter+0.25.0.patch` file goes away once upstream
+tree-sitter publishes a release with C++20 set as the default.
 
 ## Development
 
 ```sh
-npm install                # see Grammar build status above
+npm run bootstrap          # first-time only; see "Install" above
 npm run build              # tsc to dist/
-npm test                   # vitest, ~1.5s, 30 tests
+npm test                   # vitest, ~2s, 33 tests
 npm run lint               # tsc --noEmit
 ```
 

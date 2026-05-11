@@ -187,10 +187,8 @@ function collectPou(
   for (const varBlock of descendantsOfAnyType(node, VAR_SECTION_NODES)) {
     for (const decl of findChildren(varBlock, NODE.VARIABLE_DECLARATION)) {
       const declName = findIdentifierText(decl);
-      const typeNode =
-        findChild(decl, NODE.ELEMENTARY_TYPE) ??
-        findChild(decl, NODE.GENERIC_TYPE);
-      const typeText = typeNode?.text?.toUpperCase() ?? '';
+      const typeNode = pickTypeNode(decl);
+      const typeText = typeNode?.text?.trim().toUpperCase() ?? '';
       if (declName && TIMER_TYPE_NAMES.has(typeText)) {
         const timer: TimerInstance = {
           name: declName,
@@ -227,6 +225,7 @@ function extractParameters(
 }
 
 function pickTypeNode(decl: StNode): StNode | null {
+  // Prefer an explicit type-node child.
   for (const c of childrenOf(decl)) {
     if (
       c.type === NODE.ELEMENTARY_TYPE ||
@@ -237,11 +236,19 @@ function pickTypeNode(decl: StNode): StNode | null {
       c.type === NODE.REFERENCE_TYPE ||
       c.type === NODE.STRING_TYPE ||
       c.type === NODE.STRUCTURE_TYPE_INLINE ||
-      c.type === NODE.ENUM_TYPE_INLINE
+      c.type === NODE.ENUM_TYPE_INLINE ||
+      c.type === NODE.QUALIFIED_IDENTIFIER
     ) {
       return c;
     }
   }
+  // Fallback: user-defined types and system FBs (TON/TOF/TP) come through as a
+  // bare identifier — typically the second identifier child of the declaration.
+  const idents: StNode[] = [];
+  for (const c of childrenOf(decl)) {
+    if (c.type === NODE.IDENTIFIER) idents.push(c);
+  }
+  if (idents.length >= 2) return idents[idents.length - 1];
   return null;
 }
 

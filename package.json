@@ -30,6 +30,8 @@
     "test:watch": "vitest",
     "lint": "tsc -p tsconfig.json --noEmit",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "bootstrap": "npm install --ignore-scripts && patch-package && npm rebuild tree-sitter tree-sitter-iec61131-3-st",
+    "postinstall": "patch-package",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -55,11 +57,12 @@
     "picocolors": "^1.1.1",
     "simple-git": "^3.27.0",
     "tree-sitter": "^0.25.0",
-    "tree-sitter-iec61131-3-st": "github:HeytalePazguato/tree-sitter-iec61131-3-st",
+    "tree-sitter-iec61131-3-st": "^0.0.2",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "patch-package": "^8.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
