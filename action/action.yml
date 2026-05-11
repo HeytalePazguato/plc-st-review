@@ -30,7 +30,14 @@ outputs:
 
 runs:
   using: 'docker'
-  image: 'docker://ghcr.io/heytalepazguato/plc-st-review:latest'
+  # Build the image from the repo's Dockerfile at action runtime. This makes
+  # the action self-contained on the consumer side — no separate registry
+  # pull, no race between `@v0` and the latest published image. Once the
+  # repo's release.yml is shipping versioned images (after 0.0.1), advanced
+  # consumers can swap this for:
+  #     image: 'docker://ghcr.io/heytalepazguato/plc-st-review:v0'
+  # to avoid the per-run build cost.
+  image: 'Dockerfile'
   args:
     - '--github'
     - '--pr'
