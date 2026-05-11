@@ -7,15 +7,15 @@ branding:
 
 inputs:
   pr-number:
-    description: 'Pull request number. Defaults to the triggering PR.'
+    description: 'Pull request number. Defaults to the triggering PR (parsed from GITHUB_REF).'
     required: false
     default: ''
   repo:
-    description: 'GitHub repo in owner/name form. Defaults to the running workflow''s repo.'
+    description: 'GitHub repo in owner/name form. Defaults to GITHUB_REPOSITORY.'
     required: false
     default: ''
   github-token:
-    description: 'Token used to read the PR and post comments. Falls back to the auto-provided GITHUB_TOKEN.'
+    description: 'Token used to read the PR and post comments. Falls back to GITHUB_TOKEN.'
     required: false
     default: ${{ github.token }}
   severity:
@@ -36,6 +36,6 @@ runs:
   image: 'Dockerfile'
   env:
     GITHUB_TOKEN: ${{ inputs.github-token }}
-    PLC_PR_NUMBER: ${{ inputs.pr-number != '' && inputs.pr-number || github.event.pull_request.number }}
-    PLC_REPO: ${{ inputs.repo != '' && inputs.repo || github.repository }}
-    PLC_SEVERITY: ${{ inputs.severity }}
+    PLC_PR_INPUT: ${{ inputs.pr-number }}
+    PLC_REPO_INPUT: ${{ inputs.repo }}
+    PLC_SEVERITY_INPUT: ${{ inputs.severity }}
