@@ -27,6 +27,7 @@ export interface GitHubChange {
   renamed: boolean;
   removed: boolean;
   added: boolean;
+  patch?: string;
 }
 
 export interface PrContext {
@@ -96,6 +97,7 @@ export function createOctokitClient(opts: GitHubOptions): GitHubApi {
           renamed: f.status === 'renamed',
           removed: f.status === 'removed',
           added: f.status === 'added',
+          patch: f.patch,
         })),
       };
     },
@@ -197,6 +199,39 @@ function endsWithStExt(path: string): boolean {
   return ST_EXTENSIONS.has(path.slice(dot));
 }
 
+/**
+ * Extract the set of NEW-side line numbers covered by a unified-diff patch.
+ * Used to decide whether a finding's (file, line) is postable as an inline
+ * review comment — GitHub rejects review comments that anchor to lines not
+ * present in any diff hunk.
+ */
+export function diffLinesByFile(changes: readonly GitHubChange[]): Map<string, Set<number>> {
+  const out = new Map<string, Set<number>>();
+  for (const c of changes) {
+    if (!c.patch) continue;
+    const set = new Set<number>();
+    let newLine = 0;
+    for (const raw of c.patch.split('\n')) {
+      const hunk = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(raw);
+      if (hunk) {
+        newLine = Number.parseInt(hunk[1], 10);
+        continue;
+      }
+      if (raw.startsWith('+') && !raw.startsWith('+++')) {
+        set.add(newLine);
+        newLine += 1;
+      } else if (raw.startsWith('-') && !raw.startsWith('---')) {
+        // deletion — does not advance NEW side
+      } else if (!raw.startsWith('\\')) {
+        // context line or empty
+        newLine += 1;
+      }
+    }
+    out.set(c.newPath, set);
+  }
+  return out;
+}
+
 export async function loadGitHubPrSnapshot(
   opts: GitHubOptions,
   api: GitHubApi = createOctokitClient(opts),
@@ -228,6 +263,8 @@ export interface PostReviewResult {
   updated: number;
   deleted: number;
   mode: 'inline' | 'summary-only';
+  inDiff: number;
+  outOfDiff: number;
 }
 
 function findingKey(f: Finding): string {
@@ -259,7 +296,11 @@ function renderFindingBody(f: Finding): string {
   return lines.join('\n');
 }
 
-function renderSummaryBody(findings: Finding[], context: PrContext): string {
+function renderSummaryBody(
+  findings: Finding[],
+  context: PrContext,
+  scope: 'all' | 'out-of-diff' = 'all',
+): string {
   const lines: string[] = [SUMMARY_MARKER, '## plc-st-review'];
   if (findings.length === 0) {
     lines.push('');
@@ -269,10 +310,18 @@ function renderSummaryBody(findings: Finding[], context: PrContext): string {
   const counts = { error: 0, warn: 0, info: 0 };
   for (const f of findings) counts[f.severity] += 1;
   lines.push('');
-  lines.push(
-    `**${counts.error} error${plural(counts.error)}, ${counts.warn} warning${plural(counts.warn)}, ${counts.info} info** ` +
-      `on \`${context.headRef}\` → \`${context.baseRef}\` (${context.headSha.slice(0, 8)}).`,
-  );
+  if (scope === 'out-of-diff') {
+    lines.push(
+      `${findings.length} finding${plural(findings.length)} on lines outside the PR's diff hunks ` +
+        '(GitHub only allows inline review comments on lines included in the diff). The rest, ' +
+        'if any, are posted as inline review comments above.',
+    );
+  } else {
+    lines.push(
+      `**${counts.error} error${plural(counts.error)}, ${counts.warn} warning${plural(counts.warn)}, ${counts.info} info** ` +
+        `on \`${context.headRef}\` → \`${context.baseRef}\` (${context.headSha.slice(0, 8)}).`,
+    );
+  }
   lines.push('');
   lines.push('| Severity | Category | Location | Summary |');
   lines.push('|---|---|---|---|');
@@ -304,9 +353,32 @@ export async function postGitHubReview(
       ? 'summary-only'
       : 'inline';
 
-  const result: PostReviewResult = { created: 0, updated: 0, deleted: 0, mode };
+  const result: PostReviewResult = {
+    created: 0,
+    updated: 0,
+    deleted: 0,
+    mode,
+    inDiff: 0,
+    outOfDiff: 0,
+  };
 
-  if (mode === 'inline' && opts.commentStyle !== 'summary') {
+  // Compute which (file, line) pairs are part of the PR's diff hunks. GitHub
+  // rejects inline review comments anchored to lines outside the diff with
+  // "pull_request_review_thread.line could not be resolved".
+  const diffLines = diffLinesByFile(context.changes);
+  const isInDiff = (f: Finding): boolean =>
+    diffLines.get(f.file)?.has(f.line) ?? false;
+
+  const inDiffFindings: Finding[] = [];
+  const outOfDiffFindings: Finding[] = [];
+  for (const f of findings) {
+    if (mode === 'inline' && isInDiff(f)) inDiffFindings.push(f);
+    else outOfDiffFindings.push(f);
+  }
+  result.inDiff = inDiffFindings.length;
+  result.outOfDiff = outOfDiffFindings.length;
+
+  if (mode === 'inline' && inDiffFindings.length > 0) {
     const existing = await api.listReviewComments();
     const ours = new Map<string, ReviewComment>();
     for (const c of existing) {
@@ -315,7 +387,7 @@ export async function postGitHubReview(
       if (m) ours.set(m[1], c);
     }
     const incoming = new Set<string>();
-    for (const f of findings) {
+    for (const f of inDiffFindings) {
       const key = findingKey(f);
       incoming.add(key);
       const body = renderFindingBody(f);
@@ -326,13 +398,25 @@ export async function postGitHubReview(
           result.updated += 1;
         }
       } else {
-        await api.createReviewComment({
-          body,
-          commitId: context.headSha,
-          path: f.file,
-          line: f.line,
-        });
-        result.created += 1;
+        try {
+          await api.createReviewComment({
+            body,
+            commitId: context.headSha,
+            path: f.file,
+            line: f.line,
+          });
+          result.created += 1;
+        } catch (err) {
+          // Some diff-hunk edge cases (e.g. context-only lines) still trip
+          // the API. Treat the finding as out-of-diff and fall back to the
+          // summary comment instead of crashing.
+          process.stderr.write(
+            `plc-st-review: inline post failed for ${f.file}:${f.line} (${(err as Error).message}); folding into summary\n`,
+          );
+          outOfDiffFindings.push(f);
+          result.inDiff -= 1;
+          result.outOfDiff += 1;
+        }
       }
     }
     for (const [key, prior] of ours) {
@@ -342,11 +426,17 @@ export async function postGitHubReview(
     }
   }
 
-  if (opts.commentStyle !== 'inline' || mode === 'summary-only') {
+  // Always emit a summary issue comment when there are out-of-diff findings,
+  // or when the user explicitly asked for summary mode.
+  if (outOfDiffFindings.length > 0 || opts.commentStyle !== 'inline' || mode === 'summary-only') {
     const issueComments = await api.listIssueComments();
     const summary =
       issueComments.find((c) => c.body.startsWith(SUMMARY_MARKER)) ?? null;
-    const body = renderSummaryBody(findings, context);
+    const body = renderSummaryBody(
+      mode === 'summary-only' ? findings : outOfDiffFindings,
+      context,
+      mode === 'summary-only' ? 'all' : 'out-of-diff',
+    );
     if (summary) {
       if (summary.body !== body) {
         await api.updateIssueComment(summary.id, body);

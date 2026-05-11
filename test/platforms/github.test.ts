@@ -72,6 +72,33 @@ const baseContext: PrContext = {
   changes: [],
 };
 
+/**
+ * Build a fake unified-diff patch whose hunk spans line `from` to `from+lines-1`
+ * on the new side, all marked as additions. Used by tests to make the engine
+ * treat specific (file, line) pairs as in-diff.
+ */
+function patchForLines(from: number, lines: number): string {
+  const header = `@@ -${from},${lines} +${from},${lines} @@`;
+  const adds = Array.from({ length: lines }, (_, i) => `+line ${from + i}`).join('\n');
+  return `${header}\n${adds}`;
+}
+
+function ctxWithDiff(file: string, lineStart: number, lineCount = 20): PrContext {
+  return {
+    ...baseContext,
+    changes: [
+      {
+        oldPath: file,
+        newPath: file,
+        renamed: false,
+        removed: false,
+        added: false,
+        patch: patchForLines(lineStart, lineCount),
+      },
+    ],
+  };
+}
+
 const opts: GitHubOptions = {
   token: 'x',
   owner: 'octo',
@@ -137,16 +164,19 @@ const findings: Finding[] = [
 const postOpts: GitHubPostOptions = { ...opts, commentStyle: 'inline' };
 
 describe('postGitHubReview', () => {
+  const ctx = ctxWithDiff('MAIN.st', 1, 30);
   it('creates a review comment when nothing exists', async () => {
     const state: FakeState = {
-      context: baseContext,
+      context: ctx,
       files: new Map(),
       reviewComments: [],
       issueComments: [],
       log: [],
     };
-    const result = await postGitHubReview(findings, baseContext, postOpts, fakeApi(state));
+    const result = await postGitHubReview(findings, ctx, postOpts, fakeApi(state));
     expect(result.mode).toBe('inline');
+    expect(result.inDiff).toBe(1);
+    expect(result.outOfDiff).toBe(0);
     expect(result.created).toBe(1);
     expect(state.log[0]).toMatchObject({ kind: 'create', path: 'MAIN.st', line: 12 });
   });
@@ -154,7 +184,7 @@ describe('postGitHubReview', () => {
   it('updates an existing review comment when body changed', async () => {
     const key = 'CALL_SITE_OUTDATED|MAIN.st|12';
     const state: FakeState = {
-      context: baseContext,
+      context: ctx,
       files: new Map(),
       reviewComments: [
         {
@@ -167,7 +197,7 @@ describe('postGitHubReview', () => {
       issueComments: [],
       log: [],
     };
-    const result = await postGitHubReview(findings, baseContext, postOpts, fakeApi(state));
+    const result = await postGitHubReview(findings, ctx, postOpts, fakeApi(state));
     expect(result.updated).toBe(1);
     expect(state.log.some((e) => e.kind === 'update')).toBe(true);
   });
@@ -175,7 +205,7 @@ describe('postGitHubReview', () => {
   it('deletes review comments whose findings no longer apply', async () => {
     const staleKey = 'CALL_SITE_OUTDATED|Old.st|3';
     const state: FakeState = {
-      context: baseContext,
+      context: ctx,
       files: new Map(),
       reviewComments: [
         {
@@ -188,8 +218,28 @@ describe('postGitHubReview', () => {
       issueComments: [],
       log: [],
     };
-    await postGitHubReview(findings, baseContext, postOpts, fakeApi(state));
+    await postGitHubReview(findings, ctx, postOpts, fakeApi(state));
     expect(state.log.some((e) => e.kind === 'delete' && e.id === 99)).toBe(true);
+  });
+
+  it('folds out-of-diff findings into the summary issue comment', async () => {
+    // Diff covers lines 100-110 of MAIN.st only — finding at line 12 is
+    // out-of-diff and must be reported via the summary comment.
+    const narrowCtx = ctxWithDiff('MAIN.st', 100, 10);
+    const state: FakeState = {
+      context: narrowCtx,
+      files: new Map(),
+      reviewComments: [],
+      issueComments: [],
+      log: [],
+    };
+    const result = await postGitHubReview(findings, narrowCtx, postOpts, fakeApi(state));
+    expect(result.inDiff).toBe(0);
+    expect(result.outOfDiff).toBe(1);
+    const issueCreates = state.log.filter((e) => e.kind === 'createIssue');
+    expect(issueCreates).toHaveLength(1);
+    expect((issueCreates[0] as { body: string }).body).toContain('CALL_SITE_OUTDATED');
+    expect((issueCreates[0] as { body: string }).body).toContain('outside the PR');
   });
 
   it('falls back to summary-only above the cap', async () => {
@@ -219,7 +269,7 @@ describe('postGitHubReview', () => {
 
   it('updates an existing summary issue comment', async () => {
     const state: FakeState = {
-      context: baseContext,
+      context: ctx,
       files: new Map(),
       reviewComments: [],
       issueComments: [
@@ -232,7 +282,7 @@ describe('postGitHubReview', () => {
     };
     const result = await postGitHubReview(
       findings,
-      baseContext,
+      ctx,
       { ...postOpts, commentStyle: 'summary' },
       fakeApi(state),
     );
