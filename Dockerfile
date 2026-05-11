@@ -37,7 +37,9 @@ WORKDIR /app
 COPY --from=builder /build/node_modules ./node_modules
 COPY --from=builder /build/dist ./dist
 COPY --from=builder /build/package.json ./package.json
+COPY docker-entrypoint.sh /usr/local/bin/plc-st-review-entrypoint
+RUN chmod +x /usr/local/bin/plc-st-review-entrypoint
 
 ENV NODE_ENV=production
 
-ENTRYPOINT ["node", "/app/dist/cli.js"]
+ENTRYPOINT ["/usr/local/bin/plc-st-review-entrypoint"]

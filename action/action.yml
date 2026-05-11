@@ -7,18 +7,17 @@ branding:
 
 inputs:
   pr-number:
-    description: 'Pull request number. Defaults to the triggering PR if available.'
+    description: 'Pull request number. Defaults to the triggering PR.'
     required: false
+    default: ''
   repo:
     description: 'GitHub repo in owner/name form. Defaults to the running workflow''s repo.'
     required: false
+    default: ''
   github-token:
     description: 'Token used to read the PR and post comments. Falls back to the auto-provided GITHUB_TOKEN.'
     required: false
     default: ${{ github.token }}
-  config:
-    description: 'Path to .plc-st-review.yml.'
-    required: false
   severity:
     description: 'Minimum severity to report (info|warn|error).'
     required: false
@@ -30,21 +29,13 @@ outputs:
 
 runs:
   using: 'docker'
-  # Build the image from the repo's Dockerfile at action runtime. This makes
-  # the action self-contained on the consumer side — no separate registry
-  # pull, no race between `@v0` and the latest published image. Once the
-  # repo's release.yml is shipping versioned images (after 0.0.1), advanced
-  # consumers can swap this for:
+  # Build the image from the repo's Dockerfile at action runtime. After 0.0.1
+  # ships a versioned GHCR image, advanced consumers can swap this for:
   #     image: 'docker://ghcr.io/heytalepazguato/plc-st-review:v0'
   # to avoid the per-run build cost.
   image: 'Dockerfile'
-  args:
-    - '--github'
-    - '--pr'
-    - ${{ inputs.pr-number || github.event.pull_request.number }}
-    - '--repo'
-    - ${{ inputs.repo || github.repository }}
-    - '--severity'
-    - ${{ inputs.severity }}
   env:
     GITHUB_TOKEN: ${{ inputs.github-token }}
+    PLC_PR_NUMBER: ${{ inputs.pr-number != '' && inputs.pr-number || github.event.pull_request.number }}
+    PLC_REPO: ${{ inputs.repo != '' && inputs.repo || github.repository }}
+    PLC_SEVERITY: ${{ inputs.severity }}
