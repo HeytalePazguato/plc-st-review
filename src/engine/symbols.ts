@@ -2,6 +2,7 @@ import {
   NODE,
   POU_NODES,
   TIMER_TYPE_NAMES,
+  allChildrenOf,
   childrenOf,
   descendantsOfAnyType,
   descendantsOfType,
@@ -12,13 +13,16 @@ import {
   VAR_SECTION_NODES,
 } from './grammar.js';
 import type {
+  ArrayAccess,
   ArrayDecl,
   AstFile,
   CallSite,
+  DivisionExpr,
   EnumDef,
   ForLoop,
   GlobalVar,
   LocalVar,
+  MemberAccess,
   Parameter,
   Pou,
   PouKind,
@@ -27,6 +31,7 @@ import type {
   TimerInstance,
   UnreachableStmt,
   VarReference,
+  WhileLoop,
 } from './types.js';
 
 const POU_KIND_BY_NODE: Record<string, PouKind> = {
@@ -52,6 +57,10 @@ export function emptySymbolTable(): SymbolTable {
     pragmas: [],
     unreachable: [],
     pouLocals: new Map(),
+    memberAccesses: [],
+    whileLoops: [],
+    arrayAccesses: [],
+    divisions: [],
   };
 }
 
@@ -262,6 +271,103 @@ function collectPou(
 
   collectForLoops(file, node, qualified, t);
   collectUnreachable(file, node, qualified, t);
+  collectMemberAccesses(file, node, qualified, t);
+  collectWhileLoops(file, node, qualified, t);
+  collectArrayAccesses(file, node, qualified, t);
+  collectDivisions(file, node, qualified, t);
+}
+
+function collectMemberAccesses(
+  file: AstFile,
+  pouNode: StNode,
+  scope: string,
+  t: SymbolTable,
+): void {
+  for (const ma of descendantsOfType(pouNode, NODE.MEMBER_ACCESS)) {
+    const kids = childrenOf(ma);
+    if (kids.length < 2) continue;
+    const ref: MemberAccess = {
+      leftText: kids[0].text,
+      rightText: kids[1].text,
+      file: file.path,
+      line: lineOf(ma),
+      scope,
+    };
+    t.memberAccesses.push(ref);
+  }
+}
+
+function collectWhileLoops(
+  file: AstFile,
+  pouNode: StNode,
+  scope: string,
+  t: SymbolTable,
+): void {
+  for (const ws of descendantsOfType(pouNode, NODE.WHILE_STATEMENT)) {
+    const kids = childrenOf(ws);
+    const condition = kids[0];
+    if (!condition) continue;
+    const hasExit = descendantsOfType(ws, NODE.EXIT_STATEMENT).length > 0;
+    const w: WhileLoop = {
+      file: file.path,
+      line: lineOf(ws),
+      scope,
+      conditionText: condition.text.trim(),
+      hasExit,
+    };
+    t.whileLoops.push(w);
+  }
+}
+
+function collectArrayAccesses(
+  file: AstFile,
+  pouNode: StNode,
+  scope: string,
+  t: SymbolTable,
+): void {
+  for (const idx of descendantsOfType(pouNode, NODE.INDEX_EXPRESSION)) {
+    const kids = childrenOf(idx);
+    if (kids.length < 2) continue;
+    const arr = kids[0];
+    const subscript = kids[1];
+    const indexText = subscript.text.trim();
+    let indexValue: number | null = null;
+    if (subscript.type === NODE.INTEGER_LITERAL || subscript.type === NODE.REAL_LITERAL) {
+      const n = Number.parseFloat(indexText);
+      if (Number.isFinite(n)) indexValue = n;
+    }
+    const access: ArrayAccess = {
+      arrayName: arr.text.trim(),
+      indexText,
+      indexValue,
+      file: file.path,
+      line: lineOf(idx),
+      scope,
+    };
+    t.arrayAccesses.push(access);
+  }
+}
+
+function collectDivisions(
+  file: AstFile,
+  pouNode: StNode,
+  scope: string,
+  t: SymbolTable,
+): void {
+  for (const be of descendantsOfType(pouNode, NODE.BINARY_EXPRESSION)) {
+    const hasDivOp = allChildrenOf(be).some((c) => c.type === '/');
+    if (!hasDivOp) continue;
+    const named = childrenOf(be);
+    if (named.length < 2) continue;
+    const rhs = named[named.length - 1];
+    const div: DivisionExpr = {
+      divisorText: rhs.text.trim(),
+      file: file.path,
+      line: lineOf(be),
+      scope,
+    };
+    t.divisions.push(div);
+  }
 }
 
 function collectForLoops(

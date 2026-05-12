@@ -1,12 +1,18 @@
 import type { Check } from '../types.js';
 import { arrayBoundsChanged } from './array-bounds-changed.js';
+import { arrayIndexOutOfBounds } from './array-index-out-of-bounds.js';
 import { callSiteOutdated } from './call-site-outdated.js';
 import { commentOnly } from './comment-only.js';
 import { constantValueChanged } from './constant-value-changed.js';
+import { divisionByZero } from './division-by-zero.js';
+import { enumMemberUnknown } from './enum-member-unknown.js';
 import { enumValueAdded } from './enum-value-added.js';
 import { enumValueRemoved } from './enum-value-removed.js';
+import { enumValueUnused } from './enum-value-unused.js';
+import { infiniteLoop } from './infinite-loop.js';
 import { inheritanceChanged } from './inheritance-changed.js';
 import { loopBoundsChanged } from './loop-bounds-changed.js';
+import { loopBoundsReversed } from './loop-bounds-reversed.js';
 import { methodAddedToInterface } from './method-added-to-interface.js';
 import { pouDeleted } from './pou-deleted.js';
 import { pouRenamed } from './pou-renamed.js';
@@ -38,5 +44,11 @@ export function allChecks(): Check[] {
     inheritanceChanged,
     pragmaChanged,
     unusedVarIntroduced,
+    enumValueUnused,
+    enumMemberUnknown,
+    arrayIndexOutOfBounds,
+    divisionByZero,
+    infiniteLoop,
+    loopBoundsReversed,
   ];
 }

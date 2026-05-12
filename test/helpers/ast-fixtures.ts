@@ -435,3 +435,46 @@ export function methodSignature(name: string, returnType?: string): StNode {
     children: kids,
   });
 }
+
+function exprNode(text: string): StNode {
+  const t = text.trim();
+  if (/^-?\d+$/.test(t)) return node(NODE.INTEGER_LITERAL, { text: t });
+  if (/^-?\d+\.\d+$/.test(t)) return node(NODE.REAL_LITERAL, { text: t });
+  if (/^(TRUE|FALSE)$/i.test(t)) return node(NODE.BOOLEAN_LITERAL, { text: t });
+  return node(NODE.IDENTIFIER, { text: t });
+}
+
+export function memberAccess(left: string, right: string): StNode {
+  return node(NODE.MEMBER_ACCESS, {
+    text: `${left}.${right}`,
+    children: [exprNode(left), exprNode(right)],
+  });
+}
+
+export function indexExpression(arrayName: string, index: string): StNode {
+  return node(NODE.INDEX_EXPRESSION, {
+    text: `${arrayName}[${index}]`,
+    children: [node(NODE.IDENTIFIER, { text: arrayName }), exprNode(index)],
+  });
+}
+
+export function divisionExpr(lhs: string, rhs: string): StNode {
+  return node(NODE.BINARY_EXPRESSION, {
+    text: `${lhs} / ${rhs}`,
+    children: [exprNode(lhs), node('/', { text: '/' }), exprNode(rhs)],
+  });
+}
+
+export function whileStatement(
+  condition: string,
+  opts: { hasExit?: boolean } = {},
+): StNode {
+  const kids: StNode[] = [exprNode(condition)];
+  if (opts.hasExit) {
+    kids.push(node(NODE.EXIT_STATEMENT, { text: 'EXIT;' }));
+  }
+  return node(NODE.WHILE_STATEMENT, {
+    text: `WHILE ${condition} DO ... END_WHILE;`,
+    children: kids,
+  });
+}

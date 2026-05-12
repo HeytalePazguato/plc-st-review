@@ -24,7 +24,13 @@ export type Category =
   | 'METHOD_ADDED_TO_INTERFACE'
   | 'INHERITANCE_CHANGED'
   | 'PRAGMA_CHANGED'
-  | 'UNUSED_VAR_INTRODUCED';
+  | 'UNUSED_VAR_INTRODUCED'
+  | 'ENUM_VALUE_UNUSED'
+  | 'ENUM_MEMBER_UNKNOWN'
+  | 'ARRAY_INDEX_OUT_OF_BOUNDS'
+  | 'DIVISION_BY_ZERO'
+  | 'INFINITE_LOOP'
+  | 'LOOP_BOUNDS_REVERSED';
 
 export const ALL_CATEGORIES: Category[] = [
   'SIGNATURE_CHANGED',
@@ -45,6 +51,12 @@ export const ALL_CATEGORIES: Category[] = [
   'INHERITANCE_CHANGED',
   'PRAGMA_CHANGED',
   'UNUSED_VAR_INTRODUCED',
+  'ENUM_VALUE_UNUSED',
+  'ENUM_MEMBER_UNKNOWN',
+  'ARRAY_INDEX_OUT_OF_BOUNDS',
+  'DIVISION_BY_ZERO',
+  'INFINITE_LOOP',
+  'LOOP_BOUNDS_REVERSED',
 ];
 
 export interface Position {
@@ -109,6 +121,10 @@ export interface SymbolTable {
   pragmas: Pragma[];
   unreachable: UnreachableStmt[];
   pouLocals: Map<string, LocalVar[]>; // by POU qualified name
+  memberAccesses: MemberAccess[];
+  whileLoops: WhileLoop[];
+  arrayAccesses: ArrayAccess[];
+  divisions: DivisionExpr[];
 }
 
 export type PouKind =
@@ -237,6 +253,38 @@ export interface LocalVar {
   file: string;
   line: number;
   typeText: string;
+}
+
+export interface MemberAccess {
+  leftText: string;
+  rightText: string;
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface WhileLoop {
+  file: string;
+  line: number;
+  scope: string;
+  conditionText: string;
+  hasExit: boolean;
+}
+
+export interface ArrayAccess {
+  arrayName: string;
+  indexText: string;
+  indexValue: number | null;
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface DivisionExpr {
+  divisorText: string;
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export interface ReviewContext {

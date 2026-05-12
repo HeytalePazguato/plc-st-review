@@ -67,3 +67,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Symbol extractor now correctly identifies user-defined types and system
   function blocks (TON / TOF / TP) declared as bare identifiers in the AST,
   not only as `elementary_type` nodes.
+- `childrenOf()` now prefers tree-sitter `namedChildren`, so anonymous tokens
+  (`FOR`, `TO`, `:=`, `;`, ...) no longer pollute positional indexing in
+  collectors like `collectForLoops` and `collectDivisions`.
+- `collectTypeDecl` searches inside the `type_definition` child of
+  `type_declaration` for the identifier — enums are now picked up by the
+  real parser.
+- GitHub and GitLab snapshot loaders walk the full repo tree at base/head
+  SHAs rather than only the diffed files, so cross-file checks
+  (`CALL_SITE_OUTDATED`, `STATE_UNHANDLED`, `ENUM_VALUE_*`,
+  `METHOD_ADDED_TO_INTERFACE`, `POU_DELETED`) have full visibility.
+- `CALL_SITE_OUTDATED` now resolves FB-instance calls
+  (`fbConveyor(...)` where `fbConveyor : FB_Conveyor`) via the per-POU
+  locals catalogue.
+- `LOOP_BOUNDS_CHANGED` pairs loops by `(file, scope, loopVar)` instead of
+  by line — unrelated edits above the loop no longer hide the change.
+- Loop bound resolution now follows `VAR_GLOBAL CONSTANT` identifiers
+  through to their numeric value when comparing iteration counts.
+- GitHub poster computes which `(file, line)` pairs are inside the PR's
+  diff hunks and routes findings on out-of-diff lines into the summary
+  issue comment instead of failing the inline review-comment API call.
+
+### Added (static checks)
+
+- Six single-revision static-analysis checks. Each filters to bugs
+  introduced in the PR (i.e. not already present in the base revision):
+  - `ENUM_VALUE_UNUSED` — enum value declared but never referenced anywhere.
+  - `ENUM_MEMBER_UNKNOWN` — `E_State.IDEL`-style typo against a known enum.
+  - `ARRAY_INDEX_OUT_OF_BOUNDS` — literal index outside declared bounds.
+  - `DIVISION_BY_ZERO` — literal `/ 0` or `VAR_GLOBAL CONSTANT` resolving to 0.
+  - `INFINITE_LOOP` — `WHILE TRUE` with no `EXIT` inside.
+  - `LOOP_BOUNDS_REVERSED` — `FOR` step direction disagrees with start/end.
+- `docs/check-limitations.md` documents what every check (diff-based and
+  static) can and cannot catch.

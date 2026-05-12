@@ -17,10 +17,11 @@ Catches the bugs reviewers miss on visual scan:
 
 - **Phase 1** — engine, eight checks, CLI, three output formats. Done.
 - **Phase 2** — GitLab MR integration. Done.
-- **Phase 3** — GitHub Action + 10 additional check categories
-  (18 total). Done.
+- **Phase 3** — GitHub Action + 10 additional check categories. Done.
+- **Static checks** — 6 single-revision checks for common ST bugs
+  (24 categories total).
 
-Total tests: 72 across 24 files, all passing.
+Total tests: 89 across 30 files, all passing.
 
 ## Quick start
 
@@ -89,6 +90,11 @@ The CLI exits non-zero when at least one finding meets or exceeds the
 
 ## Checks
 
+See [docs/check-limitations.md](docs/check-limitations.md) for what each check
+catches and what it deliberately doesn't.
+
+### Diff-based (compare before vs after)
+
 | Category | Default severity | Trigger |
 |---|---|---|
 | `SIGNATURE_CHANGED` | `warn` (`error` on breaking) | A POU's inputs/outputs/in-outs changed. |
@@ -109,6 +115,17 @@ The CLI exits non-zero when at least one finding meets or exceeds the
 | `INHERITANCE_CHANGED` | `warn` | An `EXTENDS` clause was added, removed, or changed. |
 | `PRAGMA_CHANGED` | `info` | The set of pragmas in a file changed (added or removed). |
 | `UNUSED_VAR_INTRODUCED` | `info` | A new local variable was declared but isn't referenced in its scope. |
+
+### Static (look at the new revision in isolation, filter to bugs new in this PR)
+
+| Category | Default severity | Trigger |
+|---|---|---|
+| `ENUM_VALUE_UNUSED` | `info` | An enum value is declared but no longer referenced anywhere in the repo. |
+| `ENUM_MEMBER_UNKNOWN` | `error` | A qualified ref like `E_State.IDEL` doesn't match any declared member of `E_State` — likely a typo. |
+| `ARRAY_INDEX_OUT_OF_BOUNDS` | `error` | A literal index sits outside the array's declared bounds (`arr[15]` when `arr` is `ARRAY [0..9]`). |
+| `DIVISION_BY_ZERO` | `error` | The divisor is a literal `0`, or a `VAR_GLOBAL CONSTANT` resolving to 0. |
+| `INFINITE_LOOP` | `error` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside the body. |
+| `LOOP_BOUNDS_REVERSED` | `error` | `FOR` loop bounds and step point opposite directions — per spec body never runs, on overflow-wrapping runtimes it runs ~unlimited times. |
 
 ## Configuration
 
