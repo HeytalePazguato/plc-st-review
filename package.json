@@ -67,6 +67,6 @@
     "patch-package": "^8.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.6"
   }
 }
