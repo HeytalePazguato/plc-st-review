@@ -13,6 +13,48 @@ Catches the bugs reviewers miss on visual scan:
 - A global variable's type silently changed and the readers are now broken.
 - A constant whose name starts with `SAFETY_` had its value changed.
 
+## See it in action
+
+**Live demo:**
+[**PR #1 — every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1)
+👈 open this for the full bot output (20 inline review comments + a summary).
+The PR is intentionally kept open as a fixture; conversation is locked.
+
+A single finding looks like this in the GitHub UI:
+
+<!--
+  Single-finding screenshot. See docs/screenshots/README.md for capture
+  instructions. The markdown block below renders as a fallback when the
+  image is missing on a fresh checkout.
+-->
+<img src="docs/screenshots/single-finding.png" alt="plc-st-review inline review comment example: FB_INSTANCE_NEVER_CALLED" width="720" />
+
+```
+🟧 warn  FB_INSTANCE_NEVER_CALLED
+FB instance T3 (TON) is read but never invoked
+
+Outputs of an FB only update when the instance is called.
+Reading e.g. `instance.Q` without calling `instance(...)`
+returns stale data.
+```
+
+A handful more of what's posted on PR #1:
+
+```
+FB_ConveyorState.st:26  🟥 error  TIMER_VALUE_CHANGED
+                                  Timer T_StartupDelay.PT: T#2s → T#200ms (10.0x faster)
+
+Globals.st:9            🟧 warn   CONSTANT_VALUE_CHANGED
+                                  Constant SAFETY_TIMEOUT: T#2s → T#10s
+                                  Identifier prefix matches a safety-critical pattern.
+
+FB_Diagnostics.st:49    🟥 error  ARRAY_INDEX_OUT_OF_BOUNDS
+                                  arr[15] is out of declared bounds [0..9]
+
+FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
+                                  WHILE TRUE loop with no EXIT statement
+```
+
 ## Status
 
 - **Phase 1** — engine, eight checks, CLI, three output formats. Done.
@@ -226,14 +268,21 @@ npm run lint               # tsc --noEmit
 
 ## Roadmap
 
-- **Phase 1** (this release) — Engine, 8 checks, CLI, terminal/markdown/JSON
-  output. Done.
-- **Phase 2** — GitLab MR integration (`--gitlab --mr <id>`), self-hosted
-  GitLab support, container image on GHCR.
-- **Phase 3** — GitHub Action, remaining 10 check categories (POU lifecycle,
-  control-flow, style/hygiene), de-duplicated re-runs.
-- **Phase 4** (later) — Optional LLM-powered natural-language explanations
-  grounded in deterministic findings.
+Likely additions, in rough priority order:
+
+- **Standalone CLI binaries** — `plc-st-review-linux-x64`, `-darwin-arm64`,
+  etc. as GitHub Release assets, for shops that don't have Node installed.
+  Skipped for 0.0.1 because the native deps (`tree-sitter`,
+  `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle
+  cleanly through `pkg` or `bun --compile` without per-platform asset
+  handling. Revisit if real users without Node ask.
+- **Optional LLM-powered explanations** — a `--explain` flag that
+  paraphrases deterministic findings in plain English for less-experienced
+  reviewers. Strictly additive — every explanation is grounded in a
+  deterministic finding; the LLM never surfaces new issues.
+- **Vendor-specific checks** — PLCopen `MC_*` motion patterns, TwinCAT /
+  CODESYS / ABB-specific library FBs. Currently the engine sticks to
+  standard IEC 61131-3 to stay portable across vendors.
 
 ## License
 

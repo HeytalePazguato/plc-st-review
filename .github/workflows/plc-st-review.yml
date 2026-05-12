@@ -11,8 +11,9 @@ on:
       - '**/*.st'
       - '**/*.ST'
       - 'src/**'
-      - 'action/**'
+      - 'action.yml'
       - 'Dockerfile'
+      - 'docker-entrypoint.sh'
       - '.github/workflows/plc-st-review.yml'
 
 permissions:
