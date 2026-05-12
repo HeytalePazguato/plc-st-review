@@ -1,0 +1,12 @@
+.git
+.github
+.claude
+node_modules
+dist
+coverage
+test
+docs
+examples
+*.log
+.env*
+BLUEPRINT.md

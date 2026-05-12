@@ -1,0 +1,34 @@
+name: plc-st-review
+
+# Self-review: run plc-st-review on every PR that touches an .st file in
+# this very repository. Uses the action checked out alongside the PR (`./`),
+# so the version under review is also the version doing the reviewing —
+# perfect for validating action changes end-to-end.
+
+on:
+  pull_request:
+    paths:
+      - '**/*.st'
+      - '**/*.ST'
+      - 'src/**'
+      - 'action.yml'
+      - 'Dockerfile'
+      - 'docker-entrypoint.sh'
+      - '.github/workflows/plc-st-review.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run plc-st-review on this PR
+        uses: ./
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

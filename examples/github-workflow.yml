@@ -1,0 +1,34 @@
+# Drop into .github/workflows/plc-st-review.yml to run plc-st-review on every
+# pull request that touches an .st file. Findings appear as inline review
+# comments on the PR; re-runs update existing comments rather than duplicating.
+
+name: PLC ST Review
+
+on:
+  pull_request:
+    paths:
+      - '**/*.st'
+      - '**/*.ST'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: HeytalePazguato/plc-st-review@v0
+        env:
+          # GITHUB_TOKEN is read inside the container; setting it here is the
+          # most reliable way to forward it (action.yml's `env:` block
+          # doesn't always propagate to docker-based actions).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Optional inputs (all have sensible defaults inferred from the PR
+        # context):
+        #
+        # with:
+        #   severity: info

@@ -1,0 +1,41 @@
+name: 'plc-st-review'
+description: 'Semantic code review for IEC 61131-3 Structured Text pull requests'
+author: 'HeytalePazguato'
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  pr-number:
+    description: 'Pull request number. Defaults to the triggering PR (parsed from GITHUB_REF).'
+    required: false
+    default: ''
+  repo:
+    description: 'GitHub repo in owner/name form. Defaults to GITHUB_REPOSITORY.'
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used to read the PR and post comments. Falls back to GITHUB_TOKEN.'
+    required: false
+    default: ${{ github.token }}
+  severity:
+    description: 'Minimum severity to report (info|warn|error).'
+    required: false
+    default: 'info'
+
+outputs:
+  result:
+    description: 'One-line summary line ("plc-st-review (github): inline, N created, ...").'
+
+runs:
+  using: 'docker'
+  # Build the image from the repo's Dockerfile at action runtime. After 0.0.1
+  # ships a versioned GHCR image, advanced consumers can swap this for:
+  #     image: 'docker://ghcr.io/heytalepazguato/plc-st-review:v0'
+  # to avoid the per-run build cost.
+  image: 'Dockerfile'
+  env:
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    PLC_PR_INPUT: ${{ inputs.pr-number }}
+    PLC_REPO_INPUT: ${{ inputs.repo }}
+    PLC_SEVERITY_INPUT: ${{ inputs.severity }}
