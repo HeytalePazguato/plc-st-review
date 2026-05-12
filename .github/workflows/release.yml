@@ -15,6 +15,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write   # required by `npm publish --provenance`
 
 concurrency:
   group: release-main
