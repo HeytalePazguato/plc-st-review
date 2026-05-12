@@ -55,7 +55,7 @@
   "dependencies": {
     "@gitbeaker/rest": "^43.8.0",
     "@octokit/rest": "^22.0.1",
-    "commander": "^12.1.0",
+    "commander": "^14.0.3",
     "picocolors": "^1.1.1",
     "simple-git": "^3.27.0",
     "tree-sitter": "^0.25.0",
