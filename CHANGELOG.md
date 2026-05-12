@@ -100,3 +100,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `LOOP_BOUNDS_REVERSED` — `FOR` step direction disagrees with start/end.
 - `docs/check-limitations.md` documents what every check (diff-based and
   static) can and cannot catch.
+
+### Added (FB-instance checks)
+
+- Eight checks targeting standard IEC 61131-3 function block patterns:
+  - `COUNTER_VALUE_CHANGED` — `CTU`/`CTD`/`CTUD` `PV` changed, severity
+    by ratio (mirrors `TIMER_VALUE_CHANGED`).
+  - `COUNTER_PV_ZERO` — preset of 0 makes the counter useless.
+  - `TIMER_PT_ZERO` — `PT := T#0s` fires immediately or never.
+  - `TIMER_NOT_DRIVEN` — `T1.Q` read but no call site sets `IN`.
+  - `EDGE_TRIG_REUSED` — same `R_TRIG`/`F_TRIG` instance fed by multiple
+    `CLK` expressions; scrambles edge detection.
+  - `FB_INSTANCE_DOUBLE_CALL` — same FB instance called twice in one
+    POU scope; second call overwrites the first's outputs.
+  - `FB_INSTANCE_NEVER_CALLED` — instance whose outputs are read but
+    is never invoked; outputs stuck.
+  - `BISTABLE_DOMINANCE_MISMATCH` — `SR`/`RS` choice mismatches the
+    variable name's intent (heuristic, name-pattern based).
+- `docs/checks-reference.md` — full per-check reference with ST code
+  example for each trigger and a suggested fix.
+- `CallSite.scope` field — call sites now carry their containing POU,
+  enabling scope-aware checks like `FB_INSTANCE_DOUBLE_CALL`.

@@ -56,6 +56,14 @@ hits.
 | `DIVISION_BY_ZERO` | `x / 0` literal, or `x / cZero` when `cZero` is a `VAR_GLOBAL CONSTANT` resolving to 0 | Divisors computed at runtime — `x / (a - b)` where `a` and `b` happen to be equal |
 | `INFINITE_LOOP` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside | `WHILE x DO ...` where `x` is never updated inside the body (would need def-use analysis) |
 | `LOOP_BOUNDS_REVERSED` | `FOR i := 10 TO 5 BY 1` (positive step with start > end); `FOR i := 1 TO 10 BY -1` (negative step with start < end). Per spec the body never runs; on runtimes that wrap integer overflow it runs hundreds of times | Loops whose start, end, or step are non-constant expressions |
+| `COUNTER_VALUE_CHANGED` | `CTU`/`CTD`/`CTUD` `PV` changed between revisions; severity by ratio | Counters whose PV is a runtime variable |
+| `COUNTER_PV_ZERO` | `C1(PV := 0)` or `C1.PV := 0` or a CONSTANT-resolving-to-0 PV | PV computed at runtime |
+| `TIMER_PT_ZERO` | `T1(PT := T#0s)` or CONSTANT-resolving-to-0 PT | PT computed at runtime |
+| `TIMER_NOT_DRIVEN` | A timer instance whose `.Q` / `.ET` is read but no call sets `IN` | Timers driven through indirect / pointer / reference access |
+| `EDGE_TRIG_REUSED` | `R_TRIG` / `F_TRIG` invoked with two or more different `CLK` expressions | CLK expressions that are syntactically different but semantically equivalent (`xA` vs `(xA)`) |
+| `FB_INSTANCE_DOUBLE_CALL` | Same FB instance invoked more than once in the same POU scope | Multiple calls intentionally placed inside mutually-exclusive `CASE`/`IF` branches — we don't track control flow |
+| `FB_INSTANCE_NEVER_CALLED` | FB instance whose outputs are read but no call site exists | Instances whose only use is via `EXTENDS`-inherited methods (we'd need full-inheritance walking) |
+| `BISTABLE_DOMINANCE_MISMATCH` | `SR` named like a reset-dominant latch, or `RS` named like a set-dominant one. Heuristic — name-pattern based | Shops with non-conventional naming will see false positives. Disable if not useful |
 
 ## When a check has no opinion
 

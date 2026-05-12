@@ -30,7 +30,15 @@ export type Category =
   | 'ARRAY_INDEX_OUT_OF_BOUNDS'
   | 'DIVISION_BY_ZERO'
   | 'INFINITE_LOOP'
-  | 'LOOP_BOUNDS_REVERSED';
+  | 'LOOP_BOUNDS_REVERSED'
+  | 'COUNTER_VALUE_CHANGED'
+  | 'COUNTER_PV_ZERO'
+  | 'TIMER_PT_ZERO'
+  | 'TIMER_NOT_DRIVEN'
+  | 'EDGE_TRIG_REUSED'
+  | 'FB_INSTANCE_DOUBLE_CALL'
+  | 'FB_INSTANCE_NEVER_CALLED'
+  | 'BISTABLE_DOMINANCE_MISMATCH';
 
 export const ALL_CATEGORIES: Category[] = [
   'SIGNATURE_CHANGED',
@@ -57,6 +65,14 @@ export const ALL_CATEGORIES: Category[] = [
   'DIVISION_BY_ZERO',
   'INFINITE_LOOP',
   'LOOP_BOUNDS_REVERSED',
+  'COUNTER_VALUE_CHANGED',
+  'COUNTER_PV_ZERO',
+  'TIMER_PT_ZERO',
+  'TIMER_NOT_DRIVEN',
+  'EDGE_TRIG_REUSED',
+  'FB_INSTANCE_DOUBLE_CALL',
+  'FB_INSTANCE_NEVER_CALLED',
+  'BISTABLE_DOMINANCE_MISMATCH',
 ];
 
 export interface Position {
@@ -125,6 +141,10 @@ export interface SymbolTable {
   whileLoops: WhileLoop[];
   arrayAccesses: ArrayAccess[];
   divisions: DivisionExpr[];
+  counterInstances: CounterInstance[];
+  counterPvAssignments: CounterPvAssignment[];
+  edgeTrigInstances: EdgeTrigInstance[];
+  bistableInstances: BistableInstance[];
 }
 
 export type PouKind =
@@ -189,10 +209,42 @@ export interface TimerPtAssignment {
   line: number;
 }
 
+export interface CounterInstance {
+  name: string;
+  counterType: 'CTU' | 'CTD' | 'CTUD';
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface CounterPvAssignment {
+  counterName: string;
+  pvValue: string;
+  file: string;
+  line: number;
+}
+
+export interface EdgeTrigInstance {
+  name: string;
+  trigType: 'R_TRIG' | 'F_TRIG';
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface BistableInstance {
+  name: string;
+  bistableType: 'SR' | 'RS';
+  file: string;
+  line: number;
+  scope: string;
+}
+
 export interface CallSite {
   callee: string;
   file: string;
   line: number;
+  scope: string;
   namedArgs: Map<string, string>;
   positionalArgs: string[];
   rawText: string;

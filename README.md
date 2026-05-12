@@ -18,10 +18,11 @@ Catches the bugs reviewers miss on visual scan:
 - **Phase 1** — engine, eight checks, CLI, three output formats. Done.
 - **Phase 2** — GitLab MR integration. Done.
 - **Phase 3** — GitHub Action + 10 additional check categories. Done.
-- **Static checks** — 6 single-revision checks for common ST bugs
-  (24 categories total).
+- **Static checks** — 6 single-revision checks for common ST bugs.
+- **FB-instance checks** — 8 more checks for standard IEC 61131-3
+  function blocks: timer / counter / edge-trig / bistable misuse.
 
-Total tests: 89 across 30 files, all passing.
+Total: **32 check categories**, 105 tests across 38 files, all passing.
 
 ## Quick start
 
@@ -88,10 +89,20 @@ Output formats: `terminal` (ANSI when stdout is a TTY), `markdown`, `json`.
 The CLI exits non-zero when at least one finding meets or exceeds the
 `reporting.fail_on_severity` threshold (default `error`).
 
+## Live demo
+
+[PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open
+as the canonical demo — every check below fires at least once on that PR,
+with the exact inline comments the bot posts. Open it to see the tool in
+action on real ST.
+
 ## Checks
 
-See [docs/check-limitations.md](docs/check-limitations.md) for what each check
-catches and what it deliberately doesn't.
+Each row links to a per-check section in
+[docs/checks-reference.md](docs/checks-reference.md) with a ST code example
+and a suggested fix. See also
+[docs/check-limitations.md](docs/check-limitations.md) for what each check
+deliberately doesn't catch.
 
 ### Diff-based (compare before vs after)
 
@@ -115,6 +126,7 @@ catches and what it deliberately doesn't.
 | `INHERITANCE_CHANGED` | `warn` | An `EXTENDS` clause was added, removed, or changed. |
 | `PRAGMA_CHANGED` | `info` | The set of pragmas in a file changed (added or removed). |
 | `UNUSED_VAR_INTRODUCED` | `info` | A new local variable was declared but isn't referenced in its scope. |
+| `COUNTER_VALUE_CHANGED` | `info` / `warn` / `error` by ratio | `CTU`/`CTD`/`CTUD` `PV` changed; severity scales with the change magnitude. |
 
 ### Static (look at the new revision in isolation, filter to bugs new in this PR)
 
@@ -126,6 +138,13 @@ catches and what it deliberately doesn't.
 | `DIVISION_BY_ZERO` | `error` | The divisor is a literal `0`, or a `VAR_GLOBAL CONSTANT` resolving to 0. |
 | `INFINITE_LOOP` | `error` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside the body. |
 | `LOOP_BOUNDS_REVERSED` | `error` | `FOR` loop bounds and step point opposite directions — per spec body never runs, on overflow-wrapping runtimes it runs ~unlimited times. |
+| `COUNTER_PV_ZERO` | `error` | `CTU`/`CTD`/`CTUD` initialized with `PV := 0` — Q always TRUE or counter useless. |
+| `TIMER_PT_ZERO` | `error` | `TON`/`TOF`/`TP` set with `PT := T#0s` — fires immediately or never. |
+| `TIMER_NOT_DRIVEN` | `warn` | A timer's `Q`/`ET` is read but no call site sets `IN`. |
+| `EDGE_TRIG_REUSED` | `error` | Same `R_TRIG`/`F_TRIG` instance fed by multiple different `CLK` expressions. |
+| `FB_INSTANCE_DOUBLE_CALL` | `warn` | Same FB instance invoked more than once in one scope's scan. |
+| `FB_INSTANCE_NEVER_CALLED` | `warn` | FB instance declared, its outputs read, but no call site invokes it. |
+| `BISTABLE_DOMINANCE_MISMATCH` | `info` | `SR`/`RS` choice mismatches the variable name's intent (heuristic). |
 
 ## Configuration
 

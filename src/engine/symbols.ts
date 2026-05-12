@@ -16,8 +16,11 @@ import type {
   ArrayAccess,
   ArrayDecl,
   AstFile,
+  BistableInstance,
   CallSite,
+  CounterInstance,
   DivisionExpr,
+  EdgeTrigInstance,
   EnumDef,
   ForLoop,
   GlobalVar,
@@ -33,6 +36,10 @@ import type {
   VarReference,
   WhileLoop,
 } from './types.js';
+
+const COUNTER_TYPE_NAMES = new Set<string>(['CTU', 'CTD', 'CTUD']);
+const EDGE_TRIG_TYPE_NAMES = new Set<string>(['R_TRIG', 'F_TRIG']);
+const BISTABLE_TYPE_NAMES = new Set<string>(['SR', 'RS']);
 
 const POU_KIND_BY_NODE: Record<string, PouKind> = {
   [NODE.PROGRAM]: 'program',
@@ -61,6 +68,10 @@ export function emptySymbolTable(): SymbolTable {
     whileLoops: [],
     arrayAccesses: [],
     divisions: [],
+    counterInstances: [],
+    counterPvAssignments: [],
+    edgeTrigInstances: [],
+    bistableInstances: [],
   };
 }
 
@@ -241,6 +252,36 @@ function collectPou(
           scope: qualified,
         };
         t.timerInstances.push(timer);
+      }
+      if (declName && COUNTER_TYPE_NAMES.has(typeText)) {
+        const counter: CounterInstance = {
+          name: declName,
+          counterType: typeText as 'CTU' | 'CTD' | 'CTUD',
+          file: file.path,
+          line: lineOf(decl),
+          scope: qualified,
+        };
+        t.counterInstances.push(counter);
+      }
+      if (declName && EDGE_TRIG_TYPE_NAMES.has(typeText)) {
+        const edge: EdgeTrigInstance = {
+          name: declName,
+          trigType: typeText as 'R_TRIG' | 'F_TRIG',
+          file: file.path,
+          line: lineOf(decl),
+          scope: qualified,
+        };
+        t.edgeTrigInstances.push(edge);
+      }
+      if (declName && BISTABLE_TYPE_NAMES.has(typeText)) {
+        const bist: BistableInstance = {
+          name: declName,
+          bistableType: typeText as 'SR' | 'RS',
+          file: file.path,
+          line: lineOf(decl),
+          scope: qualified,
+        };
+        t.bistableInstances.push(bist);
       }
       const arrType =
         typeNode?.type === NODE.ARRAY_TYPE ? typeNode : findChild(decl, NODE.ARRAY_TYPE);
@@ -634,12 +675,33 @@ function collectCallSites(file: AstFile, t: SymbolTable): void {
       callee,
       file: file.path,
       line: lineOf(inv),
+      scope: pouContainingLine(t, file.path, lineOf(inv)),
       namedArgs,
       positionalArgs: positional,
       rawText: inv.text,
     };
     t.callSites.push(cs);
   }
+}
+
+/**
+ * Best-effort lookup of the POU that contains a given (file, line) pair.
+ * POUs in a file are listed in declaration order; we pick the latest one
+ * whose start line is at or before the target line. Returns '<file>' as a
+ * fallback for code outside any POU (rare in real ST).
+ */
+function pouContainingLine(t: SymbolTable, file: string, line: number): string {
+  let best: Pou | null = null;
+  const filePous: Pou[] = [];
+  for (const p of t.pous.values()) {
+    if (p.file !== file) continue;
+    filePous.push(p);
+    if (line < p.line) continue;
+    if (!best || p.line > best.line) best = p;
+  }
+  if (best) return best.qualifiedName;
+  if (filePous.length === 1) return filePous[0].qualifiedName;
+  return '<file>';
 }
 
 function pickCallee(invocation: StNode): string | null {
@@ -703,32 +765,14 @@ function pickEnumNameFromSwitch(expr: string | null | undefined): string | undef
 }
 
 function collectTimerPtAssignments(file: AstFile, t: SymbolTable): void {
-  // Pattern 1: explicit assignment `T1.PT := T#5s;`
-  for (const asn of descendantsOfType(file.root, NODE.ASSIGNMENT_STATEMENT)) {
-    const lhs = childrenOf(asn).find(
-      (c) => c.type === NODE.MEMBER_ACCESS || c.type === NODE.QUALIFIED_IDENTIFIER,
-    );
-    if (!lhs) continue;
-    const text = lhs.text;
-    const m = /^([A-Za-z_][A-Za-z0-9_]*)\.PT$/i.exec(text.trim());
-    if (!m) continue;
-    const timerName = m[1];
-    const rhs = childrenOf(asn).find(
-      (c) =>
-        c.type === NODE.TIME_LITERAL ||
-        c.type === NODE.INTEGER_LITERAL ||
-        c.type === NODE.REAL_LITERAL,
-    );
-    if (!rhs) continue;
-    t.timerPtAssignments.push({
-      timerName,
-      ptValue: rhs.text,
-      file: file.path,
-      line: lineOf(asn),
-    });
-  }
+  collectMemberFieldAssignments(file, t, /^([A-Za-z_][A-Za-z0-9_]*)\.PT$/i, (name, value, line) => {
+    t.timerPtAssignments.push({ timerName: name, ptValue: value, file: file.path, line });
+  });
+  collectMemberFieldAssignments(file, t, /^([A-Za-z_][A-Za-z0-9_]*)\.PV$/i, (name, value, line) => {
+    t.counterPvAssignments.push({ counterName: name, pvValue: value, file: file.path, line });
+  });
 
-  // Pattern 2: named-arg call `T1(IN := xStart, PT := T#5s);`
+  // Named-arg calls: `T1(IN := xStart, PT := T#5s);`  or  `C1(PV := 10);`
   for (const cs of t.callSites.filter((c) => c.file === file.path)) {
     const pt = cs.namedArgs.get('PT');
     if (pt) {
@@ -739,6 +783,40 @@ function collectTimerPtAssignments(file: AstFile, t: SymbolTable): void {
         line: cs.line,
       });
     }
+    const pv = cs.namedArgs.get('PV');
+    if (pv) {
+      t.counterPvAssignments.push({
+        counterName: cs.callee,
+        pvValue: pv,
+        file: file.path,
+        line: cs.line,
+      });
+    }
+  }
+}
+
+function collectMemberFieldAssignments(
+  file: AstFile,
+  _t: SymbolTable,
+  pattern: RegExp,
+  push: (instanceName: string, value: string, line: number) => void,
+): void {
+  for (const asn of descendantsOfType(file.root, NODE.ASSIGNMENT_STATEMENT)) {
+    const lhs = childrenOf(asn).find(
+      (c) => c.type === NODE.MEMBER_ACCESS || c.type === NODE.QUALIFIED_IDENTIFIER,
+    );
+    if (!lhs) continue;
+    const m = pattern.exec(lhs.text.trim());
+    if (!m) continue;
+    const rhs = childrenOf(asn).find(
+      (c) =>
+        c.type === NODE.TIME_LITERAL ||
+        c.type === NODE.INTEGER_LITERAL ||
+        c.type === NODE.REAL_LITERAL ||
+        c.type === NODE.IDENTIFIER,
+    );
+    if (!rhs) continue;
+    push(m[1], rhs.text, lineOf(asn));
   }
 }
 
