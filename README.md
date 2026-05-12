@@ -23,9 +23,8 @@ The PR is intentionally kept open as a fixture; conversation is locked.
 A single finding looks like this in the GitHub UI:
 
 <!--
-  Single-finding screenshot. See docs/screenshots/README.md for capture
-  instructions. The markdown block below renders as a fallback when the
-  image is missing on a fresh checkout.
+  Single-finding screenshot from PR #1. The markdown block below renders
+  as a fallback when the image is missing on a fresh checkout.
 -->
 <img src="docs/screenshots/single-finding.png" alt="plc-st-review inline review comment example: FB_INSTANCE_NEVER_CALLED" width="720" />
 
