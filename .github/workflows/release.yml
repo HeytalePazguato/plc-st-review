@@ -89,6 +89,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase owner for image refs
+        if: steps.guard.outputs.exists == 'false'
+        id: owner
+        run: |
+          set -euo pipefail
+          lc=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "lc=$lc" >> "$GITHUB_OUTPUT"
+
       - name: Build and push image
         if: steps.guard.outputs.exists == 'false'
         uses: docker/build-push-action@v6
@@ -97,9 +105,9 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/plc-st-review:latest
-            ghcr.io/${{ github.repository_owner }}/plc-st-review:${{ steps.ver.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/plc-st-review:${{ steps.ver.outputs.major_ref }}
+            ghcr.io/${{ steps.owner.outputs.lc }}/plc-st-review:latest
+            ghcr.io/${{ steps.owner.outputs.lc }}/plc-st-review:${{ steps.ver.outputs.version }}
+            ghcr.io/${{ steps.owner.outputs.lc }}/plc-st-review:${{ steps.ver.outputs.major_ref }}
           platforms: linux/amd64
 
       - name: Set up Node for npm publish
