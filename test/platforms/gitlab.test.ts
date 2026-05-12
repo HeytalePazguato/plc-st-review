@@ -31,6 +31,16 @@ function fakeApi(state: FakeApiState): GitlabApi {
     async fetchFile(_p, ref, path) {
       return state.files.get(`${ref}::${path}`) ?? null;
     },
+    async listStFiles(_p, ref) {
+      const out: string[] = [];
+      for (const key of state.files.keys()) {
+        const [keyRef, path] = key.split('::', 2);
+        if (keyRef === ref && (path.endsWith('.st') || path.endsWith('.ST'))) {
+          out.push(path);
+        }
+      }
+      return out;
+    },
     async listDiscussions() {
       return state.discussions.map((d) => ({
         id: d.id,

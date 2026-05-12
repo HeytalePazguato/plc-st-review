@@ -34,6 +34,16 @@ function fakeApi(state: FakeState): GitHubApi {
     async fetchFile(ref, path) {
       return state.files.get(`${ref}::${path}`) ?? null;
     },
+    async listStFiles(ref) {
+      const out: string[] = [];
+      for (const key of state.files.keys()) {
+        const [keyRef, path] = key.split('::', 2);
+        if (keyRef === ref && (path.endsWith('.st') || path.endsWith('.ST'))) {
+          out.push(path);
+        }
+      }
+      return out;
+    },
     async listReviewComments() {
       return state.reviewComments.map((c) => ({ ...c }));
     },

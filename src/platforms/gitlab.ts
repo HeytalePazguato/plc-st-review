@@ -61,6 +61,7 @@ export interface InlinePosition {
 export interface GitlabApi {
   fetchMrContext(projectId: string | number, mrIid: number): Promise<MrContext>;
   fetchFile(projectId: string | number, ref: string, path: string): Promise<string | null>;
+  listStFiles(projectId: string | number, ref: string): Promise<string[]>;
   listDiscussions(projectId: string | number, mrIid: number): Promise<ApiDiscussion[]>;
   createDiscussion(
     projectId: string | number,
@@ -146,6 +147,14 @@ export function createGitbeakerClient(opts: GitlabOptions): GitlabApi {
         throw err;
       }
     },
+    async listStFiles(projectId, ref) {
+      const tree = (await gl.Repositories.allRepositoryTrees(projectId, {
+        ref,
+        recursive: true,
+        perPage: 100,
+      })) as unknown as Array<{ type: string; path: string }>;
+      return tree.filter((t) => t.type === 'blob' && endsWithStExt(t.path)).map((t) => t.path);
+    },
     async listDiscussions(projectId, mrIid) {
       const list = (await gl.MergeRequestDiscussions.all(
         projectId,
@@ -204,23 +213,27 @@ function endsWithStExt(path: string): boolean {
   return ST_EXTENSIONS.has(path.slice(dot));
 }
 
+void isNotFound;
+
 export async function loadGitlabMrSnapshot(
   opts: GitlabOptions,
   api: GitlabApi = createGitbeakerClient(opts),
 ): Promise<{ before: AstFile[]; after: AstFile[]; context: MrContext }> {
   const context = await api.fetchMrContext(opts.projectId, opts.mrIid);
+  // Cross-file analysis needs full-repo visibility, not just the diffed files.
+  const [beforePaths, afterPaths] = await Promise.all([
+    api.listStFiles(opts.projectId, context.baseSha),
+    api.listStFiles(opts.projectId, context.headSha),
+  ]);
   const before: AstFile[] = [];
   const after: AstFile[] = [];
-  for (const change of context.changes) {
-    if (!endsWithStExt(change.newPath) && !endsWithStExt(change.oldPath)) continue;
-    if (!change.deletedFile) {
-      const src = await api.fetchFile(opts.projectId, context.headSha, change.newPath);
-      if (src !== null) after.push(await parseSource(src, change.newPath));
-    }
-    if (!change.newFile) {
-      const src = await api.fetchFile(opts.projectId, context.baseSha, change.oldPath);
-      if (src !== null) before.push(await parseSource(src, change.oldPath));
-    }
+  for (const path of afterPaths) {
+    const src = await api.fetchFile(opts.projectId, context.headSha, path);
+    if (src !== null) after.push(await parseSource(src, path));
+  }
+  for (const path of beforePaths) {
+    const src = await api.fetchFile(opts.projectId, context.baseSha, path);
+    if (src !== null) before.push(await parseSource(src, path));
   }
   return { before, after, context };
 }

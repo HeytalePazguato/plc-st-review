@@ -1,5 +1,5 @@
 import { normalizeType, paramByName } from '../diff.js';
-import type { CallSite, Check, Finding, Pou } from '../types.js';
+import type { CallSite, Check, Finding, LocalVar, Pou, SymbolTable } from '../types.js';
 
 export const callSiteOutdated: Check = {
   category: 'CALL_SITE_OUTDATED',
@@ -14,7 +14,9 @@ export const callSiteOutdated: Check = {
     }
 
     for (const cs of ctx.after.callSites) {
-      const target = resolveCallee(cs.callee, pouByAnyName);
+      const target =
+        resolveCallee(cs.callee, pouByAnyName) ??
+        resolveAsInstance(cs, ctx.after, pouByAnyName);
       if (!target) continue;
 
       const required = target.inputs.filter((p) => !p.initial);
@@ -98,6 +100,30 @@ function resolveCallee(
     table.get(callee.trim().toLowerCase()) ??
     null
   );
+}
+
+/**
+ * Look up FB-instance call sites: `myInstance(...)` where `myInstance` is a
+ * VAR of a known FB type. Resolves the call to that FB's signature.
+ */
+function resolveAsInstance(
+  cs: CallSite,
+  symbols: SymbolTable,
+  pouByAnyName: Map<string, Pou>,
+): Pou | null {
+  const instanceName = cs.callee.trim();
+  // Search every POU's locals for one with this name; resolve its typeText.
+  // We don't know the calling scope cheaply here, so we accept any match;
+  // identifier shadowing across POUs is uncommon enough in ST that this is
+  // a reasonable approximation.
+  for (const locals of symbols.pouLocals.values()) {
+    const v = locals.find((l: LocalVar) => l.name.toLowerCase() === instanceName.toLowerCase());
+    if (v && v.typeText) {
+      const target = pouByAnyName.get(v.typeText.trim().toLowerCase());
+      if (target) return target;
+    }
+  }
+  return null;
 }
 
 function inferArgMode(cs: CallSite): 'named' | 'positional' | 'empty' {

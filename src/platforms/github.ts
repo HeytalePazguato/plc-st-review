@@ -53,6 +53,7 @@ export interface IssueComment {
 export interface GitHubApi {
   fetchPrContext(): Promise<PrContext>;
   fetchFile(ref: string, path: string): Promise<string | null>;
+  listStFiles(ref: string): Promise<string[]>;
   listReviewComments(): Promise<ReviewComment[]>;
   listIssueComments(): Promise<IssueComment[]>;
   createReviewComment(args: {
@@ -116,6 +117,26 @@ export function createOctokitClient(opts: GitHubOptions): GitHubApi {
         return null;
       } catch (err) {
         if (isNotFound(err)) return null;
+        throw err;
+      }
+    },
+    async listStFiles(ref) {
+      try {
+        const res = await octokit.git.getTree({
+          owner: opts.owner,
+          repo: opts.repo,
+          tree_sha: ref,
+          recursive: 'true',
+        });
+        const out: string[] = [];
+        for (const item of res.data.tree) {
+          if (item.type !== 'blob') continue;
+          const p = item.path;
+          if (typeof p === 'string' && endsWithStExt(p)) out.push(p);
+        }
+        return out;
+      } catch (err) {
+        if (isNotFound(err)) return [];
         throw err;
       }
     },
@@ -237,18 +258,22 @@ export async function loadGitHubPrSnapshot(
   api: GitHubApi = createOctokitClient(opts),
 ): Promise<{ before: AstFile[]; after: AstFile[]; context: PrContext }> {
   const context = await api.fetchPrContext();
+  // Cross-file analysis (CALL_SITE_OUTDATED, STATE_UNHANDLED, ENUM_VALUE_*,
+  // METHOD_ADDED_TO_INTERFACE, POU_DELETED) needs full-repo visibility, not
+  // just the diffed files. Walk the entire tree at base and head SHAs.
+  const [beforePaths, afterPaths] = await Promise.all([
+    api.listStFiles(context.baseSha),
+    api.listStFiles(context.headSha),
+  ]);
   const before: AstFile[] = [];
   const after: AstFile[] = [];
-  for (const change of context.changes) {
-    if (!endsWithStExt(change.newPath) && !endsWithStExt(change.oldPath)) continue;
-    if (!change.removed) {
-      const src = await api.fetchFile(context.headSha, change.newPath);
-      if (src !== null) after.push(await parseSource(src, change.newPath));
-    }
-    if (!change.added) {
-      const src = await api.fetchFile(context.baseSha, change.oldPath);
-      if (src !== null) before.push(await parseSource(src, change.oldPath));
-    }
+  for (const path of afterPaths) {
+    const src = await api.fetchFile(context.headSha, path);
+    if (src !== null) after.push(await parseSource(src, path));
+  }
+  for (const path of beforePaths) {
+    const src = await api.fetchFile(context.baseSha, path);
+    if (src !== null) before.push(await parseSource(src, path));
   }
   return { before, after, context };
 }

@@ -220,6 +220,7 @@ function collectPou(
           scope: qualified,
           file: file.path,
           line: lineOf(decl),
+          typeText: typeText,
         });
       }
       if (declName && TIMER_TYPE_NAMES.has(typeText)) {
@@ -269,18 +270,29 @@ function collectForLoops(
   scope: string,
   t: SymbolTable,
 ): void {
+  const isBoundExpr = (n: StNode | undefined): boolean =>
+    !!n &&
+    (n.type === NODE.INTEGER_LITERAL ||
+      n.type === NODE.REAL_LITERAL ||
+      n.type === NODE.IDENTIFIER);
   for (const fs of descendantsOfType(pouNode, NODE.FOR_STATEMENT)) {
-    const ints = childrenOf(fs).filter(
-      (c) => c.type === NODE.INTEGER_LITERAL || c.type === NODE.REAL_LITERAL,
-    );
-    if (ints.length < 2) continue;
+    // FOR <var> := <start> TO <end> [BY <by>] DO ... END_FOR
+    // The first child is the loop variable identifier; bounds follow in order.
+    const kids = childrenOf(fs);
+    const loopVarNode = kids[0];
+    const startNode = kids[1];
+    const endNode = kids[2];
+    const byNode = kids[3];
+    if (!loopVarNode || loopVarNode.type !== NODE.IDENTIFIER) continue;
+    if (!isBoundExpr(startNode) || !isBoundExpr(endNode)) continue;
     const loop: ForLoop = {
       scope,
       file: file.path,
       line: lineOf(fs),
-      start: ints[0].text,
-      end: ints[1].text,
-      by: ints[2]?.text,
+      loopVar: loopVarNode.text,
+      start: startNode.text,
+      end: endNode.text,
+      by: isBoundExpr(byNode) ? byNode.text : undefined,
     };
     t.forLoops.push(loop);
   }
@@ -459,9 +471,11 @@ function collectTypeDecl(
   t: SymbolTable,
   _namespace?: string,
 ): void {
-  const name = findIdentifierText(node);
-  if (!name) return;
+  // The grammar wraps the actual definition (incl. the identifier) inside a
+  // `type_definition` child of `type_declaration`. Search there first.
   const def = findChild(node, NODE.TYPE_DEFINITION) ?? node;
+  const name = findIdentifierText(def) ?? findIdentifierText(node);
+  if (!name) return;
   const enumInline =
     findChild(def, NODE.ENUM_TYPE_INLINE) ??
     descendantsOfType(def, NODE.ENUM_TYPE_INLINE)[0];

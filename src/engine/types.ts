@@ -212,6 +212,7 @@ export interface ForLoop {
   scope: string;
   file: string;
   line: number;
+  loopVar: string;
   start: string;
   end: string;
   by?: string;
@@ -235,6 +236,7 @@ export interface LocalVar {
   scope: string;
   file: string;
   line: number;
+  typeText: string;
 }
 
 export interface ReviewContext {
