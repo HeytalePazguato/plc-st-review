@@ -1,0 +1,79 @@
+site_name: plc-st-review
+site_description: Semantic code review for IEC 61131-3 Structured Text pull/merge requests
+site_url: https://heytalepazguato.github.io/plc-st-review/
+repo_url: https://github.com/HeytalePazguato/plc-st-review
+repo_name: HeytalePazguato/plc-st-review
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: _site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Reference:
+      - Checks reference: checks-reference.md
+      - Check limitations: check-limitations.md
+  - Configuration:
+      - Tuning severities: tuning-severities.md
+      - Preset packs: preset-packs.md
+      - Writing custom checks: writing-custom-checks.md
+  - Platforms:
+      - GitHub setup: github-setup.md
+      - GitLab setup: gitlab-setup.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/HeytalePazguato/plc-st-review
+    - icon: fontawesome/brands/npm
+      link: https://www.npmjs.com/package/plc-st-review

@@ -1,8 +1,3 @@
----
-layout: default
-title: Checks reference
----
-
 # Checks reference
 
 Every check `plc-st-review` ships with — what it catches, why it

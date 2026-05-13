@@ -88,8 +88,18 @@ Two jobs gated by `if: github.ref == ...`:
 
 Triggered on push to `main`. Reads `VERSION`, idempotence-checks the tag
 exists, pushes `v<VERSION>`, runs release tooling to publish to all channels.
-Idempotent: if the tag already exists (e.g. main got a non-version-bump
-commit), the workflow exits cleanly.
+
+Two guards run before any tag is pushed:
+
+- **Template-sentinel guard:** if `VERSION == 0.0.0`, the workflow exits
+  cleanly. `0.0.0` is the value committed by this template, so a fresh
+  clone's first push to `main` is a no-op rather than a release. The user
+  bumps `VERSION` (e.g. to `0.0.1`) on the first `release/*` branch.
+- **Idempotence guard:** if `v<VERSION>` already exists *and* points at an
+  ancestor of `HEAD`, the workflow exits cleanly (re-pushed main without a
+  bump). If the tag exists at an *unrelated* commit (e.g. a stale bootstrap
+  tag created before the sentinel was in place), the workflow fails loudly
+  with cleanup instructions — never silently retag.
 
 ```yaml
 on:
@@ -105,9 +115,15 @@ concurrency:
 
 ### 3.4 `pages.yml` (optional) — docs site
 
-Triggered on `docs/**` changes on `develop` or `main`. Builds Jekyll (or
-Hugo/MkDocs/Astro) from `/docs`. Deploy step gated `if: github.ref == 'refs/heads/main'`
-because GitHub Pages environment is protected to the default branch.
+Triggered on `docs/**` (or `mkdocs.yml`) changes on `develop` or `main`.
+Builds **MkDocs Material** from `/docs` and uploads the Pages artifact.
+Deploy step is gated `if: github.ref == 'refs/heads/main'` because the
+`github-pages` environment is protected to the default branch — `develop`
+pushes run the build for validation but don't deploy.
+
+The workflow auto-enables Pages on first run via
+`actions/configure-pages@v5` with `enablement: true`, so no extra
+`gh api` Pages-enable step is needed for docs-only repos.
 
 ---
 
@@ -132,7 +148,7 @@ because GitHub Pages environment is protected to the default branch.
 | File / dir                              | Purpose                                                              |
 | --------------------------------------- | -------------------------------------------------------------------- |
 | `FUNDING.yml`                           | `github: <username>` (or other sponsor links).                       |
-| `dependabot.yml`                        | Per-ecosystem entry, target `develop`, weekly schedule.              |
+| `dependabot.yml`                        | Per-ecosystem entry, target `develop`, weekly schedule, **`groups:` configured** so a run produces one bundled PR (prod/dev split where useful) instead of one PR per dep. |
 | `PULL_REQUEST_TEMPLATE.md`              | Summary, Changes, Test plan, screenshots-if-visual.                  |
 | `ISSUE_TEMPLATE/bug_report.yml`         | YAML form, not markdown — better UX.                                 |
 | `ISSUE_TEMPLATE/feature_request.yml`    | YAML form.                                                           |
@@ -141,7 +157,10 @@ because GitHub Pages environment is protected to the default branch.
 
 ### Optional
 
-- `docs/` — Jekyll/Hugo/MkDocs source for the Pages site.
+- `docs/` — MkDocs source for the Pages site (one `.md` per page, no
+  front matter required).
+- `mkdocs.yml` — MkDocs site config (Material theme). Required if
+  `/docs` is present and you want the Pages site.
 - `.editorconfig` — consistent indentation across editors.
 - `Dockerfile` — if shipping container images.
 
@@ -173,7 +192,11 @@ nukes `develop` on the remote.
 **Topics:** pick 10–20 from the relevant ecosystem (language, domain,
 audience). They drive GitHub's discovery surface.
 
-**Branch protection on `main`** (recommended once releasing):
+**Branch protection on `main`** — apply during initial setup, not "once
+releasing." Protecting `main` from day one prevents direct pushes and
+forces the `release/*` → `main` PR flow even for the first version. The
+ruleset below is permissive on review count (`0`) because most templates
+start as solo projects; tighten it the moment a second human joins.
 
 ```sh
 gh api -X PUT repos/<OWNER>/<REPO>/branches/main/protection \
@@ -318,29 +341,42 @@ Execute in order; don't skip steps.
    - Project name, owner, primary language, one-sentence description, license.
 2. **Repo metadata** via `gh repo edit` (section 5). Topics + description +
    homepage + discussions on + wiki off.
-3. **Enable Pages** with `build_type: workflow` (section 5).
-4. **Top-level files** (section 4). Use the templates in this blueprint as
+3. **Enable Pages** with `build_type: workflow` (section 5) — or skip and
+   let `pages.yml` auto-enable on first run via
+   `actions/configure-pages@v5` (`enablement: true`).
+4. **Protect `main`** (section 5). Apply branch protection *before* the
+   first push, so the rule-flow is enforced from commit #1.
+5. **Top-level files** (section 4). Use the templates in this blueprint as
    starting points; replace placeholders.
-5. **`.github/` files** (section 4). YAML issue forms (not markdown).
-6. **VERSION = `0.0.1`** for a new project, or read existing.
-7. **Three workflows** (section 3): `ci.yml`, `prerelease.yml`, `release.yml`.
-   Add `pages.yml` if `/docs` exists.
-8. **Distribution config** (e.g. `.goreleaser.yml` for Go). Always set
+6. **`.github/` files** (section 4). YAML issue forms (not markdown).
+   Ensure `dependabot.yml` has `groups:` configured for each enabled
+   ecosystem so chore-PR volume stays one-bundle-per-run.
+7. **VERSION = `0.0.0`** (template sentinel). Do **not** bump to `0.0.1`
+   yet — that's done on the first `release/*` branch. The
+   template-sentinel guard in `release.yml` (section 3.3) refuses to tag
+   a `v0.0.0`, which is what makes initial-push-to-main safe even before
+   you're ready to release. **Never** create a `v*` tag manually on the
+   initial commit.
+8. **Three workflows** (section 3): `ci.yml`, `prerelease.yml`, `release.yml`.
+   Add `pages.yml` if `/docs` exists (with `mkdocs.yml`).
+9. **Distribution config** (e.g. `.goreleaser.yml` for Go). Always set
    explicit `repository.token` for any cross-repo publish.
-9. **Branches:** create `develop` if it doesn't exist; do all work there.
-   `main` stays untouched until the first release.
-10. **First commit on `develop`:** scaffolding + initial code. Push.
-11. **Verify CI green** on `develop`.
-12. **Create `release/0.0.1`** from `develop`. Move `[Unreleased]` →
-    `[0.0.1] - <today>` in CHANGELOG. Push.
-13. **Verify prerelease workflow** publishes `v0.0.1-alpha.1` cleanly.
-14. **Open PR** `release/0.0.1` → `main`. Wait for CI.
-15. **Confirm with the user** before merging the PR (hard-to-reverse).
-16. **Merge.** `release.yml` runs, tags `v0.0.1`, publishes everywhere.
-17. **Verify** GitHub Release + tap + bucket + container registry + Pages all updated.
-18. **Merge `main` back to `develop`** to close the cycle.
-19. **Delete the release branch** (local + remote).
-20. **Document** anything project-specific in the project's own `CLAUDE.md`
+10. **Branches:** create `develop` if it doesn't exist; do all work there.
+    `main` stays at the bootstrap commit (with `VERSION=0.0.0`) until the
+    first real release.
+11. **First commit on `develop`:** scaffolding + initial code. Push.
+12. **Verify CI green** on `develop`.
+13. **Create `release/0.0.1`** from `develop`. Bump `VERSION` from
+    `0.0.0` → `0.0.1`. Move `[Unreleased]` → `[0.0.1] - <today>` in
+    CHANGELOG. Push.
+14. **Verify prerelease workflow** publishes `v0.0.1-alpha.1` cleanly.
+15. **Open PR** `release/0.0.1` → `main`. Wait for CI.
+16. **Confirm with the user** before merging the PR (hard-to-reverse).
+17. **Merge.** `release.yml` runs, tags `v0.0.1`, publishes everywhere.
+18. **Verify** GitHub Release + tap + bucket + container registry + Pages all updated.
+19. **Merge `main` back to `develop`** to close the cycle.
+20. **Delete the release branch** (local + remote).
+21. **Document** anything project-specific in the project's own `CLAUDE.md`
     or `README.md`, not here.
 
 ### Anti-patterns to refuse
