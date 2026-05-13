@@ -9,6 +9,12 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    groups:
+      # One PR per scheduled run, regardless of how many actions need bumping.
+      gha:
+        applies-to: version-updates
+        patterns:
+          - "*"
 
   - package-ecosystem: "npm"
     directory: "/"
@@ -18,3 +24,16 @@ updates:
     target-branch: "develop"
     labels:
       - "dependencies"
+    groups:
+      # Split prod vs dev so the dev-only churn (typescript, vitest, @types/*) doesn't
+      # block prod-dep review. Within each group, all updates bundle into one PR.
+      npm-prod:
+        applies-to: version-updates
+        dependency-type: "production"
+        patterns:
+          - "*"
+      npm-dev:
+        applies-to: version-updates
+        dependency-type: "development"
+        patterns:
+          - "*"
