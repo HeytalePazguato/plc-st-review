@@ -1,8 +1,3 @@
----
-layout: default
-title: GitHub setup
----
-
 # GitHub setup
 
 `plc-st-review` ships a GitHub Action that posts review comments on

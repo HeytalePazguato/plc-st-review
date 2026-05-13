@@ -1,8 +1,3 @@
----
-layout: default
-title: GitLab setup
----
-
 # GitLab setup
 
 `plc-st-review` runs as a regular GitLab CI job and posts inline

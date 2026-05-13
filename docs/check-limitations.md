@@ -1,8 +1,3 @@
----
-layout: default
-title: Check limitations
----
-
 # What each check can and can't catch
 
 `plc-st-review` is a *static* reviewer — it works from the syntax tree, not

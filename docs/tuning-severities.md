@@ -1,8 +1,3 @@
----
-layout: default
-title: Tuning severities
----
-
 # Tuning severities
 
 Every check ships with a default severity, but every shop weighs ST

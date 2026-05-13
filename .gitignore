@@ -3,6 +3,7 @@
 /build/
 /out/
 /target/
+/_site/
 
 # Local Claude Code settings
 .claude/

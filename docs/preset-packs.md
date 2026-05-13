@@ -1,8 +1,3 @@
----
-layout: default
-title: Preset packs
----
-
 # Preset packs
 
 `plc-st-review` ships **no opinionated naming or style defaults** — the
