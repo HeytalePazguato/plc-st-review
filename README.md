@@ -103,7 +103,7 @@ Drop this into `.gitlab-ci.yml` (full example at
 
 ```yaml
 plc-st-review:
-  image: ghcr.io/heytalepazguato/plc-st-review:latest
+  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :v0.0.1 to pin
   stage: review
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -117,7 +117,30 @@ plc-st-review:
 
 The job fetches the MR's changed `.st` files, runs the review, posts
 findings as inline discussions, and updates them (rather than creating
-duplicates) on re-runs. Self-hosted GitLab is supported via `GITLAB_URL`.
+duplicates) on re-runs.
+
+**Important notes for GitLab users:**
+
+- **Pull credentials** — GitLab runners pull the image from GHCR
+  anonymously. The image is published as **public**, so no
+  `docker login` step is needed. If your runner is offline and you
+  mirror the image internally, pull `ghcr.io/heytalepazguato/plc-st-review:v0`
+  once and push to your internal registry.
+- **Self-hosted GitLab** — supported. The example above reads
+  `GITLAB_URL` from `$CI_SERVER_URL`, which is auto-provided by every
+  GitLab runner regardless of whether you're on `gitlab.com` or your
+  own instance.
+- **Token scope** — `$CI_JOB_TOKEN` works for most projects with
+  default settings. If your instance restricts job tokens, mint a
+  project access token with `api` scope and set it as a masked,
+  protected CI/CD variable named `GITLAB_TOKEN`, then drop the
+  `GITLAB_TOKEN: $CI_JOB_TOKEN` line.
+- **Same engine as the GitHub Action** — every check listed below
+  fires identically on GitLab. There is no GitHub-only path in the
+  engine.
+
+See [`docs/gitlab-setup.md`](docs/gitlab-setup.md) for the full
+walkthrough and the common-gotchas list.
 
 ### CLI
 

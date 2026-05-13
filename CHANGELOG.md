@@ -7,9 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] — next: 0.0.2
 
-_Nothing yet._
+### Added
+
+- 20 new check categories (Phase 6) — code-quality and style:
+  `EMPTY_STATEMENT`, `UNUSED_RETURN_VALUE`, `ARRAY_SINGLE_ELEMENT`,
+  `VARIABLE_SHADOWING`, `UNQUALIFIED_ENUM_CONSTANT`,
+  `IDENTIFIER_CASE_MISMATCH`, `UNUSED_INPUT_VAR`, `INPUT_VAR_WRITTEN`,
+  `BOOL_COMPARISON`, `REAL_EQUALITY`, `MULTIPLE_EXIT_POINTS`,
+  `ASSIGNMENT_IN_CONDITION`, `COMMENTED_OUT_CODE`, `RECURSIVE_CALL`,
+  `FORBIDDEN_SYMBOL`, `ADDRESS_OF_CONSTANT`, `UNUSED_OUTPUT_VAR`,
+  `OUTPUT_VAR_READ_INTERNALLY`, `NESTED_COMMENTS`,
+  `NAMING_CONVENTION` (configurable). 52 categories total.
+- Config: `extends:` mechanism for composing preset packs, plus
+  `naming_conventions` schema (21 dimensions × prefix / suffix /
+  pattern / case / severity), `forbidden_symbols` blocklist,
+  `naming_ignore` allowlist.
+- `docs/preset-packs.md` — how to compose team / vertical-specific
+  naming and severity bundles via `extends:` without baking any
+  vendor opinion into the engine.
+- `examples/presets/example-suffix-types.yml` — non-blessed template.
+- Dependabot grouping (`gha`, `npm-prod`, `npm-dev` bundles) to cut
+  chore-PR noise.
+
+### Changed
+
+- README expanded with explicit GitLab-side usage notes (image pull
+  credentials, self-hosted instances, token scope, parity with the
+  GitHub path).
 
 ## [0.0.1] - 2026-05-12
+
+### Notes for GitLab users
+
+GitLab support is first-class and ships as part of 0.0.1. The published
+container image at `ghcr.io/heytalepazguato/plc-st-review:v0` is **public**
+on GHCR — GitLab runners (including self-hosted) can pull it anonymously,
+no `docker login` step is needed. Both `gitlab.com` and self-hosted
+instances are supported via the `GITLAB_URL` / `CI_SERVER_URL`
+environment variable, which GitLab Runner provides automatically. See
+[`docs/gitlab-setup.md`](docs/gitlab-setup.md) for the full walkthrough.
 
 ### Added
 
