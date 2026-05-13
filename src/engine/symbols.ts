@@ -15,20 +15,25 @@ import {
 import type {
   ArrayAccess,
   ArrayDecl,
+  AssignmentTarget,
   AstFile,
   BistableInstance,
   CallSite,
+  CommentNode,
   CounterInstance,
   DivisionExpr,
   EdgeTrigInstance,
+  EmptyStmt,
   EnumDef,
   ForLoop,
   GlobalVar,
   LocalVar,
   MemberAccess,
+  NamedDecl,
   Parameter,
   Pou,
   PouKind,
+  ReturnPoint,
   StNode,
   SymbolTable,
   TimerInstance,
@@ -72,13 +77,110 @@ export function emptySymbolTable(): SymbolTable {
     counterPvAssignments: [],
     edgeTrigInstances: [],
     bistableInstances: [],
+    emptyStatements: [],
+    comments: [],
+    assignmentTargets: [],
+    returnPoints: [],
+    declarations: [],
   };
 }
 
 export function buildSymbolTable(files: AstFile[]): SymbolTable {
   const t = emptySymbolTable();
   for (const file of files) extractFile(file, t);
+  t.declarations = buildDeclarations(t);
   return t;
+}
+
+function buildDeclarations(t: SymbolTable): NamedDecl[] {
+  const out: NamedDecl[] = [];
+  // POUs themselves (program / function / function_block / method / interface).
+  for (const p of t.pous.values()) {
+    out.push({
+      name: p.name,
+      kind: p.kind,
+      file: p.file,
+      line: p.line,
+      scope: p.parent ?? '__global',
+    });
+    // Parameters: inputs, outputs, in_outs.
+    for (const inp of p.inputs) {
+      out.push({
+        name: inp.name,
+        kind: 'var_input',
+        typeText: inp.typeText,
+        file: p.file,
+        line: inp.line,
+        scope: p.qualifiedName,
+      });
+    }
+    for (const o of p.outputs) {
+      out.push({
+        name: o.name,
+        kind: 'var_output',
+        typeText: o.typeText,
+        file: p.file,
+        line: o.line,
+        scope: p.qualifiedName,
+      });
+    }
+    for (const io of p.inOuts) {
+      out.push({
+        name: io.name,
+        kind: 'var_in_out',
+        typeText: io.typeText,
+        file: p.file,
+        line: io.line,
+        scope: p.qualifiedName,
+      });
+    }
+  }
+  // Locals (incl. timer/counter/edge-trig/bistable instances and FB instances).
+  for (const [, locals] of t.pouLocals) {
+    for (const l of locals) {
+      out.push({
+        name: l.name,
+        kind: inferLocalKind(l, t),
+        typeText: l.typeText,
+        file: l.file,
+        line: l.line,
+        scope: l.scope,
+      });
+    }
+  }
+  // Globals (constants and non-constants).
+  for (const g of t.globals.values()) {
+    out.push({
+      name: g.name,
+      kind: g.constant ? 'constant' : 'var_global',
+      typeText: g.typeText,
+      file: g.file,
+      line: g.line,
+      scope: '__global',
+    });
+  }
+  // Enum types.
+  for (const e of t.enums.values()) {
+    out.push({
+      name: e.name,
+      kind: 'enum_type',
+      file: e.file,
+      line: e.line,
+      scope: '__global',
+    });
+  }
+  return out;
+}
+
+function inferLocalKind(l: LocalVar, t: SymbolTable): NamedDecl['kind'] {
+  const tt = l.typeText.trim().toUpperCase();
+  if (TIMER_TYPE_NAMES.has(tt)) return 'timer_instance';
+  if (COUNTER_TYPE_NAMES.has(tt)) return 'counter_instance';
+  if (EDGE_TRIG_TYPE_NAMES.has(tt)) return 'edge_trig_instance';
+  if (BISTABLE_TYPE_NAMES.has(tt)) return 'bistable_instance';
+  const matched = t.pous.get(l.typeText.trim());
+  if (matched && matched.kind === 'function_block') return 'fb_instance';
+  return 'var_local';
 }
 
 function extractFile(file: AstFile, t: SymbolTable): void {
@@ -104,6 +206,8 @@ function extractFile(file: AstFile, t: SymbolTable): void {
   collectCaseStatements(file, t);
   collectTimerPtAssignments(file, t);
   collectVarReferences(file, t);
+  collectFileScopedStatements(file, t);
+  collectComments(file, t);
   // pragmas inside POUs
   for (const p of descendantsOfType(root, NODE.PRAGMA)) {
     if (childrenOf(root).includes(p)) continue; // already collected at top level
@@ -824,12 +928,69 @@ function collectVarReferences(file: AstFile, t: SymbolTable): void {
   for (const ref of descendantsOfType(file.root, NODE.IDENTIFIER)) {
     const refText = ref.text;
     if (!refText) continue;
+    const line = lineOf(ref);
     const v: VarReference = {
       name: refText,
       file: file.path,
-      line: lineOf(ref),
+      line,
+      scope: pouContainingLine(t, file.path, line),
       context: 'unknown',
     };
     t.varReferences.push(v);
+  }
+}
+
+function collectFileScopedStatements(file: AstFile, t: SymbolTable): void {
+  // Empty statements.
+  for (const node of descendantsOfType(file.root, 'empty_statement')) {
+    const line = lineOf(node);
+    const e: EmptyStmt = {
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.emptyStatements.push(e);
+  }
+  // Return points.
+  for (const node of descendantsOfType(file.root, NODE.RETURN_STATEMENT)) {
+    const line = lineOf(node);
+    const r: ReturnPoint = {
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.returnPoints.push(r);
+  }
+  // Assignment LHS targets.
+  for (const asn of descendantsOfType(file.root, NODE.ASSIGNMENT_STATEMENT)) {
+    const kids = childrenOf(asn);
+    const lhs = kids[0];
+    if (!lhs) continue;
+    const raw = lhs.text;
+    // Extract the leading identifier from the LHS (`T1.PT` → `T1`, `arr[5]` → `arr`).
+    const m = /^([A-Za-z_][A-Za-z0-9_]*)/.exec(raw.trim());
+    if (!m) continue;
+    const line = lineOf(asn);
+    const target: AssignmentTarget = {
+      name: m[1],
+      rawText: raw.trim(),
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.assignmentTargets.push(target);
+  }
+}
+
+function collectComments(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.COMMENT)) {
+    const line = lineOf(node);
+    const c: CommentNode = {
+      text: node.text,
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.comments.push(c);
   }
 }

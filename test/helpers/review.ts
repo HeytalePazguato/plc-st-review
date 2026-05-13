@@ -14,6 +14,9 @@ export function review(
     safetyCriticalPrefixes: [...DEFAULT_CONFIG.safetyCriticalPrefixes],
     failOnSeverity: DEFAULT_CONFIG.failOnSeverity,
     commentStyle: DEFAULT_CONFIG.commentStyle,
+    forbiddenSymbols: [...DEFAULT_CONFIG.forbiddenSymbols],
+    namingConventions: { ...DEFAULT_CONFIG.namingConventions },
+    namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
     ...configPatch,
   };
   return runReview({ beforeFiles: before, afterFiles: after, config });

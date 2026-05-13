@@ -38,7 +38,27 @@ export type Category =
   | 'EDGE_TRIG_REUSED'
   | 'FB_INSTANCE_DOUBLE_CALL'
   | 'FB_INSTANCE_NEVER_CALLED'
-  | 'BISTABLE_DOMINANCE_MISMATCH';
+  | 'BISTABLE_DOMINANCE_MISMATCH'
+  | 'EMPTY_STATEMENT'
+  | 'UNUSED_RETURN_VALUE'
+  | 'ARRAY_SINGLE_ELEMENT'
+  | 'VARIABLE_SHADOWING'
+  | 'UNQUALIFIED_ENUM_CONSTANT'
+  | 'IDENTIFIER_CASE_MISMATCH'
+  | 'UNUSED_INPUT_VAR'
+  | 'INPUT_VAR_WRITTEN'
+  | 'BOOL_COMPARISON'
+  | 'REAL_EQUALITY'
+  | 'MULTIPLE_EXIT_POINTS'
+  | 'ASSIGNMENT_IN_CONDITION'
+  | 'COMMENTED_OUT_CODE'
+  | 'RECURSIVE_CALL'
+  | 'FORBIDDEN_SYMBOL'
+  | 'ADDRESS_OF_CONSTANT'
+  | 'UNUSED_OUTPUT_VAR'
+  | 'OUTPUT_VAR_READ_INTERNALLY'
+  | 'NESTED_COMMENTS'
+  | 'NAMING_CONVENTION';
 
 export const ALL_CATEGORIES: Category[] = [
   'SIGNATURE_CHANGED',
@@ -73,6 +93,26 @@ export const ALL_CATEGORIES: Category[] = [
   'FB_INSTANCE_DOUBLE_CALL',
   'FB_INSTANCE_NEVER_CALLED',
   'BISTABLE_DOMINANCE_MISMATCH',
+  'EMPTY_STATEMENT',
+  'UNUSED_RETURN_VALUE',
+  'ARRAY_SINGLE_ELEMENT',
+  'VARIABLE_SHADOWING',
+  'UNQUALIFIED_ENUM_CONSTANT',
+  'IDENTIFIER_CASE_MISMATCH',
+  'UNUSED_INPUT_VAR',
+  'INPUT_VAR_WRITTEN',
+  'BOOL_COMPARISON',
+  'REAL_EQUALITY',
+  'MULTIPLE_EXIT_POINTS',
+  'ASSIGNMENT_IN_CONDITION',
+  'COMMENTED_OUT_CODE',
+  'RECURSIVE_CALL',
+  'FORBIDDEN_SYMBOL',
+  'ADDRESS_OF_CONSTANT',
+  'UNUSED_OUTPUT_VAR',
+  'OUTPUT_VAR_READ_INTERNALLY',
+  'NESTED_COMMENTS',
+  'NAMING_CONVENTION',
 ];
 
 export interface Position {
@@ -114,6 +154,37 @@ export interface Finding {
   related?: Array<{ file: string; line: number; note?: string }>;
 }
 
+export interface NamingRule {
+  prefix?: string;
+  suffix?: string;
+  pattern?: string;       // regex against the whole identifier
+  case?: 'sensitive' | 'insensitive';
+  severity?: Severity;
+}
+
+export type NamingDimension =
+  | 'bool'
+  | 'int'
+  | 'real'
+  | 'string'
+  | 'time'
+  | 'pointer'
+  | 'reference'
+  | 'array'
+  | 'enum_type'
+  | 'structure_type'
+  | 'function_block'
+  | 'function'
+  | 'program'
+  | 'method'
+  | 'interface'
+  | 'fb_instance'
+  | 'global_var'
+  | 'input_var'
+  | 'output_var'
+  | 'in_out_var'
+  | 'constant';
+
 export interface ResolvedConfig {
   disabledChecks: Set<Category>;
   severityOverrides: Map<Category, Severity>;
@@ -121,6 +192,9 @@ export interface ResolvedConfig {
   safetyCriticalPrefixes: string[];
   failOnSeverity: Severity;
   commentStyle: 'inline' | 'summary' | 'both';
+  forbiddenSymbols: string[];
+  namingConventions: Partial<Record<NamingDimension, NamingRule>>;
+  namingIgnore: string[];   // identifier patterns to skip for NAMING_CONVENTION
 }
 
 export interface SymbolTable {
@@ -145,6 +219,11 @@ export interface SymbolTable {
   counterPvAssignments: CounterPvAssignment[];
   edgeTrigInstances: EdgeTrigInstance[];
   bistableInstances: BistableInstance[];
+  emptyStatements: EmptyStmt[];
+  comments: CommentNode[];
+  assignmentTargets: AssignmentTarget[];
+  returnPoints: ReturnPoint[];
+  declarations: NamedDecl[];
 }
 
 export type PouKind =
@@ -263,7 +342,67 @@ export interface VarReference {
   name: string;
   file: string;
   line: number;
+  scope: string;
   context: 'read' | 'write' | 'unknown';
+}
+
+export interface EmptyStmt {
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface CommentNode {
+  text: string;
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface AssignmentTarget {
+  name: string;          // bare identifier or first segment of member access
+  rawText: string;       // the full LHS text (e.g. `T1.PT`, `arr[5]`)
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface ReturnPoint {
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export type DeclKind =
+  | 'program'
+  | 'function'
+  | 'function_block'
+  | 'method'
+  | 'interface'
+  | 'enum_type'
+  | 'structure_type'
+  | 'array_type'
+  | 'alias_type'
+  | 'var_local'
+  | 'var_global'
+  | 'var_input'
+  | 'var_output'
+  | 'var_in_out'
+  | 'var_temp'
+  | 'constant'
+  | 'fb_instance'
+  | 'timer_instance'
+  | 'counter_instance'
+  | 'edge_trig_instance'
+  | 'bistable_instance';
+
+export interface NamedDecl {
+  name: string;
+  kind: DeclKind;
+  typeText?: string;       // for typed vars: the type name as text
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export interface ArrayDecl {

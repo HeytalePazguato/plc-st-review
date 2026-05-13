@@ -64,6 +64,26 @@ hits.
 | `FB_INSTANCE_DOUBLE_CALL` | Same FB instance invoked more than once in the same POU scope | Multiple calls intentionally placed inside mutually-exclusive `CASE`/`IF` branches — we don't track control flow |
 | `FB_INSTANCE_NEVER_CALLED` | FB instance whose outputs are read but no call site exists | Instances whose only use is via `EXTENDS`-inherited methods (we'd need full-inheritance walking) |
 | `BISTABLE_DOMINANCE_MISMATCH` | `SR` named like a reset-dominant latch, or `RS` named like a set-dominant one. Heuristic — name-pattern based | Shops with non-conventional naming will see false positives. Disable if not useful |
+| `EMPTY_STATEMENT` | Lone `;` | Empty statements inside synthesized macro / pragma expansions if you use them |
+| `UNUSED_RETURN_VALUE` | Bare-statement call of a `FUNCTION` POU with a declared return type | Discarded returns from external library functions whose signatures we don't see, calls via pointer-to-function |
+| `ARRAY_SINGLE_ELEMENT` | `ARRAY [n..n] OF T` where bounds are literals | Bounds expressed as named constants that happen to evaluate equal (we'd need constant resolution per dimension) |
+| `VARIABLE_SHADOWING` | Local declaration with the same name as a `VAR_GLOBAL` | Shadowing across nested scopes — methods inside an FB hiding the FB's locals — we only check local-vs-global |
+| `UNQUALIFIED_ENUM_CONSTANT` | Bare identifier reference uniquely matching one enum's member | Member names shared by multiple enums (ambiguous), members already accessed via `member_access_expression` |
+| `IDENTIFIER_CASE_MISMATCH` | Reference uses different case than the declared identifier | Library-provided identifiers whose canonical case we don't see |
+| `UNUSED_INPUT_VAR` | `VAR_INPUT` with no read reference in the POU's body | Inputs read indirectly via reflection / pragma-driven generated code |
+| `INPUT_VAR_WRITTEN` | LHS of an assignment matches a `VAR_INPUT` declared in the enclosing POU | Writes through pointer-to-input (rare in IEC ST) |
+| `BOOL_COMPARISON` | `binary_expression` with `=`/`<>` and a `BOOLEAN_LITERAL` operand | Boolean comparisons via custom infix functions, comparisons against variables that happen to hold `TRUE`/`FALSE` |
+| `REAL_EQUALITY` | `=`/`<>` against a `REAL_LITERAL` | Comparisons of two non-literal REALs (`rA = rB`) — likely also unsafe but we can't tell statically |
+| `MULTIPLE_EXIT_POINTS` | More than one `RETURN` per POU | `EXIT` statements inside loops (those leave the loop, not the POU) |
+| `ASSIGNMENT_IN_CONDITION` | `:=` directly inside `IF`/`WHILE`/`REPEAT` condition lines | Assignments deep inside a function-call argument that's then used in the condition |
+| `COMMENTED_OUT_CODE` | Comment text matches an ST keyword or `:=` heuristic | Prose comments that happen to contain `IF` or `:=` in different contexts |
+| `RECURSIVE_CALL` | Direct self-call by name | Mutual recursion (A → B → A) — would need call-graph traversal |
+| `FORBIDDEN_SYMBOL` | Identifier matches a configured pattern in `forbidden_symbols` | Symbols referenced only via dynamic-string-construction lookups |
+| `ADDRESS_OF_CONSTANT` | `ADR(c)` where `c` is a `VAR_GLOBAL CONSTANT` | `ADR(localConstant)` — locals don't have CONSTANT-marked symbols in our table |
+| `UNUSED_OUTPUT_VAR` | `VAR_OUTPUT` with no LHS-of-assignment match in the POU's body | Outputs written via pointer indirection |
+| `OUTPUT_VAR_READ_INTERNALLY` | `VAR_OUTPUT` referenced in a non-assignment position in its own POU | Reads through pointer indirection |
+| `NESTED_COMMENTS` | `(*` inside a `(* ... *)` block comment | `(*` inside a string literal (parser usually handles this; we trust it) |
+| `NAMING_CONVENTION` | Declaration name violates configured prefix / suffix / pattern | Identifiers that don't match any declared dimension (we only know the kinds we model) |
 
 ## When a check has no opinion
 

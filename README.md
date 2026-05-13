@@ -62,8 +62,11 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
 - **Static checks** — 6 single-revision checks for common ST bugs.
 - **FB-instance checks** — 8 more checks for standard IEC 61131-3
   function blocks: timer / counter / edge-trig / bistable misuse.
+- **Code-quality + style checks** — 19 more, plus a configurable
+  `NAMING_CONVENTION` check and a config preset-pack mechanism
+  (`extends:`).
 
-Total: **32 check categories**, 105 tests across 38 files, all passing.
+Total: **52 check categories**, 131 tests across 52 files, all passing.
 
 ## Quick start
 
@@ -170,6 +173,33 @@ deliberately doesn't catch.
 | `COUNTER_VALUE_CHANGED` | `info` / `warn` / `error` by ratio | `CTU`/`CTD`/`CTUD` `PV` changed; severity scales with the change magnitude. |
 
 ### Static (look at the new revision in isolation, filter to bugs new in this PR)
+
+Code-quality + style:
+
+| Category | Default severity | Trigger |
+|---|---|---|
+| `EMPTY_STATEMENT` | `info` | Lone `;` with nothing in front. |
+| `UNUSED_RETURN_VALUE` | `info` | Function called as a bare statement; return discarded. |
+| `ARRAY_SINGLE_ELEMENT` | `info` | `ARRAY [5..5] OF T` — single-element array. |
+| `VARIABLE_SHADOWING` | `warn` | Local declaration has the same name as a `VAR_GLOBAL`. |
+| `UNQUALIFIED_ENUM_CONSTANT` | `info` | Bare `IDLE` matches a member of exactly one enum. |
+| `IDENTIFIER_CASE_MISMATCH` | `warn` | Reference uses different case than declaration. |
+| `UNUSED_INPUT_VAR` | `info` | `VAR_INPUT` declared but never read. |
+| `INPUT_VAR_WRITTEN` | `warn` | `VAR_INPUT` is assigned inside the POU. |
+| `BOOL_COMPARISON` | `info` | `IF b = TRUE THEN` — comparison adds no information. |
+| `REAL_EQUALITY` | `warn` | `=`/`<>` against a `REAL` literal — unreliable on floats. |
+| `MULTIPLE_EXIT_POINTS` | `info` | POU has more than one `RETURN`. |
+| `ASSIGNMENT_IN_CONDITION` | `warn` | `IF x := y THEN` — almost always a typo of `=`. |
+| `COMMENTED_OUT_CODE` | `info` | Comment whose content looks like ST source. |
+| `RECURSIVE_CALL` | `warn` | POU invokes itself; risks stack overflow on bounded runtimes. |
+| `FORBIDDEN_SYMBOL` | `error` (config-driven) | Identifier matches the repo's `forbidden_symbols` blocklist. |
+| `ADDRESS_OF_CONSTANT` | `warn` | `ADR(c)` where `c` is a `VAR_GLOBAL CONSTANT`. |
+| `UNUSED_OUTPUT_VAR` | `info` | `VAR_OUTPUT` declared but never written. |
+| `OUTPUT_VAR_READ_INTERNALLY` | `info` | `VAR_OUTPUT` read inside the POU; usually a sign you wanted a local. |
+| `NESTED_COMMENTS` | `info` | Block comment contains another block comment. |
+| `NAMING_CONVENTION` | `warn` (config-driven) | Declaration name doesn't match the configured prefix / suffix / regex. See [docs/preset-packs.md](docs/preset-packs.md). |
+
+Single-revision integrity:
 
 | Category | Default severity | Trigger |
 |---|---|---|
