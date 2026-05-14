@@ -940,9 +940,29 @@ function collectVarReferences(file: AstFile, t: SymbolTable): void {
   }
 }
 
+// Structured statements whose grammar rule does NOT consume the trailing
+// `;` — for these, the `;` after the closing keyword (END_FOR, END_IF,
+// END_WHILE, END_CASE, END_REPEAT) parses as a standalone `empty_statement`
+// node. That `;` is a statement terminator, not an intentional no-op,
+// so we skip it. Statements that DO consume their `;`
+// (assignment / invocation / return / exit / continue) don't need to be
+// listed here — there's no phantom semicolon to skip.
+const STRUCTURED_NON_SEMI_STATEMENTS = new Set<string>([
+  'for_statement',
+  'if_statement',
+  'while_statement',
+  'repeat_statement',
+  'case_statement',
+  'pragma',
+]);
+
 function collectFileScopedStatements(file: AstFile, t: SymbolTable): void {
   // Empty statements.
   for (const node of descendantsOfType(file.root, 'empty_statement')) {
+    const prev = node.previousNamedSibling;
+    if (prev && STRUCTURED_NON_SEMI_STATEMENTS.has(prev.type)) {
+      continue; // grammar artifact, not a real empty statement
+    }
     const line = lineOf(node);
     const e: EmptyStmt = {
       file: file.path,
