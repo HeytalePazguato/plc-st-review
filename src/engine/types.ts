@@ -228,6 +228,14 @@ export interface SymbolTable {
   assignmentTargets: AssignmentTarget[];
   returnPoints: ReturnPoint[];
   declarations: NamedDecl[];
+  addressOfExprs: AddressOfExpr[];
+}
+
+export interface AddressOfExpr {
+  operand: string; // text of the addressed operand, e.g. `SAFETY_TIMEOUT`, `T1.PT`
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export type PouKind =

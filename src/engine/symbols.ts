@@ -82,6 +82,7 @@ export function emptySymbolTable(): SymbolTable {
     assignmentTargets: [],
     returnPoints: [],
     declarations: [],
+    addressOfExprs: [],
   };
 }
 
@@ -207,6 +208,7 @@ function extractFile(file: AstFile, t: SymbolTable): void {
   collectTimerPtAssignments(file, t);
   collectVarReferences(file, t);
   collectFileScopedStatements(file, t);
+  collectAddressOfExprs(file, t);
   collectComments(file, t);
   // pragmas inside POUs
   for (const p of descendantsOfType(root, NODE.PRAGMA)) {
@@ -924,6 +926,44 @@ function collectMemberFieldAssignments(
   }
 }
 
+// Classify an identifier node as a read or a write by walking up to the
+// nearest assignment_statement and checking whether the identifier sits
+// inside the LHS subtree (first named child). Identifiers not under any
+// assignment are treated as reads. Returns 'unknown' only when parent
+// links are unavailable (synthetic test fixtures don't populate them).
+function refContext(node: StNode): VarReference['context'] {
+  if (node.parent === undefined) return 'unknown';
+  let child: StNode = node;
+  let cur: StNode | null | undefined = node.parent;
+  while (cur) {
+    if (cur.type === NODE.ASSIGNMENT_STATEMENT) {
+      const lhs = childrenOf(cur)[0];
+      return lhs && child === lhs ? 'write' : 'read';
+    }
+    child = cur;
+    cur = cur.parent ?? null;
+  }
+  return 'read';
+}
+
+// `ADR(x)` parses as its own `address_of_expression` node (not a
+// call_expression), so it never reaches collectCallSites. Collect it
+// directly so ADDRESS_OF_CONSTANT can see it.
+function collectAddressOfExprs(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, 'address_of_expression')) {
+    const operandNode =
+      node.childForFieldName?.('operand') ?? childrenOf(node)[0] ?? null;
+    if (!operandNode) continue;
+    const line = lineOf(node);
+    t.addressOfExprs.push({
+      operand: operandNode.text.trim(),
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    });
+  }
+}
+
 function collectVarReferences(file: AstFile, t: SymbolTable): void {
   for (const ref of descendantsOfType(file.root, NODE.IDENTIFIER)) {
     const refText = ref.text;
@@ -934,7 +974,7 @@ function collectVarReferences(file: AstFile, t: SymbolTable): void {
       file: file.path,
       line,
       scope: pouContainingLine(t, file.path, line),
-      context: 'unknown',
+      context: refContext(ref),
     };
     t.varReferences.push(v);
   }

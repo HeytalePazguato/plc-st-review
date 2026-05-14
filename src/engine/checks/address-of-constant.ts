@@ -1,16 +1,17 @@
-import type { CallSite, Check, Finding, SymbolTable } from '../types.js';
+import type { AddressOfExpr, Check, Finding, SymbolTable } from '../types.js';
 
-function isAdrOfConstant(cs: CallSite, t: SymbolTable): { name: string } | null {
-  if (cs.callee.toLowerCase() !== 'adr') return null;
-  const arg = cs.positionalArgs[0]?.trim();
-  if (!arg) return null;
-  const g = t.globals.get(arg);
-  if (g?.constant) return { name: arg };
-  return null;
+// Resolve the addressed operand to a VAR_GLOBAL CONSTANT, if it is one.
+// The operand may be a bare global name; member access (`T1.PT`) and
+// locals are not constants in the global table, so they fall through.
+function constantName(expr: AddressOfExpr, t: SymbolTable): string | null {
+  const bare = expr.operand.split(/[.[\s]/)[0];
+  if (!bare) return null;
+  const g = t.globals.get(bare);
+  return g?.constant ? bare : null;
 }
 
-function key(cs: CallSite): string {
-  return `${cs.file}::${cs.line}`;
+function key(expr: AddressOfExpr): string {
+  return `${expr.file}::${expr.scope}::${expr.line}::${expr.operand}`;
 }
 
 export const addressOfConstant: Check = {
@@ -19,19 +20,19 @@ export const addressOfConstant: Check = {
   run(ctx) {
     const findings: Finding[] = [];
     const before = new Set<string>();
-    for (const cs of ctx.before.callSites) {
-      if (isAdrOfConstant(cs, ctx.before)) before.add(key(cs));
+    for (const expr of ctx.before.addressOfExprs) {
+      if (constantName(expr, ctx.before)) before.add(key(expr));
     }
-    for (const cs of ctx.after.callSites) {
-      const hit = isAdrOfConstant(cs, ctx.after);
-      if (!hit) continue;
-      if (before.has(key(cs))) continue;
+    for (const expr of ctx.after.addressOfExprs) {
+      const name = constantName(expr, ctx.after);
+      if (!name) continue;
+      if (before.has(key(expr))) continue;
       findings.push({
         severity: 'warn',
         category: 'ADDRESS_OF_CONSTANT',
-        file: cs.file,
-        line: cs.line,
-        summary: `ADR(${hit.name}) — taking the address of a CONSTANT`,
+        file: expr.file,
+        line: expr.line,
+        summary: `ADR(${name}) — taking the address of a CONSTANT`,
         detail:
           'A CONSTANT may live in flash/read-only storage on some runtimes; dereferencing a pointer derived from it can fault. If you need a mutable copy, declare a regular VAR_GLOBAL initialised to the constant.',
       });

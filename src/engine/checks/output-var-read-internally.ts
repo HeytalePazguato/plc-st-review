@@ -8,16 +8,12 @@ function isReadInsideScope(d: NamedDecl, t: SymbolTable): boolean {
   for (const ref of t.varReferences) {
     if (ref.scope !== d.scope) continue;
     if (ref.line === d.line) continue;
-    if (ref.name.toLowerCase() === d.name.toLowerCase()) {
-      // Filter out the LHS of assignments (which are writes, not reads).
-      const isWrite = t.assignmentTargets.some(
-        (tg) =>
-          tg.scope === ref.scope &&
-          tg.line === ref.line &&
-          tg.name.toLowerCase() === ref.name.toLowerCase(),
-      );
-      if (!isWrite) return true;
-    }
+    if (ref.name.toLowerCase() !== d.name.toLowerCase()) continue;
+    // ref.context distinguishes the LHS (write) from any RHS use (read).
+    // This correctly handles `rOut := rOut + 1.0;` — the same name appears
+    // as both a write and a read on one line; the old same-line heuristic
+    // masked the read because an assignment target existed on that line.
+    if (ref.context === 'read') return true;
   }
   return false;
 }

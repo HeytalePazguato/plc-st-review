@@ -16,11 +16,23 @@ function findInRoot(file: string, root: StNode | null | undefined): Set<string> 
   const out = new Set<string>();
   if (!root) return out;
   for (const cond of descendantsOfAnyType(root, CONDITIONAL_TYPES)) {
+    // Case 1: the grammar happened to parse a real assignment_statement
+    // inside the conditional. Only flag ones on the conditional's own line
+    // (the condition expression) — not ones in the body below.
     for (const asn of descendantsOfType(cond, NODE.ASSIGNMENT_STATEMENT)) {
-      // Only flag assignments directly inside the condition expression — not
-      // ones inside the body. Approximation: if the assignment's line is the
-      // same as the conditional statement's line, it's in the condition.
       if (asn.startPosition.row === cond.startPosition.row) {
+        out.add(key(file, cond.startPosition.row + 1));
+      }
+    }
+    // Case 2: `IF x := y THEN` is not valid ST — `:=` is illegal in an
+    // expression — so tree-sitter recovers by emitting an ERROR node
+    // (e.g. `:= y`) rather than an assignment_statement. Detect that:
+    // an ERROR descendant on the conditional's line whose text has `:=`.
+    for (const err of descendantsOfType(cond, 'ERROR')) {
+      if (
+        err.startPosition.row === cond.startPosition.row &&
+        err.text.includes(':=')
+      ) {
         out.add(key(file, cond.startPosition.row + 1));
       }
     }
