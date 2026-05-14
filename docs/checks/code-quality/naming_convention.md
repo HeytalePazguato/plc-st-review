@@ -11,6 +11,23 @@ your team writes the rules in `naming_conventions:`, optionally
 composed from shared preset files via `extends:` (see
 [`preset-packs.md`](../../preset-packs.md)).
 
+This is a clean and simple way to enforce team or company coding
+guidelines without needing a separate style review pass: once
+`naming_conventions:` is set in `.plc-st-review.yml`, the PR or MR
+itself becomes the enforcement surface. Every non-conforming
+identifier shows up as an inline comment on the exact line, so the
+guideline lives next to the code instead of in a PDF nobody re-reads.
+Reviewers don't have to remember the rules; the bot does. Onboarding
+a new engineer means pointing them at the comments the bot leaves,
+not at a wiki page.
+
+Typical workflow: agree on the convention once (often distilled from
+an existing internal style guide), drop it into `.plc-st-review.yml`
+on `main`, and from then on every PR/MR that introduces a
+non-conforming name gets an actionable, line-specific note. Grandfather
+legacy code in via `naming_ignore:` so the check only enforces new
+work — no day-one renaming churn required.
+
 **Settings.** Off by default. Configure per declaration-kind:
 
 ```yaml
