@@ -128,6 +128,10 @@ export interface StNode {
   readonly children: readonly StNode[];
   readonly namedChildren?: readonly StNode[];
   readonly parent?: StNode | null;
+  readonly previousSibling?: StNode | null;
+  readonly previousNamedSibling?: StNode | null;
+  readonly nextSibling?: StNode | null;
+  readonly nextNamedSibling?: StNode | null;
   childForFieldName?(name: string): StNode | null;
 }
 
