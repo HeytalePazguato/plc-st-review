@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { writeFile } from 'node:fs/promises';
+import { access, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { loadConfig } from './config.js';
 import { runReview, shouldFail } from './engine/review.js';
@@ -69,7 +70,11 @@ async function main(): Promise<void> {
     fail(`Invalid --severity: ${String(opts.severity)}`);
   }
 
-  const config = await loadConfig(opts.config ?? null);
+  const configPath = opts.config ?? (await discoverConfig());
+  if (configPath && !opts.config) {
+    console.error(`plc-st-review: using config ${configPath}`);
+  }
+  const config = await loadConfig(configPath);
 
   if (opts.gitlab) {
     await runGitlabMode(opts, config);
@@ -198,6 +203,23 @@ async function runGitlabMode(
 
 function collectFiles(value: string, prev: string[]): string[] {
   return [...prev, value];
+}
+
+// Look for a config file in CWD when --config is not provided. The two
+// filenames cover both the common dotfile name and the editor-friendly
+// non-dotfile variant. Returns the resolved absolute path, or null if
+// neither exists.
+async function discoverConfig(): Promise<string | null> {
+  for (const name of ['.plc-st-review.yml', 'plc-st-review.yml']) {
+    const candidate = resolve(process.cwd(), name);
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // not present, try next
+    }
+  }
+  return null;
 }
 
 function isOutput(s: string): s is CliOptions['output'] {
