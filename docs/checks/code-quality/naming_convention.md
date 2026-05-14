@@ -64,8 +64,44 @@ naming_ignore:
   - /^Tc[0-9]+_/             # regex inside slashes
 ```
 
-Each rule accepts any combination of `prefix`, `suffix`, `pattern` —
-all listed must match.
+**`prefix`, `suffix`, and `pattern` combine with AND.** Each rule can
+list one, two, or all three at the same time. Whatever you list must
+*all* hold for the identifier to pass — if any one fails, the check
+fires. Listing none means the kind is unconstrained.
+
+Examples:
+
+```yaml
+naming_conventions:
+  # Just a prefix — anything starting with FB_ is fine.
+  function_block: { prefix: FB_ }
+
+  # Prefix AND suffix — must start with E_ AND end with _enum.
+  # E_State        ❌ no suffix
+  # State_enum     ❌ no prefix
+  # E_State_enum   ✅
+  enum_type:
+    prefix: E_
+    suffix: _enum
+
+  # Prefix AND pattern — must start with i AND match the regex.
+  # iCount         ✅
+  # ix             ❌ regex needs ≥3 chars after the prefix
+  # nCount         ❌ wrong prefix
+  int:
+    prefix: i
+    pattern: '^[a-z][A-Za-z0-9]{3,}$'
+
+  # Pattern only — single regex of record. Use this when prefix/suffix
+  # aren't expressive enough (e.g. SCREAMING_SNAKE_CASE for constants).
+  constant: { pattern: '^[A-Z][A-Z0-9_]*$' }
+```
+
+`case: insensitive` only affects `prefix` / `suffix` matching;
+`pattern` is always a literal JavaScript regex (add `(?i)`-equivalent
+character classes yourself if you need it case-insensitive). Malformed
+regexes are silently skipped — the rule effectively becomes prefix /
+suffix only — so test your patterns.
 
 **Trigger.**
 
