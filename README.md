@@ -1,9 +1,27 @@
 # plc-st-review
 
-Semantic code review for IEC 61131-3 Structured Text pull/merge requests. Parses
-old and new versions of `.st` files with the
+A **semantic linter, code reviewer, and team-style enforcer** for
+IEC 61131-3 Structured Text — built for CI on PLC codebases that can't
+be compiled outside the vendor IDE. Parses `.st` files with the
 [tree-sitter-iec61131-3-st](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st)
-grammar and reports semantic changes — not textual diffs.
+grammar and reports semantic problems — not textual diffs.
+
+`plc-st-review` runs in **three modes**, each backed by the same
+52-check engine:
+
+- **Static linter** (`--lint src/**/*.st`) — run on every push. 35
+  single-revision checks for ST bugs: division by zero, out-of-range
+  array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads,
+  unused vars, naming-convention drift, `forbidden_symbols`, and more.
+- **PR / MR reviewer** (GitHub Action or GitLab CI job) — posts inline
+  review comments on lines that triggered findings. Adds 17 diff-based
+  checks that compare the PR against its base: signature drift,
+  outdated call sites, enum removals, timer-value changes, EXTENDS
+  swaps, pragmas, `SAFETY_*` constant changes, and more.
+- **Team-style enforcer** — drop a `.plc-st-review.yml` in the repo
+  root listing your `naming_conventions` (prefix / suffix / pattern per
+  declaration kind) and `forbidden_symbols`. Both modes pick it up
+  automatically.
 
 Catches the bugs reviewers miss on visual scan:
 
@@ -71,9 +89,43 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
   `NAMING_CONVENTION` check and a config preset-pack mechanism
   (`extends:`).
 
-Total: **52 check categories**, 131 tests across 52 files, all passing.
+Total: **52 check categories** (35 single-revision + 17 diff-based),
+148 tests across 53 files, all passing.
 
 ## Quick start
+
+### CI linter (no PR required)
+
+Most industrial ST repos don't run on a PR/MR workflow — code lands
+on `main` after a manual code review and an IDE-side build. You can
+still get every single-revision check on every push:
+
+```yaml
+# .gitlab-ci.yml — lint every .st file on every push, no MR needed
+lint-st:
+  image: ghcr.io/heytalepazguato/plc-st-review:v0
+  script:
+    - plc-st-review --lint "src/**/*.st"
+```
+
+```yaml
+# .github/workflows/lint.yml — same idea on GitHub
+name: lint
+on: [push]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npx plc-st-review --lint "src/**/*.st"
+```
+
+`--lint` accepts file paths, directories, or globs (`*`, `**`,
+mixed). It parses each `.st` file in isolation and runs the **35
+single-revision checks** — the 17 diff-based ones are auto-disabled
+because there's no "before" state. Exit code is non-zero when any
+finding meets `reporting.fail_on_severity` (default `error`), so the
+job fails the pipeline on real bugs.
 
 ### GitHub pull request
 
@@ -150,9 +202,10 @@ walkthrough and the common-gotchas list.
 ### CLI
 
 ```sh
-npm install -g plc-st-review            # once published
-plc-st-review --base main --head HEAD   # diff current branch against main
-plc-st-review --files old.st new.st     # compare two specific files
+npm install -g plc-st-review               # once published
+plc-st-review --lint "src/**/*.st"         # static linting, no PR / base ref needed
+plc-st-review --base main --head HEAD      # diff current branch against main
+plc-st-review --files old.st new.st        # compare two specific files
 plc-st-review --base main --output json --out-file findings.json
 ```
 
