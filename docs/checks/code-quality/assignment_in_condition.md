@@ -5,7 +5,7 @@
 `:=` used inside an `IF` / `WHILE` / `REPEAT` condition expression.
 
 **Why it matters.** IEC 61131-3 evaluates `x := y` as the assigned
-value, so `IF x := y THEN` works — but the human intent is almost
+value, so `IF x := y THEN` works, but the human intent is almost
 always `IF x = y THEN`. Easy to typo, hard to spot.
 
 **Settings.** No check-specific config.
@@ -13,7 +13,7 @@ always `IF x = y THEN`. Easy to typo, hard to spot.
 **Trigger.**
 
 ```pascal
-IF iCounter := 0 THEN ...          (* fires — probably meant `IF iCounter = 0` *)
+IF iCounter := 0 THEN ...          (* fires, probably meant `IF iCounter = 0` *)
 ```
 
 **The bot posts.**

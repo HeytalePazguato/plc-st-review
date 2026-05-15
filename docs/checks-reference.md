@@ -1,6 +1,6 @@
 # Checks reference
 
-Every check `plc-st-review` ships with — what it catches, why it exists, how to configure it, an ST trigger, what the bot posts, and a suggested fix. See [`check-limitations.md`](check-limitations.md) for what each check deliberately *doesn't* catch.
+Every check `plc-st-review` ships with, what it catches, why it exists, how to configure it, an ST trigger, what the bot posts, and a suggested fix. See [`check-limitations.md`](check-limitations.md) for what each check deliberately *doesn't* catch.
 
 **Live demo:** every check in this document fires at least once on [PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1), where you can see the exact inline comments the bot posts.
 
@@ -54,7 +54,7 @@ These run on the *after* tree alone and surface bugs that compile but mis-behave
 
 ## FB-instance checks
 
-These target standard IEC 61131-3 function-block patterns (`TON`, `CTU`, `R_TRIG`, `SR`/`RS`, etc.) — wiring mistakes that won't trip a normal compiler but produce wrong runtime behavior.
+These target standard IEC 61131-3 function-block patterns (`TON`, `CTU`, `R_TRIG`, `SR`/`RS`, etc.), wiring mistakes that won't trip a normal compiler but produce wrong runtime behavior.
 
 - [COUNTER_PV_ZERO](checks/fb-instance/counter_pv_zero.md)
 - [TIMER_PT_ZERO](checks/fb-instance/timer_pt_zero.md)
@@ -95,4 +95,4 @@ These are stylistic / hygiene checks. Most ship at `info` severity and stay off 
 
 To suppress a check for a single repo, add it to `disabled_checks` in `.plc-st-review.yml`. To raise or lower its severity, use `severity_overrides`. See [`tuning-severities.md`](tuning-severities.md) for the tuning ramp.
 
-To compose policy across many repos — naming conventions, severity profiles, forbidden symbols — use `extends:` to pull from shared preset files. See [`preset-packs.md`](preset-packs.md).
+To compose policy across many repos, naming conventions, severity profiles, forbidden symbols, use `extends:` to pull from shared preset files. See [`preset-packs.md`](preset-packs.md).

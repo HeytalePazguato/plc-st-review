@@ -90,7 +90,7 @@ export const TIMER_TYPE_NAMES = new Set<string>(['TON', 'TOF', 'TP']);
 
 export function childrenOf(node: StNode): readonly StNode[] {
   // Prefer the parser's `namedChildren` when available (the real tree-sitter
-  // node exposes both — `children` includes anonymous tokens like `FOR`,
+  // node exposes both, `children` includes anonymous tokens like `FOR`,
   // `:=`, `;`, which break positional indexing and pollute structural walks).
   // Test fixtures don't populate `namedChildren`, so we fall back to `children`
   // for them (the fixture builder only emits named-equivalent nodes anyway).

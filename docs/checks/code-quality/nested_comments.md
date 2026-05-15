@@ -5,7 +5,7 @@
 A block comment contains another block comment.
 
 **Why it matters.** Different IEC 61131-3 implementations handle
-`(* outer (* inner *) *)` differently — some treat the first `*)`
+`(* outer (* inner *) *)` differently, some treat the first `*)`
 as the terminator, leaving the rest as code. Even where the
 implementation is well-defined, the syntax is confusing to readers.
 

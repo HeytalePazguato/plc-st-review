@@ -7,14 +7,14 @@ PR/MR workflow but still want every push checked for ST bugs.
 
 ## What it runs
 
-Lint mode runs the **35 single-revision check categories** — the ones
+Lint mode runs the **35 single-revision check categories**: the ones
 that fire on a single file without comparing it to anything. The 17
 diff-based categories are auto-disabled because they have no "before"
 state to compare against:
 
 | Category | Reason auto-disabled in lint mode |
 |---|---|
-| `SIGNATURE_CHANGED`, `TYPE_MISMATCH`, `TIMER_VALUE_CHANGED`, `CONSTANT_VALUE_CHANGED`, `COUNTER_VALUE_CHANGED`, `ARRAY_BOUNDS_CHANGED`, `LOOP_BOUNDS_CHANGED`, `INHERITANCE_CHANGED`, `COMMENT_ONLY` | Compare a "before" value to an "after" value — meaningless with no before. |
+| `SIGNATURE_CHANGED`, `TYPE_MISMATCH`, `TIMER_VALUE_CHANGED`, `CONSTANT_VALUE_CHANGED`, `COUNTER_VALUE_CHANGED`, `ARRAY_BOUNDS_CHANGED`, `LOOP_BOUNDS_CHANGED`, `INHERITANCE_CHANGED`, `COMMENT_ONLY` | Compare a "before" value to an "after" value, meaningless with no before. |
 | `ENUM_VALUE_REMOVED`, `ENUM_VALUE_ADDED`, `ENUM_VALUE_UNUSED`, `POU_DELETED`, `POU_RENAMED`, `METHOD_ADDED_TO_INTERFACE` | Definition of "removed" / "added" / "renamed" requires a before. |
 | `PRAGMA_CHANGED`, `UNUSED_VAR_INTRODUCED` | Without a before, these would surface every pragma / every variable as a "new" finding. |
 
@@ -67,7 +67,7 @@ full configuration reference.
 
 Per-check severity overrides, `disabled_checks`, `ignore_paths`,
 `safety_critical_prefixes`, and `reporting.fail_on_severity` all apply
-the same way — see [Tuning severities](tuning-severities.md) and
+the same way, see [Tuning severities](tuning-severities.md) and
 [Preset packs](preset-packs.md).
 
 ## CI examples
@@ -116,14 +116,14 @@ Same as the other modes: `terminal` (ANSI when stdout is a TTY),
 plc-st-review --lint "src/**/*.st" --output json --out-file findings.json
 ```
 
-The JSON format is the stable contract for downstream tooling — IDE
+The JSON format is the stable contract for downstream tooling. IDE
 integrations, dashboards, or your own findings aggregator.
 
 ## Exit codes
 
-- `0` — no findings at or above the fail-on threshold.
-- `1` — at least one finding meets `reporting.fail_on_severity`
+- `0`: no findings at or above the fail-on threshold.
+- `1`: at least one finding meets `reporting.fail_on_severity`
   (default: `error`). The CLI still prints the full findings list
   before exiting.
-- `2` — invalid arguments or an unrecoverable error (bad config, no
+- `2`: invalid arguments or an unrecoverable error (bad config, no
   files matched, etc).

@@ -19,8 +19,7 @@ Each check in `plc-st-review` is a self-contained module under
      run(ctx) {
        const findings = [];
        // Walk ctx.before / ctx.after symbol tables, compare,
-       // and push Finding objects. Don't bake severity in stone —
-       // the engine applies `severity_overrides` from the user's
+       // and push Finding objects. Don't bake severity in stone, // the engine applies `severity_overrides` from the user's
        // config on top of whatever you return.
        return findings;
      },

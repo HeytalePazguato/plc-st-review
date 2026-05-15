@@ -40,7 +40,7 @@ export const identifierCaseMismatch: Check = {
       if (d.name.toLowerCase() !== ref.name.toLowerCase()) continue;
       const k = key(ref.file, ref.line, ref.name);
       if (beforeBad.has(k)) continue;
-      // Dedupe per (file, line, name) — multiple identifiers on the same line
+      // Dedupe per (file, line, name), multiple identifiers on the same line
       // are common (e.g. `iCount := iCount + 1;`).
       const dedupe = `${ref.file}::${ref.line}::${ref.name}`;
       if (seen.has(dedupe)) continue;

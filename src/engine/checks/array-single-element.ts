@@ -29,7 +29,7 @@ export const arraySingleElement: Check = {
         line: a.line,
         summary: `Array ${a.varName} declared with a single element [${a.lower}..${a.upper}]`,
         detail:
-          'An array of length one is usually a mistake — either the bounds are wrong, or a scalar variable would be clearer.',
+          'An array of length one is usually a mistake, either the bounds are wrong, or a scalar variable would be clearer.',
       });
     }
     return findings;

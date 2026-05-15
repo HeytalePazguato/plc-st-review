@@ -1,6 +1,6 @@
 # FORBIDDEN_SYMBOL
 
-**Severity:** `error` (config-driven — off by default)
+**Severity:** `error` (config-driven, off by default)
 
 An identifier matches an entry in the repo's `forbidden_symbols`
 blocklist.

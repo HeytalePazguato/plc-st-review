@@ -6,7 +6,7 @@ A POU has more than one `RETURN`.
 
 **Why it matters.** Multiple exits make control flow harder to
 trace and tend to accumulate dead code or duplicate cleanup. Not
-universally bad — but worth flagging once you have 3+.
+universally bad, but worth flagging once you have 3+.
 
 **Settings.** No check-specific config.
 
@@ -19,7 +19,7 @@ FUNCTION Choose : INT
         RETURN;                    (* exit 1 *)
     END_IF;
     Choose := 2;
-    RETURN;                        (* exit 2 — fires *)
+    RETURN;                        (* exit 2, fires *)
 END_FUNCTION
 ```
 

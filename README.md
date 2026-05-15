@@ -1,24 +1,32 @@
 # plc-st-review
 
+[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json)
+[![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/)
+[![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review)
+[![Checks](https://img.shields.io/badge/checks-52%20categories-orange)](docs/checks-reference.md)
+
 A **semantic linter, code reviewer, and team-style enforcer** for
-IEC 61131-3 Structured Text — built for CI on PLC codebases that can't
+IEC 61131-3 Structured Text, built for CI on PLC codebases that can't
 be compiled outside the vendor IDE. Parses `.st` files with the
 [tree-sitter-iec61131-3-st](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st)
-grammar and reports semantic problems — not textual diffs.
+grammar and reports semantic problems, not textual diffs.
 
 `plc-st-review` runs in **three modes**, each backed by the same
 52-check engine:
 
-- **Static linter** (`--lint src/**/*.st`) — run on every push. 35
+- **Static linter** (`--lint src/**/*.st`), run on every push. 35
   single-revision checks for ST bugs: division by zero, out-of-range
   array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads,
   unused vars, naming-convention drift, `forbidden_symbols`, and more.
-- **PR / MR reviewer** (GitHub Action or GitLab CI job) — posts inline
+- **PR / MR reviewer** (GitHub Action or GitLab CI job), posts inline
   review comments on lines that triggered findings. Adds 17 diff-based
   checks that compare the PR against its base: signature drift,
   outdated call sites, enum removals, timer-value changes, EXTENDS
   swaps, pragmas, `SAFETY_*` constant changes, and more.
-- **Team-style enforcer** — drop a `.plc-st-review.yml` in the repo
+- **Team-style enforcer**: drop a `.plc-st-review.yml` in the repo
   root listing your `naming_conventions` (prefix / suffix / pattern per
   declaration kind) and `forbidden_symbols`. Both modes pick it up
   automatically.
@@ -34,7 +42,7 @@ Catches the bugs reviewers miss on visual scan:
 ## See it in action
 
 **Live demo:**
-[**PR #1 — every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1)
+[**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1)
 👈 open this for the full bot output. The PR exercises **all 52 check
 categories** the tool ships with: each shows up as an inline review
 comment on the changed line that triggered it, and findings on lines
@@ -79,13 +87,13 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
 
 ## Status
 
-- **Phase 1** — engine, eight checks, CLI, three output formats. Done.
-- **Phase 2** — GitLab MR integration. Done.
-- **Phase 3** — GitHub Action + 10 additional check categories. Done.
-- **Static checks** — 6 single-revision checks for common ST bugs.
-- **FB-instance checks** — 8 more checks for standard IEC 61131-3
+- **Phase 1**: engine, eight checks, CLI, three output formats. Done.
+- **Phase 2**: GitLab MR integration. Done.
+- **Phase 3**: GitHub Action + 10 additional check categories. Done.
+- **Static checks**: 6 single-revision checks for common ST bugs.
+- **FB-instance checks**: 8 more checks for standard IEC 61131-3
   function blocks: timer / counter / edge-trig / bistable misuse.
-- **Code-quality + style checks** — 19 more, plus a configurable
+- **Code-quality + style checks**: 19 more, plus a configurable
   `NAMING_CONVENTION` check and a config preset-pack mechanism
   (`extends:`).
 
@@ -96,12 +104,12 @@ Total: **52 check categories** (35 single-revision + 17 diff-based),
 
 ### CI linter (no PR required)
 
-Most industrial ST repos don't run on a PR/MR workflow — code lands
+Most industrial ST repos don't run on a PR/MR workflow, code lands
 on `main` after a manual code review and an IDE-side build. You can
 still get every single-revision check on every push:
 
 ```yaml
-# .gitlab-ci.yml — lint every .st file on every push, no MR needed
+# .gitlab-ci.yml, lint every .st file on every push, no MR needed
 lint-st:
   image: ghcr.io/heytalepazguato/plc-st-review:v0
   script:
@@ -109,7 +117,7 @@ lint-st:
 ```
 
 ```yaml
-# .github/workflows/lint.yml — same idea on GitHub
+# .github/workflows/lint.yml, same idea on GitHub
 name: lint
 on: [push]
 jobs:
@@ -122,7 +130,7 @@ jobs:
 
 `--lint` accepts file paths, directories, or globs (`*`, `**`,
 mixed). It parses each `.st` file in isolation and runs the **35
-single-revision checks** — the 17 diff-based ones are auto-disabled
+single-revision checks**: the 17 diff-based ones are auto-disabled
 because there's no "before" state. Exit code is non-zero when any
 finding meets `reporting.fail_on_severity` (default `error`), so the
 job fails the pipeline on real bugs.
@@ -178,21 +186,21 @@ duplicates) on re-runs.
 
 **Important notes for GitLab users:**
 
-- **Pull credentials** — GitLab runners pull the image from GHCR
+- **Pull credentials**: GitLab runners pull the image from GHCR
   anonymously. The image is published as **public**, so no
   `docker login` step is needed. If your runner is offline and you
   mirror the image internally, pull `ghcr.io/heytalepazguato/plc-st-review:v0`
   once and push to your internal registry.
-- **Self-hosted GitLab** — supported. The example above reads
+- **Self-hosted GitLab**: supported. The example above reads
   `GITLAB_URL` from `$CI_SERVER_URL`, which is auto-provided by every
   GitLab runner regardless of whether you're on `gitlab.com` or your
   own instance.
-- **Token scope** — `$CI_JOB_TOKEN` works for most projects with
+- **Token scope**: `$CI_JOB_TOKEN` works for most projects with
   default settings. If your instance restricts job tokens, mint a
   project access token with `api` scope and set it as a masked,
   protected CI/CD variable named `GITLAB_TOKEN`, then drop the
   `GITLAB_TOKEN: $CI_JOB_TOKEN` line.
-- **Same engine as the GitHub Action** — every check listed below
+- **Same engine as the GitHub Action**: every check listed below
   fires identically on GitLab. There is no GitHub-only path in the
   engine.
 
@@ -217,7 +225,7 @@ The CLI exits non-zero when at least one finding meets or exceeds the
 ## Live demo
 
 [PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open
-as the canonical demo — every check below fires at least once on that PR,
+as the canonical demo, every check below fires at least once on that PR,
 with the exact inline comments the bot posts. Open it to see the tool in
 action on real ST.
 
@@ -261,16 +269,16 @@ Code-quality + style:
 |---|---|---|
 | `EMPTY_STATEMENT` | `info` | Lone `;` with nothing in front. |
 | `UNUSED_RETURN_VALUE` | `info` | Function called as a bare statement; return discarded. |
-| `ARRAY_SINGLE_ELEMENT` | `info` | `ARRAY [5..5] OF T` — single-element array. |
+| `ARRAY_SINGLE_ELEMENT` | `info` | `ARRAY [5..5] OF T`: single-element array. |
 | `VARIABLE_SHADOWING` | `warn` | Local declaration has the same name as a `VAR_GLOBAL`. |
 | `UNQUALIFIED_ENUM_CONSTANT` | `info` | Bare `IDLE` matches a member of exactly one enum. |
 | `IDENTIFIER_CASE_MISMATCH` | `warn` | Reference uses different case than declaration. |
 | `UNUSED_INPUT_VAR` | `info` | `VAR_INPUT` declared but never read. |
 | `INPUT_VAR_WRITTEN` | `warn` | `VAR_INPUT` is assigned inside the POU. |
-| `BOOL_COMPARISON` | `info` | `IF b = TRUE THEN` — comparison adds no information. |
-| `REAL_EQUALITY` | `warn` | `=`/`<>` against a `REAL` literal — unreliable on floats. |
+| `BOOL_COMPARISON` | `info` | `IF b = TRUE THEN`: comparison adds no information. |
+| `REAL_EQUALITY` | `warn` | `=`/`<>` against a `REAL` literal, unreliable on floats. |
 | `MULTIPLE_EXIT_POINTS` | `info` | POU has more than one `RETURN`. |
-| `ASSIGNMENT_IN_CONDITION` | `warn` | `IF x := y THEN` — almost always a typo of `=`. |
+| `ASSIGNMENT_IN_CONDITION` | `warn` | `IF x := y THEN`: almost always a typo of `=`. |
 | `COMMENTED_OUT_CODE` | `info` | Comment whose content looks like ST source. |
 | `RECURSIVE_CALL` | `warn` | POU invokes itself; risks stack overflow on bounded runtimes. |
 | `FORBIDDEN_SYMBOL` | `error` (config-driven) | Identifier matches the repo's `forbidden_symbols` blocklist. |
@@ -285,13 +293,13 @@ Single-revision integrity:
 | Category | Default severity | Trigger |
 |---|---|---|
 | `ENUM_VALUE_UNUSED` | `info` | An enum value is declared but no longer referenced anywhere in the repo. |
-| `ENUM_MEMBER_UNKNOWN` | `error` | A qualified ref like `E_State.IDEL` doesn't match any declared member of `E_State` — likely a typo. |
+| `ENUM_MEMBER_UNKNOWN` | `error` | A qualified ref like `E_State.IDEL` doesn't match any declared member of `E_State`: likely a typo. |
 | `ARRAY_INDEX_OUT_OF_BOUNDS` | `error` | A literal index sits outside the array's declared bounds (`arr[15]` when `arr` is `ARRAY [0..9]`). |
 | `DIVISION_BY_ZERO` | `error` | The divisor is a literal `0`, or a `VAR_GLOBAL CONSTANT` resolving to 0. |
 | `INFINITE_LOOP` | `error` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside the body. |
-| `LOOP_BOUNDS_REVERSED` | `error` | `FOR` loop bounds and step point opposite directions — per spec body never runs, on overflow-wrapping runtimes it runs ~unlimited times. |
-| `COUNTER_PV_ZERO` | `error` | `CTU`/`CTD`/`CTUD` initialized with `PV := 0` — Q always TRUE or counter useless. |
-| `TIMER_PT_ZERO` | `error` | `TON`/`TOF`/`TP` set with `PT := T#0s` — fires immediately or never. |
+| `LOOP_BOUNDS_REVERSED` | `error` | `FOR` loop bounds and step point opposite directions, per spec body never runs, on overflow-wrapping runtimes it runs ~unlimited times. |
+| `COUNTER_PV_ZERO` | `error` | `CTU`/`CTD`/`CTUD` initialized with `PV := 0`: Q always TRUE or counter useless. |
+| `TIMER_PT_ZERO` | `error` | `TON`/`TOF`/`TP` set with `PT := T#0s`: fires immediately or never. |
 | `TIMER_NOT_DRIVEN` | `warn` | A timer's `Q`/`ET` is read but no call site sets `IN`. |
 | `EDGE_TRIG_REUSED` | `error` | Same `R_TRIG`/`F_TRIG` instance fed by multiple different `CLK` expressions. |
 | `FB_INSTANCE_DOUBLE_CALL` | `warn` | Same FB instance invoked more than once in one scope's scan. |
@@ -346,7 +354,7 @@ npm run bootstrap
 `bootstrap` runs `npm install --ignore-scripts`, applies the local
 `tree-sitter` C++20 patch, and rebuilds the two native deps in the right
 order. This dance is needed because `tree-sitter` 0.25.0's `binding.gyp`
-specifies `/std:c++17`, but Node 20+'s V8 headers require C++20 — and a
+specifies `/std:c++17`, but Node 20+'s V8 headers require C++20, and a
 plain `npm install` triggers tree-sitter's source build before
 `postinstall: patch-package` ever gets a chance to fix it.
 
@@ -380,20 +388,20 @@ npm run lint               # tsc --noEmit
 
 Likely additions, in rough priority order:
 
-- **Standalone CLI binaries** — `plc-st-review-linux-x64`, `-darwin-arm64`,
+- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`,
   etc. as GitHub Release assets, for shops that don't have Node installed.
   Skipped for 0.0.1 because the native deps (`tree-sitter`,
   `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle
   cleanly through `pkg` or `bun --compile` without per-platform asset
   handling. Revisit if real users without Node ask.
-- **Optional LLM-powered explanations** — a `--explain` flag that
+- **Optional LLM-powered explanations**: a `--explain` flag that
   paraphrases deterministic findings in plain English for less-experienced
-  reviewers. Strictly additive — every explanation is grounded in a
+  reviewers. Strictly additive, every explanation is grounded in a
   deterministic finding; the LLM never surfaces new issues.
-- **Vendor-specific checks** — PLCopen `MC_*` motion patterns, TwinCAT /
+- **Vendor-specific checks**: PLCopen `MC_*` motion patterns, TwinCAT /
   CODESYS / ABB-specific library FBs. Currently the engine sticks to
   standard IEC 61131-3 to stay portable across vendors.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).

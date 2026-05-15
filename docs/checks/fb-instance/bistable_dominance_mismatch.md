@@ -8,7 +8,7 @@ set-dominant; `RS` is reset-dominant. Names containing `eStop`,
 (`RS`); names containing `set`, `latch`, `enable`, `start`, `arm`
 suggest set-dominant (`SR`).
 
-**Why it matters.** Pure heuristic — names lie, conventions vary.
+**Why it matters.** Pure heuristic, names lie, conventions vary.
 But on the codebases where naming is disciplined, mismatched
 dominance is usually a real bug, and the false-positive rate is
 manageable.
@@ -24,7 +24,7 @@ disabled_checks:
 **Trigger.**
 
 ```pascal
-eStopLatch : SR;                   (* fires — name suggests reset-dominant *)
+eStopLatch : SR;                   (* fires, name suggests reset-dominant *)
 ```
 
 **The bot posts.**

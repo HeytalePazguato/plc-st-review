@@ -14,7 +14,7 @@ write by accident, catastrophic in production.
 
 ```pascal
 WHILE TRUE DO
-    iCounter := iCounter + 1;      (* fires — no EXIT *)
+    iCounter := iCounter + 1;      (* fires, no EXIT *)
 END_WHILE;
 ```
 

@@ -1,7 +1,7 @@
 import type { CallSite, Check, Finding, SymbolTable } from '../types.js';
 
 // The FB type that owns a given scope. `cs.scope` is the qualified POU name
-// — for a top-level FB that's just its name; for a method it's `FB.Method`.
+//, for a top-level FB that's just its name; for a method it's `FB.Method`.
 // Either way the owning FB type is the first segment.
 function owningType(scope: string): string {
   return scope.includes('.') ? scope.split('.')[0] : scope;

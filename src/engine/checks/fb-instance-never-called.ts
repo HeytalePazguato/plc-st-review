@@ -24,7 +24,7 @@ function hasAnyCall(local: LocalVar, symbols: SymbolTable): boolean {
     if (cs.file !== local.file) continue;
     if (cs.callee.toLowerCase() === local.name.toLowerCase()) return true;
   }
-  // Also count member-access invocations like `obj.method()` — but our call
+  // Also count member-access invocations like `obj.method()`: but our call
   // sites already capture those via the invocation_statement walk.
   return false;
 }

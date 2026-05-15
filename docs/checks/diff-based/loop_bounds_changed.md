@@ -16,7 +16,7 @@ calc makes the magnitude visible at a glance.
 
 ```pascal
 FOR i := 1 TO 10 BY 1 DO ...    (* before *)
-FOR i := 1 TO 100 BY 1 DO ...   (* after — 10× iterations *)
+FOR i := 1 TO 100 BY 1 DO ...   (* after, 10× iterations *)
 ```
 
 **The bot posts.**

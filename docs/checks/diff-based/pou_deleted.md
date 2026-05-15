@@ -7,7 +7,7 @@ surviving call sites.
 
 **Why it matters.** The compiler tells you about callers; the engine
 beats it to the answer at PR-review time. Severity downgrades when
-there are no callers — that's a clean retirement.
+there are no callers, that's a clean retirement.
 
 **Settings.** No check-specific config.
 

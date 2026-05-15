@@ -18,7 +18,7 @@ FUNCTION Compute : INT
     Compute := 42;
 END_FUNCTION
 
-Compute();                         (* fires — return value discarded *)
+Compute();                         (* fires, return value discarded *)
 ```
 
 **The bot posts.**

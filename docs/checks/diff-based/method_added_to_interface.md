@@ -19,7 +19,7 @@ review so the implementer can be updated in the same PR.
 
 FUNCTION_BLOCK FB_Pump IMPLEMENTS IDrivable
     METHOD Start ... END_METHOD
-    (* no Stop method — fires *)
+    (* no Stop method, fires *)
 END_FUNCTION_BLOCK
 ```
 

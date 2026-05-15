@@ -5,7 +5,7 @@
 A BOOL variable is compared with `= TRUE` or `= FALSE`. The
 comparison adds no information.
 
-**Why it matters.** Style nit — `IF b THEN` is universally clearer
+**Why it matters.** Style nit, `IF b THEN` is universally clearer
 than `IF b = TRUE THEN`, and the latter sometimes hides intent in
 nested logic.
 

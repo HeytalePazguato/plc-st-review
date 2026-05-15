@@ -17,7 +17,7 @@ behind. Either way it pollutes the interface.
 FUNCTION_BLOCK FB_Pump
 VAR_INPUT
     xEnable : BOOL;
-    xUnused : BOOL;                (* fires — never used *)
+    xUnused : BOOL;                (* fires, never used *)
 END_VAR
 ```
 

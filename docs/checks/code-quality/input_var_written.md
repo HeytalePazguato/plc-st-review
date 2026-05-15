@@ -5,7 +5,7 @@
 A `VAR_INPUT` parameter is assigned inside the POU.
 
 **Why it matters.** Writing to an input breaks the input/output
-contract — the caller's value is gone on the next scan because the
+contract, the caller's value is gone on the next scan because the
 caller will rewrite it. Almost always a sign of confused intent.
 
 **Settings.** No check-specific config.

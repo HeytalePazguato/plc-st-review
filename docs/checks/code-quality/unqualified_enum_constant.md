@@ -17,7 +17,7 @@ code and break grep / IDE refactoring.
 ```pascal
 TYPE E_State : (IDLE, RUNNING); END_TYPE
 
-eState := IDLE;                    (* fires — should be E_State.IDLE *)
+eState := IDLE;                    (* fires, should be E_State.IDLE *)
 ```
 
 **The bot posts.**

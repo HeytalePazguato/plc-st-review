@@ -1,6 +1,6 @@
 # Preset packs
 
-`plc-st-review` ships **no opinionated naming or style defaults** — the
+`plc-st-review` ships **no opinionated naming or style defaults**: the
 out-of-the-box config has every per-team rule disabled. Different shops
 disagree on conventions (some prefix bools with `x`, some suffix enum
 types with `_enum`, some use both, some neither), and the engine has
@@ -36,7 +36,7 @@ naming_conventions:
   order; entries later in the list override earlier ones.
 - Paths can be relative to the file that declares `extends:`, or
   absolute.
-- A preset can itself extend another preset — `extends:` chains as
+- A preset can itself extend another preset, `extends:` chains as
   deep as you want.
 - The local config (the file you're loading) always overrides any
   values its presets set.
@@ -50,7 +50,7 @@ naming_conventions:
 | Field | How it merges |
 |---|---|
 | `extends` | Replaced (not relevant in the merged result) |
-| `disabled_checks` | Union — every preset's entry is collected |
+| `disabled_checks` | Union, every preset's entry is collected |
 | `severity_overrides` | Map merge, later wins |
 | `ignore_paths` | Union |
 | `safety_critical_prefixes` | Override (last writer wins) |
@@ -66,7 +66,7 @@ and CNC mills. You want a common baseline and a vertical-specific
 overlay.
 
 ```yaml
-# presets/company-standards.yml — reused across all projects
+# presets/company-standards.yml, reused across all projects
 
 # Every team agrees on these.
 safety_critical_prefixes:
@@ -93,7 +93,7 @@ naming_conventions:
 ```
 
 ```yaml
-# presets/injection-molding.yml — only the bits that change
+# presets/injection-molding.yml, only the bits that change
 
 # Injection cycle timing is safety-relevant on these machines.
 severity_overrides:
@@ -107,13 +107,13 @@ naming_conventions:
 forbidden_symbols:
   - /\\bSR\\b/
 
-# Suppress this — too noisy on the legacy code we inherited.
+# Suppress this, too noisy on the legacy code we inherited.
 disabled_checks:
   - BISTABLE_DOMINANCE_MISMATCH
 ```
 
 ```yaml
-# presets/cnc.yml — different vertical, different baseline
+# presets/cnc.yml, different vertical, different baseline
 
 severity_overrides:
   LOOP_BOUNDS_CHANGED: warn       # spindle programs run lots of FOR loops
@@ -145,12 +145,12 @@ extends:
 
 Three patterns, in increasing complexity:
 
-1. **Copy** — every project keeps a `presets/` directory; you update
+1. **Copy**: every project keeps a `presets/` directory; you update
    them when the standard changes. Lowest friction, highest drift.
-2. **Git submodule** — keep `presets/` as a submodule of a shared
+2. **Git submodule**: keep `presets/` as a submodule of a shared
    `standards` repo. One source of truth; updates are explicit per
    project.
-3. **CI-injected** — your CI clones the `standards` repo before
+3. **CI-injected**: your CI clones the `standards` repo before
    running `plc-st-review` and points `extends:` at the checkout.
    Same single-source-of-truth without per-project submodule
    plumbing.

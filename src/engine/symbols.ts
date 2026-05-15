@@ -645,7 +645,7 @@ function pickTypeNode(decl: StNode): StNode | null {
     }
   }
   // Fallback: user-defined types and system FBs (TON/TOF/TP) come through as a
-  // bare identifier — typically the second identifier child of the declaration.
+  // bare identifier, typically the second identifier child of the declaration.
   const idents: StNode[] = [];
   for (const c of childrenOf(decl)) {
     if (c.type === NODE.IDENTIFIER) idents.push(c);
@@ -981,12 +981,12 @@ function collectVarReferences(file: AstFile, t: SymbolTable): void {
 }
 
 // Structured statements whose grammar rule does NOT consume the trailing
-// `;` — for these, the `;` after the closing keyword (END_FOR, END_IF,
+// `;`: for these, the `;` after the closing keyword (END_FOR, END_IF,
 // END_WHILE, END_CASE, END_REPEAT) parses as a standalone `empty_statement`
 // node. That `;` is a statement terminator, not an intentional no-op,
 // so we skip it. Statements that DO consume their `;`
 // (assignment / invocation / return / exit / continue) don't need to be
-// listed here — there's no phantom semicolon to skip.
+// listed here, there's no phantom semicolon to skip.
 const STRUCTURED_NON_SEMI_STATEMENTS = new Set<string>([
   'for_statement',
   'if_statement',

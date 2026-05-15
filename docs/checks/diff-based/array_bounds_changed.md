@@ -14,7 +14,7 @@ layout and may invalidate hard-coded loop bounds in callers.
 
 ```pascal
 arr : ARRAY [0..9] OF INT;     (* before *)
-arr : ARRAY [0..4] OF INT;     (* after — shrunk, error *)
+arr : ARRAY [0..4] OF INT;     (* after, shrunk, error *)
 ```
 
 **The bot posts.**
@@ -22,7 +22,7 @@ arr : ARRAY [0..4] OF INT;     (* after — shrunk, error *)
 ```
 🟥 error  ARRAY_BOUNDS_CHANGED
 Array arr bounds: [0..9] → [0..4]
-Array shrank — any indexed access that hit the old upper bound is
+Array shrank, any indexed access that hit the old upper bound is
 now out of range.
 ```
 

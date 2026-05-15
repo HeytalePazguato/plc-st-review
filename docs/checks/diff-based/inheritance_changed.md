@@ -14,7 +14,7 @@ references. The check makes the change loud.
 
 ```pascal
 FUNCTION_BLOCK FB_Derived EXTENDS FB_OldBase     (* before *)
-FUNCTION_BLOCK FB_Derived EXTENDS FB_NewBase     (* after — fires *)
+FUNCTION_BLOCK FB_Derived EXTENDS FB_NewBase     (* after, fires *)
 ```
 
 **The bot posts.**

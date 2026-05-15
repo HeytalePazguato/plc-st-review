@@ -17,9 +17,9 @@ describe('ADDRESS_OF_CONSTANT', () => {
     resetLines();
     const before = sourceFile('FB.st', [fbDecl('FB', {})]);
     resetLines();
-    // ADR(cMax) — invocation with positional arg via our fixture builder.
+    // ADR(cMax), invocation with positional arg via our fixture builder.
     // We need a call with no namedArgs and one positional. The invocation helper
-    // builds a namedArgs map only — adapt by faking a positional via the call.
+    // builds a namedArgs map only, adapt by faking a positional via the call.
     // Simpler: create an invocation with one positional through manual node creation.
     const inv = invocation('ADR', {});
     // Patch the argument list to include a positional 'cMax' identifier.
@@ -30,7 +30,7 @@ describe('ADDRESS_OF_CONSTANT', () => {
     const after = sourceFile('FB.st', [
       fbDecl('FB', { locals: [inv] }),
     ]);
-    // For now assert the check fires zero times — the call site's positional arg
+    // For now assert the check fires zero times, the call site's positional arg
     // detection relies on the real parser; the fixture builder doesn't surface
     // positionalArgs. Real-parser coverage is exercised via FB_Diagnostics in PR #1.
     const findings = review([globals, before], [globals, after]);

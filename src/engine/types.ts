@@ -64,7 +64,7 @@ export type Category =
  * Categories that only make sense when comparing two revisions of the
  * code: their definition is "what changed between before and after?".
  * In `--lint` mode (no base ref, just a static analysis of the current
- * tree) these are auto-disabled — running them would either silently
+ * tree) these are auto-disabled, running them would either silently
  * produce zero findings or, in two cases (PRAGMA_CHANGED and
  * UNUSED_VAR_INTRODUCED), surface every pragma / every variable as a
  * "new" finding.

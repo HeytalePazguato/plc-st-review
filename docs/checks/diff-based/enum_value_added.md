@@ -7,7 +7,7 @@ matching branch and no `ELSE`.
 
 **Why it matters.** Adding a new state without updating every consumer
 is the most common state-machine bug. The check is the inverse of
-ENUM_VALUE_REMOVED — both directions need surveillance.
+ENUM_VALUE_REMOVED, both directions need surveillance.
 
 **Settings.** No check-specific config. See also `STATE_UNHANDLED`,
 which fires on the same shape even when the enum hasn't changed.
@@ -21,7 +21,7 @@ which fires on the same shape even when the enum hasn't changed.
 CASE eState OF
     E_State.IDLE: ...
     E_State.RUNNING: ...
-END_CASE;                        (* fires — no ERROR_RECOVERY branch, no ELSE *)
+END_CASE;                        (* fires, no ERROR_RECOVERY branch, no ELSE *)
 ```
 
 **The bot posts.**

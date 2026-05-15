@@ -10,7 +10,7 @@ function isReadInsideScope(d: NamedDecl, t: SymbolTable): boolean {
     if (ref.line === d.line) continue;
     if (ref.name.toLowerCase() !== d.name.toLowerCase()) continue;
     // ref.context distinguishes the LHS (write) from any RHS use (read).
-    // This correctly handles `rOut := rOut + 1.0;` — the same name appears
+    // This correctly handles `rOut := rOut + 1.0;`: the same name appears
     // as both a write and a read on one line; the old same-line heuristic
     // masked the read because an assignment target existed on that line.
     if (ref.context === 'read') return true;

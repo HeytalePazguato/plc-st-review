@@ -25,8 +25,8 @@ export const arrayBoundsChanged: Check = {
         line: after.line,
         summary: `Array ${after.varName} bounds: [${before.lower}..${before.upper}] → [${after.lower}..${after.upper}]`,
         detail: shrunk
-          ? 'Array shrank — any indexed access that hit the old upper bound is now out of range.'
-          : 'Array grew — indexing should still work but downstream allocations may need review.',
+          ? 'Array shrank, any indexed access that hit the old upper bound is now out of range.'
+          : 'Array grew, indexing should still work but downstream allocations may need review.',
       });
     }
     return findings;
