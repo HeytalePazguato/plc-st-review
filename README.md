@@ -17,8 +17,13 @@ Catches the bugs reviewers miss on visual scan:
 
 **Live demo:**
 [**PR #1 — every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1)
-👈 open this for the full bot output (20 inline review comments + a summary).
-The PR is intentionally kept open as a fixture; conversation is locked.
+👈 open this for the full bot output. The PR exercises **all 52 check
+categories** the tool ships with: each shows up as an inline review
+comment on the changed line that triggered it, and findings on lines
+outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor
+line wasn't itself edited) collect in a single summary comment at the
+bottom. The PR is intentionally kept open as a fixture; conversation is
+locked.
 
 A single finding looks like this in the GitHub UI:
 
