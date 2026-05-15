@@ -171,7 +171,12 @@ const findings: Finding[] = [
   },
 ];
 
-const postOpts: GitHubPostOptions = { ...opts, commentStyle: 'inline' };
+const postOpts: GitHubPostOptions = {
+  ...opts,
+  commentStyle: 'inline',
+  // Tests don't need the production rate-limit pacing.
+  interPostDelayMs: 0,
+};
 
 describe('postGitHubReview', () => {
   const ctx = ctxWithDiff('MAIN.st', 1, 30);
@@ -275,6 +280,67 @@ describe('postGitHubReview', () => {
     );
     expect(result.mode).toBe('summary-only');
     expect(state.log.filter((e) => e.kind === 'createIssue')).toHaveLength(1);
+  });
+
+  it('retries once on the "submitted too quickly" 422 then succeeds', async () => {
+    const state: FakeState = {
+      context: ctx,
+      files: new Map(),
+      reviewComments: [],
+      issueComments: [],
+      log: [],
+    };
+    const inner = fakeApi(state);
+    let attempts = 0;
+    const flaky = {
+      ...inner,
+      async createReviewComment(args: {
+        body: string;
+        commitId: string;
+        path: string;
+        line: number;
+      }): Promise<void> {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error(
+            'Validation Failed: pull_request_review_thread.base was submitted too quickly',
+          );
+        }
+        return inner.createReviewComment(args);
+      },
+    };
+    const result = await postGitHubReview(findings, ctx, postOpts, flaky);
+    expect(attempts).toBe(2);
+    expect(result.created).toBe(1);
+    expect(result.outOfDiff).toBe(0);
+  });
+
+  it('folds into the summary when the retry also hits the rate limit', async () => {
+    const state: FakeState = {
+      context: ctx,
+      files: new Map(),
+      reviewComments: [],
+      issueComments: [],
+      log: [],
+    };
+    const inner = fakeApi(state);
+    let attempts = 0;
+    const stuck = {
+      ...inner,
+      async createReviewComment(): Promise<void> {
+        attempts += 1;
+        throw new Error(
+          'Validation Failed: pull_request_review_thread.base was submitted too quickly',
+        );
+      },
+    };
+    const result = await postGitHubReview(findings, ctx, postOpts, stuck);
+    expect(attempts).toBe(2); // initial + one retry
+    // No inline review comment landed; the finding folded into the summary.
+    expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(0);
+    expect(state.log.filter((e) => e.kind === 'createIssue')).toHaveLength(1);
+    expect(result.outOfDiff).toBe(1);
+    expect(result.inDiff).toBe(0);
   });
 
   it('updates an existing summary issue comment', async () => {
