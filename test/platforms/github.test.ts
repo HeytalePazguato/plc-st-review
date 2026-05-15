@@ -192,8 +192,9 @@ const findings: Finding[] = [
 const postOpts: GitHubPostOptions = {
   ...opts,
   commentStyle: 'inline',
-  // Tests don't need the production rate-limit pacing.
+  // Tests don't need the production rate-limit pacing or batch spacing.
   interPostDelayMs: 0,
+  interBatchDelayMs: 0,
 };
 
 describe('postGitHubReview', () => {
@@ -335,6 +336,42 @@ describe('postGitHubReview', () => {
       ],
     });
     // And zero per-comment POSTs.
+    expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(0);
+  });
+
+  it('splits very large finding sets across multiple /reviews POSTs', async () => {
+    // GitHub's /reviews endpoint 502s on huge payloads. The engine caps
+    // each batch and spaces them out. 50 findings with batch size 20
+    // should arrive as ceil(50 / 20) = 3 POSTs.
+    const wideCtx = ctxWithDiff('MAIN.st', 1, 200);
+    const many: Finding[] = Array.from({ length: 50 }, (_, i) => ({
+      severity: 'info',
+      category: 'COMMENT_ONLY',
+      file: 'MAIN.st',
+      line: i + 1,
+      summary: `n ${i}`,
+    }));
+    const state: FakeState = {
+      context: wideCtx,
+      files: new Map(),
+      reviewComments: [],
+      issueComments: [],
+      log: [],
+    };
+    const result = await postGitHubReview(
+      many,
+      wideCtx,
+      { ...postOpts, reviewBatchSize: 20 },
+      fakeApi(state),
+    );
+    expect(result.created).toBe(50);
+    const reviews = state.log.filter((e) => e.kind === 'createReview');
+    expect(reviews).toHaveLength(3);
+    expect(reviews[0]).toMatchObject({ comments: expect.any(Array) });
+    expect((reviews[0] as { comments: unknown[] }).comments).toHaveLength(20);
+    expect((reviews[1] as { comments: unknown[] }).comments).toHaveLength(20);
+    expect((reviews[2] as { comments: unknown[] }).comments).toHaveLength(10);
+    // No per-comment fallback was needed.
     expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(0);
   });
 

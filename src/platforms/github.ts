@@ -316,9 +316,25 @@ export interface GitHubPostOptions extends GitHubOptions {
    * can pass 0 to skip the gap.
    */
   interPostDelayMs?: number;
+  /**
+   * Max inline comments per /reviews POST. The endpoint times out (502) on
+   * very large batches — empirically a single batch of 47 took >10 s server
+   * side. 20 finishes well under any timeout and still gives ~95% of the
+   * rate-limit benefit (one round trip per chunk instead of N per comment).
+   * Tests can pass Infinity to keep the whole batch in one call.
+   */
+  reviewBatchSize?: number;
+  /**
+   * Milliseconds to wait between successive /reviews POSTs when the inline
+   * comment set spans multiple batches. Spaces out the chunks so we don't
+   * trip the same secondary rate limiter that the per-comment path does.
+   */
+  interBatchDelayMs?: number;
 }
 
 const DEFAULT_INTER_POST_DELAY_MS = 250;
+const DEFAULT_REVIEW_BATCH_SIZE = 20;
+const DEFAULT_INTER_BATCH_DELAY_MS = 1000;
 const RATE_LIMIT_BACKOFF_MS = 1500;
 
 function sleep(ms: number): Promise<void> {
@@ -470,6 +486,8 @@ export async function postGitHubReview(
 ): Promise<PostReviewResult> {
   const inlineCap = opts.inlineCap ?? INLINE_CAP;
   const interPostDelayMs = opts.interPostDelayMs ?? DEFAULT_INTER_POST_DELAY_MS;
+  const reviewBatchSize = opts.reviewBatchSize ?? DEFAULT_REVIEW_BATCH_SIZE;
+  const interBatchDelayMs = opts.interBatchDelayMs ?? DEFAULT_INTER_BATCH_DELAY_MS;
   const mode: PostReviewResult['mode'] =
     findings.length > inlineCap || opts.commentStyle === 'summary'
       ? 'summary-only'
@@ -524,33 +542,40 @@ export async function postGitHubReview(
         toCreate.push(f);
       }
     }
-    // Batch all new inline comments into a single PR review. One POST
-    // avoids GitHub's secondary rate limiter and renders as a single
-    // "submitted a review" timeline event.
-    if (toCreate.length > 0) {
-      const comments = toCreate.map((f) => ({
+    // Batch new inline comments into one or more /reviews POSTs. The
+    // endpoint times out (502) on very large payloads — empirically a
+    // single batch of 47 took >10 s server-side — so we cap each batch
+    // at reviewBatchSize and space the batches apart. Most PRs fit in a
+    // single batch; the demo (~50 findings) takes ~3.
+    for (let i = 0; i < toCreate.length; i += reviewBatchSize) {
+      const chunk = toCreate.slice(i, i + reviewBatchSize);
+      const comments = chunk.map((f) => ({
         path: f.file,
         line: f.line,
         body: renderFindingBody(f),
       }));
       try {
         await api.createReview({ commitId: context.headSha, comments });
-        result.created += toCreate.length;
+        result.created += chunk.length;
       } catch (err) {
-        // Batch failed (e.g. one comment in the batch was malformed or
-        // anchored to a line GitHub now considers out-of-diff). Fall back
-        // to per-comment POSTs with the pacing/retry safety net.
+        // Batch failed (e.g. one comment in the chunk was malformed,
+        // anchored to a line GitHub now considers out-of-diff, or the
+        // payload was still too large). Fall back to per-comment POSTs
+        // with the pacing/retry safety net for this chunk only.
         process.stderr.write(
-          `plc-st-review: batch review failed (${(err as Error).message}); falling back to per-comment posts\n`,
+          `plc-st-review: batch review failed (${(err as Error).message}); falling back to per-comment posts for ${chunk.length} finding(s)\n`,
         );
         await postIndividually(
-          toCreate,
+          chunk,
           context,
           api,
           result,
           outOfDiffFindings,
           interPostDelayMs,
         );
+      }
+      if (i + reviewBatchSize < toCreate.length) {
+        await sleep(interBatchDelayMs);
       }
     }
     for (const [key, prior] of ours) {
