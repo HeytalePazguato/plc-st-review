@@ -62,6 +62,17 @@ export interface GitHubApi {
     path: string;
     line: number;
   }): Promise<void>;
+  /**
+   * Submit a single PR review carrying any number of inline anchored
+   * comments in one POST. Avoids GitHub's secondary rate limiter on
+   * rapid per-comment POSTs and renders as a single review-submitted
+   * timeline event instead of N separate review-comment events.
+   */
+  createReview(args: {
+    commitId: string;
+    body?: string;
+    comments: ReadonlyArray<{ path: string; line: number; body: string }>;
+  }): Promise<void>;
   updateReviewComment(id: number, body: string): Promise<void>;
   deleteReviewComment(id: number): Promise<void>;
   createIssueComment(body: string): Promise<void>;
@@ -173,6 +184,22 @@ export function createOctokitClient(opts: GitHubOptions): GitHubApi {
         path: args.path,
         line: args.line,
         side: 'RIGHT',
+      });
+    },
+    async createReview(args) {
+      await octokit.pulls.createReview({
+        owner: opts.owner,
+        repo: opts.repo,
+        pull_number: opts.pullNumber,
+        commit_id: args.commitId,
+        event: 'COMMENT',
+        body: args.body,
+        comments: args.comments.map((c) => ({
+          path: c.path,
+          line: c.line,
+          body: c.body,
+          side: 'RIGHT',
+        })),
       });
     },
     async updateReviewComment(id, body) {
@@ -386,6 +413,55 @@ function escape(text: string): string {
   return text.replace(/\|/g, '\\|');
 }
 
+/**
+ * Per-comment fallback used when the batch /reviews POST fails. Mirrors
+ * the original behaviour: pace between posts to dodge the secondary
+ * rate limit, retry once on the "submitted too quickly" 422, and fold
+ * any still-failing finding into the out-of-diff list (which the summary
+ * comment will pick up).
+ */
+async function postIndividually(
+  toCreate: readonly Finding[],
+  context: PrContext,
+  api: GitHubApi,
+  result: PostReviewResult,
+  outOfDiffFindings: Finding[],
+  interPostDelayMs: number,
+): Promise<void> {
+  for (const f of toCreate) {
+    const args = {
+      body: renderFindingBody(f),
+      commitId: context.headSha,
+      path: f.file,
+      line: f.line,
+    };
+    try {
+      await api.createReviewComment(args);
+      result.created += 1;
+    } catch (err) {
+      if (isRateLimitError(err)) {
+        await sleep(RATE_LIMIT_BACKOFF_MS);
+        try {
+          await api.createReviewComment(args);
+          result.created += 1;
+          await sleep(interPostDelayMs);
+          continue;
+        } catch (retryErr) {
+          err = retryErr;
+        }
+      }
+      process.stderr.write(
+        `plc-st-review: inline post failed for ${f.file}:${f.line} (${(err as Error).message}); folding into summary\n`,
+      );
+      outOfDiffFindings.push(f);
+      result.inDiff -= 1;
+      result.outOfDiff += 1;
+      continue;
+    }
+    await sleep(interPostDelayMs);
+  }
+}
+
 export async function postGitHubReview(
   findings: Finding[],
   context: PrContext,
@@ -433,6 +509,7 @@ export async function postGitHubReview(
       if (m) ours.set(m[1], c);
     }
     const incoming = new Set<string>();
+    const toCreate: Finding[] = [];
     for (const f of inDiffFindings) {
       const key = findingKey(f);
       incoming.add(key);
@@ -444,41 +521,36 @@ export async function postGitHubReview(
           result.updated += 1;
         }
       } else {
-        const args = {
-          body,
-          commitId: context.headSha,
-          path: f.file,
-          line: f.line,
-        };
-        try {
-          await api.createReviewComment(args);
-          result.created += 1;
-        } catch (err) {
-          // Secondary rate limit ("was submitted too quickly") — back off
-          // briefly and try once more before giving up.
-          if (isRateLimitError(err)) {
-            await sleep(RATE_LIMIT_BACKOFF_MS);
-            try {
-              await api.createReviewComment(args);
-              result.created += 1;
-              await sleep(interPostDelayMs);
-              continue;
-            } catch (retryErr) {
-              err = retryErr;
-            }
-          }
-          // Some diff-hunk edge cases (e.g. context-only lines) still trip
-          // the API. Treat the finding as out-of-diff and fall back to the
-          // summary comment instead of crashing.
-          process.stderr.write(
-            `plc-st-review: inline post failed for ${f.file}:${f.line} (${(err as Error).message}); folding into summary\n`,
-          );
-          outOfDiffFindings.push(f);
-          result.inDiff -= 1;
-          result.outOfDiff += 1;
-          continue;
-        }
-        await sleep(interPostDelayMs);
+        toCreate.push(f);
+      }
+    }
+    // Batch all new inline comments into a single PR review. One POST
+    // avoids GitHub's secondary rate limiter and renders as a single
+    // "submitted a review" timeline event.
+    if (toCreate.length > 0) {
+      const comments = toCreate.map((f) => ({
+        path: f.file,
+        line: f.line,
+        body: renderFindingBody(f),
+      }));
+      try {
+        await api.createReview({ commitId: context.headSha, comments });
+        result.created += toCreate.length;
+      } catch (err) {
+        // Batch failed (e.g. one comment in the batch was malformed or
+        // anchored to a line GitHub now considers out-of-diff). Fall back
+        // to per-comment POSTs with the pacing/retry safety net.
+        process.stderr.write(
+          `plc-st-review: batch review failed (${(err as Error).message}); falling back to per-comment posts\n`,
+        );
+        await postIndividually(
+          toCreate,
+          context,
+          api,
+          result,
+          outOfDiffFindings,
+          interPostDelayMs,
+        );
       }
     }
     for (const [key, prior] of ours) {

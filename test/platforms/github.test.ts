@@ -19,6 +19,12 @@ interface FakeState {
   issueComments: IssueComment[];
   log: Array<
     | { kind: 'create'; body: string; path: string; line: number; commitId: string }
+    | {
+        kind: 'createReview';
+        commitId: string;
+        body: string | undefined;
+        comments: ReadonlyArray<{ path: string; line: number; body: string }>;
+      }
     | { kind: 'update'; id: number; body: string }
     | { kind: 'delete'; id: number }
     | { kind: 'createIssue'; body: string }
@@ -57,6 +63,18 @@ function fakeApi(state: FakeState): GitHubApi {
         path: args.path,
         line: args.line,
         commitId: args.commitId,
+      });
+    },
+    async createReview(args) {
+      state.log.push({
+        kind: 'createReview',
+        commitId: args.commitId,
+        body: args.body,
+        comments: args.comments.map((c) => ({
+          path: c.path,
+          line: c.line,
+          body: c.body,
+        })),
       });
     },
     async updateReviewComment(id, body) {
@@ -193,7 +211,13 @@ describe('postGitHubReview', () => {
     expect(result.inDiff).toBe(1);
     expect(result.outOfDiff).toBe(0);
     expect(result.created).toBe(1);
-    expect(state.log[0]).toMatchObject({ kind: 'create', path: 'MAIN.st', line: 12 });
+    // New inline findings are batched into a single PR review POST,
+    // not posted one-by-one.
+    expect(state.log[0]).toMatchObject({
+      kind: 'createReview',
+      comments: [{ path: 'MAIN.st', line: 12 }],
+    });
+    expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(0);
   });
 
   it('updates an existing review comment when body changed', async () => {
@@ -282,7 +306,65 @@ describe('postGitHubReview', () => {
     expect(state.log.filter((e) => e.kind === 'createIssue')).toHaveLength(1);
   });
 
-  it('retries once on the "submitted too quickly" 422 then succeeds', async () => {
+  it('batches multiple new findings into a single createReview POST', async () => {
+    // The whole point of switching to /reviews: one network call carries
+    // every new inline comment, sidestepping the secondary rate limiter
+    // that the per-comment endpoint trips on rapid POSTs.
+    const wideCtx = ctxWithDiff('MAIN.st', 1, 60);
+    const many: Finding[] = [
+      { severity: 'warn', category: 'BOOL_COMPARISON', file: 'MAIN.st', line: 5, summary: 'a' },
+      { severity: 'warn', category: 'REAL_EQUALITY', file: 'MAIN.st', line: 12, summary: 'b' },
+      { severity: 'info', category: 'NESTED_COMMENTS', file: 'MAIN.st', line: 30, summary: 'c' },
+    ];
+    const state: FakeState = {
+      context: wideCtx,
+      files: new Map(),
+      reviewComments: [],
+      issueComments: [],
+      log: [],
+    };
+    const result = await postGitHubReview(many, wideCtx, postOpts, fakeApi(state));
+    expect(result.created).toBe(3);
+    const reviews = state.log.filter((e) => e.kind === 'createReview');
+    expect(reviews).toHaveLength(1);
+    expect(reviews[0]).toMatchObject({
+      comments: [
+        { path: 'MAIN.st', line: 5 },
+        { path: 'MAIN.st', line: 12 },
+        { path: 'MAIN.st', line: 30 },
+      ],
+    });
+    // And zero per-comment POSTs.
+    expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(0);
+  });
+
+  it('falls back to per-comment posts when the batch /reviews POST fails', async () => {
+    // On batch failure (e.g. one comment is malformed and GitHub rejects
+    // the whole review), the engine retries each finding individually with
+    // the pacing + rate-limit retry safety net. Here createReview always
+    // throws, so all new findings go through createReviewComment.
+    const state: FakeState = {
+      context: ctx,
+      files: new Map(),
+      reviewComments: [],
+      issueComments: [],
+      log: [],
+    };
+    const inner = fakeApi(state);
+    const apiFallback = {
+      ...inner,
+      async createReview(): Promise<void> {
+        throw new Error('Validation Failed: bad batch');
+      },
+    };
+    const result = await postGitHubReview(findings, ctx, postOpts, apiFallback);
+    expect(result.created).toBe(1);
+    expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(1);
+  });
+
+  it('retries the per-comment fallback once on a "submitted too quickly" 422', async () => {
+    // Batch fails → fallback engages → first per-comment POST hits the
+    // secondary rate limiter → retry after a back-off succeeds.
     const state: FakeState = {
       context: ctx,
       files: new Map(),
@@ -294,6 +376,9 @@ describe('postGitHubReview', () => {
     let attempts = 0;
     const flaky = {
       ...inner,
+      async createReview(): Promise<void> {
+        throw new Error('Validation Failed: bad batch');
+      },
       async createReviewComment(args: {
         body: string;
         commitId: string;
@@ -315,7 +400,7 @@ describe('postGitHubReview', () => {
     expect(result.outOfDiff).toBe(0);
   });
 
-  it('folds into the summary when the retry also hits the rate limit', async () => {
+  it('folds into the summary when the fallback retry also hits the rate limit', async () => {
     const state: FakeState = {
       context: ctx,
       files: new Map(),
@@ -327,6 +412,9 @@ describe('postGitHubReview', () => {
     let attempts = 0;
     const stuck = {
       ...inner,
+      async createReview(): Promise<void> {
+        throw new Error('Validation Failed: bad batch');
+      },
       async createReviewComment(): Promise<void> {
         attempts += 1;
         throw new Error(
@@ -336,7 +424,6 @@ describe('postGitHubReview', () => {
     };
     const result = await postGitHubReview(findings, ctx, postOpts, stuck);
     expect(attempts).toBe(2); // initial + one retry
-    // No inline review comment landed; the finding folded into the summary.
     expect(state.log.filter((e) => e.kind === 'create')).toHaveLength(0);
     expect(state.log.filter((e) => e.kind === 'createIssue')).toHaveLength(1);
     expect(result.outOfDiff).toBe(1);
