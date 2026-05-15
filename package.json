@@ -59,7 +59,7 @@
     "picocolors": "^1.1.1",
     "simple-git": "^3.27.0",
     "tree-sitter": "^0.25.0",
-    "tree-sitter-iec61131-3-st": "^0.0.2",
+    "tree-sitter-iec61131-3-st": "^0.1.0",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
