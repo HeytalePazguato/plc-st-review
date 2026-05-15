@@ -281,6 +281,26 @@ export async function loadGitHubPrSnapshot(
 export interface GitHubPostOptions extends GitHubOptions {
   commentStyle: ResolvedConfig['commentStyle'];
   inlineCap?: number;
+  /**
+   * Milliseconds to wait between successive inline createReviewComment POSTs.
+   * GitHub's secondary rate limiter rejects rapid-fire posts with a 422
+   * "was submitted too quickly". 250 ms keeps the same 50-finding run under
+   * 15 s of added wall time and effectively eliminates the throttle. Tests
+   * can pass 0 to skip the gap.
+   */
+  interPostDelayMs?: number;
+}
+
+const DEFAULT_INTER_POST_DELAY_MS = 250;
+const RATE_LIMIT_BACKOFF_MS = 1500;
+
+function sleep(ms: number): Promise<void> {
+  return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+
+function isRateLimitError(err: unknown): boolean {
+  const msg = (err as { message?: string } | null)?.message ?? '';
+  return /submitted too quickly|secondary rate|abuse/i.test(msg);
 }
 
 export interface PostReviewResult {
@@ -373,6 +393,7 @@ export async function postGitHubReview(
   api: GitHubApi = createOctokitClient(opts),
 ): Promise<PostReviewResult> {
   const inlineCap = opts.inlineCap ?? INLINE_CAP;
+  const interPostDelayMs = opts.interPostDelayMs ?? DEFAULT_INTER_POST_DELAY_MS;
   const mode: PostReviewResult['mode'] =
     findings.length > inlineCap || opts.commentStyle === 'summary'
       ? 'summary-only'
@@ -423,15 +444,29 @@ export async function postGitHubReview(
           result.updated += 1;
         }
       } else {
+        const args = {
+          body,
+          commitId: context.headSha,
+          path: f.file,
+          line: f.line,
+        };
         try {
-          await api.createReviewComment({
-            body,
-            commitId: context.headSha,
-            path: f.file,
-            line: f.line,
-          });
+          await api.createReviewComment(args);
           result.created += 1;
         } catch (err) {
+          // Secondary rate limit ("was submitted too quickly") — back off
+          // briefly and try once more before giving up.
+          if (isRateLimitError(err)) {
+            await sleep(RATE_LIMIT_BACKOFF_MS);
+            try {
+              await api.createReviewComment(args);
+              result.created += 1;
+              await sleep(interPostDelayMs);
+              continue;
+            } catch (retryErr) {
+              err = retryErr;
+            }
+          }
           // Some diff-hunk edge cases (e.g. context-only lines) still trip
           // the API. Treat the finding as out-of-diff and fall back to the
           // summary comment instead of crashing.
@@ -441,7 +476,9 @@ export async function postGitHubReview(
           outOfDiffFindings.push(f);
           result.inDiff -= 1;
           result.outOfDiff += 1;
+          continue;
         }
+        await sleep(interPostDelayMs);
       }
     }
     for (const [key, prior] of ours) {
