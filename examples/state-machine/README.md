@@ -17,5 +17,15 @@ runs and posts inline review comments for whatever semantic changes it
 finds. To see it in action, edit one of these files in a branch, open a
 PR, and wait for the bot.
 
+## Baseline files for the canonical demo
+
+The remaining files — `FB_Base.st`, `FB_Legacy.st`, `FB_SpeedCalc.st`,
+`I_Diagnostic.st`, `FB_DiagUnit.st`, `E_DiagMode.st`, `FB_AxisRamp.st`,
+`FB_Watchdog.st` — are deliberately *clean*. They exist as the "before"
+state for the canonical demo PR (`test/state-machine-changes`), which
+edits them to exercise the diff-based checks (POU_DELETED, POU_RENAMED,
+ENUM_VALUE_REMOVED, INHERITANCE_CHANGED, ARRAY_BOUNDS_CHANGED, and so
+on). On their own they produce no findings.
+
 The included fixtures are deliberately compact — they're test material,
 not production code.
