@@ -32,7 +32,7 @@ export const addressOfConstant: Check = {
         category: 'ADDRESS_OF_CONSTANT',
         file: expr.file,
         line: expr.line,
-        summary: `ADR(${name}) — taking the address of a CONSTANT`,
+        summary: `ADR(${name}), taking the address of a CONSTANT`,
         detail:
           'A CONSTANT may live in flash/read-only storage on some runtimes; dereferencing a pointer derived from it can fault. If you need a mutable copy, declare a regular VAR_GLOBAL initialised to the constant.',
       });

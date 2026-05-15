@@ -14,7 +14,7 @@ the trailing statement is wrong. Both are bugs; both compile clean.
 
 ```pascal
 RETURN;
-iCount := 99;                      (* fires — unreachable *)
+iCount := 99;                      (* fires, unreachable *)
 ```
 
 **The bot posts.**

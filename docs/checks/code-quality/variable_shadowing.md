@@ -20,7 +20,7 @@ END_VAR
 
 FUNCTION_BLOCK FB_Pump
 VAR
-    gFlow : REAL;                  (* fires — shadows global *)
+    gFlow : REAL;                  (* fires, shadows global *)
 END_VAR
 ```
 

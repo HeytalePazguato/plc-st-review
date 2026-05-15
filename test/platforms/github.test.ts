@@ -263,7 +263,7 @@ describe('postGitHubReview', () => {
   });
 
   it('folds out-of-diff findings into the summary issue comment', async () => {
-    // Diff covers lines 100-110 of MAIN.st only — finding at line 12 is
+    // Diff covers lines 100-110 of MAIN.st only, finding at line 12 is
     // out-of-diff and must be reported via the summary comment.
     const narrowCtx = ctxWithDiff('MAIN.st', 100, 10);
     const state: FakeState = {

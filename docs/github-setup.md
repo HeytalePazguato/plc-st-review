@@ -2,7 +2,7 @@
 
 `plc-st-review` ships a GitHub Action that posts review comments on
 every pull request touching an `.st` file. The action is a thin
-wrapper around the container image — same engine, same checks, same
+wrapper around the container image, same engine, same checks, same
 config.
 
 ## Minimal workflow
@@ -32,7 +32,7 @@ jobs:
       - uses: HeytalePazguato/plc-st-review@v0
 ```
 
-The action infers everything from the PR context — no inputs are
+The action infers everything from the PR context, no inputs are
 required for the common case.
 
 ## Permissions
@@ -53,7 +53,7 @@ shown.
     config: .plc-st-review.yml                           # default: none
 ```
 
-`severity` filters findings client-side before posting — useful when
+`severity` filters findings client-side before posting, useful when
 you want the bot to post nothing under a certain level even if your
 config emits them.
 

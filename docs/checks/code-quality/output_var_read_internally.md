@@ -17,7 +17,7 @@ VAR_OUTPUT
     rResult : REAL;
 END_VAR
 
-rResult := rResult + rInput;       (* fires — rResult on the RHS *)
+rResult := rResult + rInput;       (* fires, rResult on the RHS *)
 ```
 
 **The bot posts.**

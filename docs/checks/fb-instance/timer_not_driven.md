@@ -5,7 +5,7 @@
 A timer instance's `.Q` or `.ET` output is read elsewhere in the POU,
 but no call site for that instance has an `IN` named argument.
 
-**Why it matters.** A common pattern bug — the timer is called once
+**Why it matters.** A common pattern bug, the timer is called once
 without `IN`, then `Q` is sampled. `Q` stays at its initial value
 forever; the surrounding logic silently misfires.
 

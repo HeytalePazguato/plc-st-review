@@ -24,7 +24,7 @@ pMax := ADR(cMax);                 (* fires *)
 
 ```
 🟧 warn  ADDRESS_OF_CONSTANT
-ADR(cMax) — taking the address of a CONSTANT
+ADR(cMax), taking the address of a CONSTANT
 A CONSTANT may live in flash/read-only storage on some runtimes;
 dereferencing a pointer derived from it can fault.
 ```

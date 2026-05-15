@@ -21,7 +21,7 @@ this PR.
 (* Conveyor_HMI.st, unchanged in this PR: *)
 CASE eState OF
     E_State.IDLE: ...
-    E_State.FAULT: ...   (* fires — value no longer exists *)
+    E_State.FAULT: ...   (* fires, value no longer exists *)
 END_CASE;
 ```
 

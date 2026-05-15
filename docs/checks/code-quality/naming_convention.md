@@ -1,13 +1,12 @@
 # NAMING_CONVENTION
 
-**Severity:** `warn` (config-driven — off by default)
+**Severity:** `warn` (config-driven, off by default)
 
 A declaration name doesn't match the configured prefix, suffix, or
 regex for its kind.
 
 **Why it matters.** Naming conventions are how teams keep large
-codebases skimmable. The engine doesn't ship any blessed convention —
-your team writes the rules in `naming_conventions:`, optionally
+codebases skimmable. The engine doesn't ship any blessed convention, your team writes the rules in `naming_conventions:`, optionally
 composed from shared preset files via `extends:` (see
 [`preset-packs.md`](../../preset-packs.md)).
 
@@ -26,7 +25,7 @@ an existing internal style guide), drop it into `.plc-st-review.yml`
 on `main`, and from then on every PR/MR that introduces a
 non-conforming name gets an actionable, line-specific note. Grandfather
 legacy code in via `naming_ignore:` so the check only enforces new
-work — no day-one renaming churn required.
+work, no day-one renaming churn required.
 
 **Settings.** Off by default. Configure per declaration-kind:
 
@@ -66,7 +65,7 @@ naming_ignore:
 
 **`prefix`, `suffix`, and `pattern` combine with AND.** Each rule can
 list one, two, or all three at the same time. Whatever you list must
-*all* hold for the identifier to pass — if any one fails, the check
+*all* hold for the identifier to pass, if any one fails, the check
 fires. Listing none means the kind is unconstrained.
 
 Three worked examples, simplest to strictest:
@@ -74,13 +73,13 @@ Three worked examples, simplest to strictest:
 ```yaml
 naming_conventions:
 
-  # 1) Prefix only — anything starting with FB_ passes.
+  # 1) Prefix only, anything starting with FB_ passes.
   #    FB_Pump        ✅
   #    Pump           ❌ no prefix
   #    fb_pump        ❌ wrong case (add `case: insensitive` to allow)
   function_block: { prefix: FB_ }
 
-  # 2) Prefix AND suffix — must start with E_ AND end with _enum.
+  # 2) Prefix AND suffix, must start with E_ AND end with _enum.
   #    E_State_enum   ✅
   #    E_State        ❌ missing suffix
   #    State_enum     ❌ missing prefix
@@ -88,10 +87,10 @@ naming_conventions:
     prefix: E_
     suffix: _enum
 
-  # 3) Prefix AND suffix AND pattern — all three checked.
+  # 3) Prefix AND suffix AND pattern, all three checked.
   #    `^[A-Z][A-Za-z0-9]+$` rejects underscores and lowercase starts;
   #    combined with prefix `g` and suffix `_var`, the name must be
-  #    `g<CamelChunk>_var` — e.g. `gMaxRetries_var`.
+  #    `g<CamelChunk>_var`: e.g. `gMaxRetries_var`.
   #
   #    gMaxRetries_var   ✅
   #    gMax_Retries_var  ❌ regex rejects the inner underscore
@@ -106,8 +105,8 @@ naming_conventions:
 `case: insensitive` only affects `prefix` / `suffix` matching;
 `pattern` is always a literal JavaScript regex (add `(?i)`-equivalent
 character classes yourself if you need it case-insensitive). Malformed
-regexes are silently skipped — the rule effectively becomes prefix /
-suffix only — so test your patterns.
+regexes are silently skipped, the rule effectively becomes prefix /
+suffix only, so test your patterns.
 
 **Trigger.**
 

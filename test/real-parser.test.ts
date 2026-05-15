@@ -138,14 +138,14 @@ END_FUNCTION_BLOCK
   });
 
   // The next four cover checks that the synthetic AST fixtures can't
-  // exercise faithfully — they depend on real parser shapes (ERROR
+  // exercise faithfully, they depend on real parser shapes (ERROR
   // recovery nodes, address_of_expression, instance→type resolution,
   // LHS/RHS reference context). Each was silently producing zero
   // findings before the fix.
 
   it('flags ASSIGNMENT_IN_CONDITION even though `IF x := y` parses as an ERROR node', async () => {
-    // `IF iCounter := 0 THEN` is invalid ST — `:=` is illegal in an
-    // expression — so tree-sitter emits an ERROR node (`:= 0`), not an
+    // `IF iCounter := 0 THEN` is invalid ST, `:=` is illegal in an
+    // expression, so tree-sitter emits an ERROR node (`:= 0`), not an
     // assignment_statement. The check detects the ERROR-node shape.
     const before = await parseSource(
       `FUNCTION_BLOCK FB_C
@@ -176,7 +176,7 @@ END_FUNCTION_BLOCK
 
   it('flags ADDRESS_OF_CONSTANT for ADR() of a VAR_GLOBAL CONSTANT', async () => {
     // `ADR(x)` parses as `address_of_expression`, not call_expression, so
-    // it never reached collectCallSites — the check now reads a dedicated
+    // it never reached collectCallSites, the check now reads a dedicated
     // addressOfExprs collection.
     const globals = `VAR_GLOBAL CONSTANT
     SAFETY_TIMEOUT : TIME := T#10s;
@@ -208,7 +208,7 @@ END_FUNCTION_BLOCK
   });
 
   it('flags RECURSIVE_CALL through a self-typed instance (fbSelf : FB_Self)', async () => {
-    // `fbSelf()` where `fbSelf : FB_Self` inside FB_Self — the callee name
+    // `fbSelf()` where `fbSelf : FB_Self` inside FB_Self, the callee name
     // is the instance, not the type, so the check resolves it via the
     // per-POU locals catalogue.
     const before = await parseSource(

@@ -102,7 +102,7 @@ export async function loadLintSnapshot(
   const after: AstFile[] = [];
   for (const abs of paths) {
     const src = await readFile(abs, 'utf8');
-    // Normalise to forward slashes — the engine and every downstream
+    // Normalise to forward slashes, the engine and every downstream
     // formatter expects POSIX-style paths regardless of host OS.
     const rel = relative(process.cwd(), abs).replace(/\\/g, '/');
     after.push(await parseSource(src, rel));

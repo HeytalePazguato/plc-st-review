@@ -24,7 +24,7 @@ export const unqualifiedEnumConstant: Check = {
     const findings: Finding[] = [];
     const idx = memberIndex(ctx.after);
     // Build a fast lookup: which identifier names refer to enum members in a
-    // CASE statement value? Those don't trigger this check — they're handled
+    // CASE statement value? Those don't trigger this check, they're handled
     // by STATE_UNHANDLED / ENUM_VALUE_ADDED instead.
     const beforeIdx = memberIndex(ctx.before);
     const beforeBad = new Set<string>();
@@ -41,12 +41,12 @@ export const unqualifiedEnumConstant: Check = {
     for (const ref of ctx.after.varReferences) {
       const enums = idx.get(ref.name.toLowerCase());
       if (!enums || enums.length === 0) continue;
-      if (enums.length > 1) continue; // ambiguous — different check might handle
+      if (enums.length > 1) continue; // ambiguous, different check might handle
       if (ref.scope === '__global') continue;
       const k = key(ref.file, ref.line, ref.name);
       if (beforeBad.has(k)) continue;
       // Filter out cases where the reference is the right-hand side of an
-      // already-qualified member access (e.g. `E_State.IDLE` — the `IDLE`
+      // already-qualified member access (e.g. `E_State.IDLE`: the `IDLE`
       // identifier is also captured, but it's qualified). The member-access
       // walker produces a MemberAccess entry at the same line; treat that as
       // "already qualified".

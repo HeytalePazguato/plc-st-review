@@ -8,7 +8,7 @@ their type changed.
 **Why it matters.** A signature change ripples to every caller. The
 breaking variant (removed / type-changed params, or a new required
 input without a default) silently turns previously-passing calls into
-type errors at compile time — or worse, into runtime misbehavior on
+type errors at compile time, or worse, into runtime misbehavior on
 runtimes that auto-pad missing args. Catching the change at PR review
 is much cheaper than chasing it down at install.
 

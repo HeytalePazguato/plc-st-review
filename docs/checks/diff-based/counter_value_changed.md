@@ -16,7 +16,7 @@ machine's behavior on day one of production.
 
 ```pascal
 C1(CU := xPulse, PV := 10);    (* before *)
-C1(CU := xPulse, PV := 100);   (* after — 10× *)
+C1(CU := xPulse, PV := 100);   (* after, 10× *)
 ```
 
 **The bot posts.**

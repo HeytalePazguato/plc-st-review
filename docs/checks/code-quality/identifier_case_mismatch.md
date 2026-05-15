@@ -19,7 +19,7 @@ VAR
     iCount : INT;
 END_VAR
 
-icount := icount + 1;              (* fires — both refs wrong-cased *)
+icount := icount + 1;              (* fires, both refs wrong-cased *)
 ```
 
 **The bot posts.**

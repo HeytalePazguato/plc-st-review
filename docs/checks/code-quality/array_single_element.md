@@ -2,7 +2,7 @@
 
 **Severity:** `info`
 
-`ARRAY [n..n] OF T` — bounds are equal, only one element.
+`ARRAY [n..n] OF T`: bounds are equal, only one element.
 
 **Why it matters.** Either the bounds are wrong or a scalar would
 be clearer. Almost always a copy-paste artifact.

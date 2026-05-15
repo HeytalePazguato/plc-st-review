@@ -3,7 +3,7 @@
 **Severity:** `error`
 
 A literal index sits outside the array's declared bounds. Dynamic
-indices (variables, expressions) aren't checked — would need flow
+indices (variables, expressions) aren't checked, would need flow
 analysis.
 
 **Why it matters.** Compile-time bounds checking catches the obvious

@@ -250,7 +250,7 @@ function endsWithStExt(path: string): boolean {
 /**
  * Extract the set of NEW-side line numbers covered by a unified-diff patch.
  * Used to decide whether a finding's (file, line) is postable as an inline
- * review comment — GitHub rejects review comments that anchor to lines not
+ * review comment. GitHub rejects review comments that anchor to lines not
  * present in any diff hunk.
  */
 export function diffLinesByFile(changes: readonly GitHubChange[]): Map<string, Set<number>> {
@@ -269,7 +269,7 @@ export function diffLinesByFile(changes: readonly GitHubChange[]): Map<string, S
         set.add(newLine);
         newLine += 1;
       } else if (raw.startsWith('-') && !raw.startsWith('---')) {
-        // deletion — does not advance NEW side
+        // deletion, does not advance NEW side
       } else if (!raw.startsWith('\\')) {
         // context line or empty
         newLine += 1;
@@ -318,7 +318,7 @@ export interface GitHubPostOptions extends GitHubOptions {
   interPostDelayMs?: number;
   /**
    * Max inline comments per /reviews POST. The endpoint times out (502) on
-   * very large batches — empirically a single batch of 47 took >10 s server
+   * very large batches, empirically a single batch of 47 took >10 s server
    * side. 20 finishes well under any timeout and still gives ~95% of the
    * rate-limit benefit (one round trip per chunk instead of N per comment).
    * Tests can pass Infinity to keep the whole batch in one call.
@@ -366,7 +366,7 @@ function findingMarker(f: Finding): string {
 function renderFindingBody(f: Finding): string {
   const lines: string[] = [
     findingMarker(f),
-    `**${SEVERITY_BADGE[f.severity]} \`${f.category}\`** — ${f.summary}`,
+    `**${SEVERITY_BADGE[f.severity]} \`${f.category}\`**: ${f.summary}`,
   ];
   if (f.detail) {
     lines.push('');
@@ -378,7 +378,7 @@ function renderFindingBody(f: Finding): string {
     lines.push('');
     lines.push('Related:');
     for (const r of f.related) {
-      lines.push(`- \`${r.file}:${r.line}\`${r.note ? ' — ' + r.note : ''}`);
+      lines.push(`- \`${r.file}:${r.line}\`${r.note ? ' (' + r.note + ')' : ''}`);
     }
   }
   return lines.join('\n');
@@ -543,8 +543,8 @@ export async function postGitHubReview(
       }
     }
     // Batch new inline comments into one or more /reviews POSTs. The
-    // endpoint times out (502) on very large payloads — empirically a
-    // single batch of 47 took >10 s server-side — so we cap each batch
+    // endpoint times out (502) on very large payloads, empirically a
+    // single batch of 47 took >10 s server-side, so we cap each batch
     // at reviewBatchSize and space the batches apart. Most PRs fit in a
     // single batch; the demo (~50 findings) takes ~3.
     for (let i = 0; i < toCreate.length; i += reviewBatchSize) {

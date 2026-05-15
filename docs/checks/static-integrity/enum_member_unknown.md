@@ -17,7 +17,7 @@ compiles fine due to misleading defaults.
 ```pascal
 TYPE E_State : (IDLE, RUNNING, FAULT); END_TYPE
 
-eState := E_State.IDEL;            (* typo — fires *)
+eState := E_State.IDEL;            (* typo, fires *)
 ```
 
 **The bot posts.**

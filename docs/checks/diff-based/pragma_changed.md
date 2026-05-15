@@ -5,7 +5,7 @@
 The set of pragmas in a file is different from the previous revision.
 
 **Why it matters.** Pragmas (`{attribute '...'}`) often control
-codegen, retention, persistence, build-task assignment — invisible
+codegen, retention, persistence, build-task assignment, invisible
 to the language but loud in the binary. Worth a glance.
 
 **Settings.** No check-specific config.

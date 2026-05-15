@@ -18,7 +18,7 @@ VAR
     T1 : TON;
 END_VAR
 (* no T1(...) call anywhere *)
-IF T1.Q THEN ...                   (* fires — T1.Q read but T1 never invoked *)
+IF T1.Q THEN ...                   (* fires. T1.Q read but T1 never invoked *)
 ```
 
 **The bot posts.**

@@ -1,7 +1,7 @@
 import type { Check, CommentNode, Finding } from '../types.js';
 
 function hasNested(c: CommentNode): boolean {
-  // Block comment `(* ... (* nested *) ... *)` — the inner `(*` after the
+  // Block comment `(* ... (* nested *) ... *)`: the inner `(*` after the
   // opener indicates nesting.
   if (!c.text.startsWith('(*')) return false;
   const inner = c.text.slice(2, c.text.length - 2);

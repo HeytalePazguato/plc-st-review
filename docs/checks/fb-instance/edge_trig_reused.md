@@ -7,7 +7,7 @@ different `CLK` expressions across the POU.
 
 **Why it matters.** Edge triggers hold internal state ("was CLK
 TRUE last scan?"). Swapping the CLK between scans scrambles the
-edge detection — sometimes Q fires on the wrong transition,
+edge detection, sometimes Q fires on the wrong transition,
 sometimes it doesn't fire at all.
 
 **Settings.** No check-specific config.
@@ -16,7 +16,7 @@ sometimes it doesn't fire at all.
 
 ```pascal
 rTrig(CLK := xButton);
-rTrig(CLK := xSensor);             (* fires — same instance, different CLK *)
+rTrig(CLK := xSensor);             (* fires, same instance, different CLK *)
 ```
 
 **The bot posts.**

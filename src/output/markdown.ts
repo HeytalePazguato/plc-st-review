@@ -29,9 +29,9 @@ export function renderMarkdown(findings: Finding[]): string {
   out.push('## Details');
   out.push('');
   for (const f of findings) {
-    out.push(`### ${f.category} — \`${f.file}:${f.line}\``);
+    out.push(`### ${f.category}: \`${f.file}:${f.line}\``);
     out.push('');
-    out.push(`**${SEV_BADGE[f.severity]}** — ${escape(f.summary)}`);
+    out.push(`**${SEV_BADGE[f.severity]}**: ${escape(f.summary)}`);
     if (f.detail) {
       out.push('');
       out.push('```');
@@ -42,7 +42,7 @@ export function renderMarkdown(findings: Finding[]): string {
       out.push('');
       out.push('Related:');
       for (const r of f.related) {
-        out.push(`- \`${r.file}:${r.line}\`${r.note ? ' — ' + r.note : ''}`);
+        out.push(`- \`${r.file}:${r.line}\`${r.note ? ' (' + r.note + ')' : ''}`);
       }
     }
     out.push('');

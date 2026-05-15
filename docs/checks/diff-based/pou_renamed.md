@@ -6,7 +6,7 @@ Heuristic: a deleted POU plus an added POU with an identical
 signature in the same PR. Suggests a rename refactor.
 
 **Why it matters.** Sometimes the engine sees "POU_DELETED" + "new
-function block declared" — and these are the same thing. The
+function block declared", and these are the same thing. The
 heuristic surfaces the likely intent so reviewers don't chase a
 false alarm.
 
