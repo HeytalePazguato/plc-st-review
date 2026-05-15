@@ -46,26 +46,32 @@ export interface ParamSpec {
 }
 
 export function paramDecl(p: ParamSpec): StNode {
+  // Mirror real-parser behavior: all sub-nodes of a single declaration line
+  // share the same source row. Without this, the engine's "exclude
+  // declaration-site references" filter (in UNUSED_INPUT_VAR etc.) gives
+  // false negatives on fixture-built ASTs.
+  const sharedLine = nextLine();
   const kids: StNode[] = [
-    node(NODE.IDENTIFIER, { text: p.name }),
-    node(NODE.ELEMENTARY_TYPE, { text: p.type }),
+    node(NODE.IDENTIFIER, { text: p.name, line: sharedLine }),
+    node(NODE.ELEMENTARY_TYPE, { text: p.type, line: sharedLine }),
   ];
   if (p.initial !== undefined) {
-    if (/^T#/i.test(p.initial) || /^TIME#/i.test(p.initial)) {
-      kids.push(node(NODE.TIME_LITERAL, { text: p.initial }));
-    } else if (/^(TRUE|FALSE)$/i.test(p.initial)) {
-      kids.push(node(NODE.BOOLEAN_LITERAL, { text: p.initial }));
-    } else if (/\./.test(p.initial)) {
-      kids.push(node(NODE.REAL_LITERAL, { text: p.initial }));
-    } else if (/^['"]/.test(p.initial)) {
-      kids.push(node(NODE.STRING_LITERAL, { text: p.initial }));
-    } else {
-      kids.push(node(NODE.INTEGER_LITERAL, { text: p.initial }));
-    }
+    const initType =
+      /^T#/i.test(p.initial) || /^TIME#/i.test(p.initial)
+        ? NODE.TIME_LITERAL
+        : /^(TRUE|FALSE)$/i.test(p.initial)
+          ? NODE.BOOLEAN_LITERAL
+          : /\./.test(p.initial)
+            ? NODE.REAL_LITERAL
+            : /^['"]/.test(p.initial)
+              ? NODE.STRING_LITERAL
+              : NODE.INTEGER_LITERAL;
+    kids.push(node(initType, { text: p.initial, line: sharedLine }));
   }
   return node(NODE.VARIABLE_DECLARATION, {
     text: `${p.name} : ${p.type}${p.initial !== undefined ? ' := ' + p.initial : ''};`,
     children: kids,
+    line: sharedLine,
   });
 }
 
@@ -477,4 +483,24 @@ export function whileStatement(
     text: `WHILE ${condition} DO ... END_WHILE;`,
     children: kids,
   });
+}
+
+export function emptyStmt(): StNode {
+  return node('empty_statement', { text: ';' });
+}
+
+export function commentNode(text: string): StNode {
+  return node(NODE.COMMENT, { text });
+}
+
+export function bareIdentifier(name: string): StNode {
+  return node(NODE.IDENTIFIER, { text: name });
+}
+
+export function functionDecl(
+  name: string,
+  returnType: string,
+  opts: { inputs?: ParamSpec[]; outputs?: ParamSpec[] } = {},
+): StNode {
+  return fnDecl(name, returnType, opts);
 }

@@ -1,8 +1,3 @@
----
-layout: default
-title: GitLab setup
----
-
 # GitLab setup
 
 `plc-st-review` runs as a regular GitLab CI job and posts inline
@@ -36,19 +31,18 @@ That's the whole job. The `image` ships with `node`, `tree-sitter`,
 The job needs `api` scope to read the MR diff and post discussions.
 Two options:
 
-- **`CI_JOB_TOKEN`** — the default in the snippet above. Works
+- **`CI_JOB_TOKEN`**: the default in the snippet above. Works
   out-of-the-box when your project allows job-token API access.
   Some self-hosted instances disable this; check
   *Settings → CI/CD → Token permissions*.
-- **Project access token** — create one with `api` scope and set it
+- **Project access token**: create one with `api` scope and set it
   as a masked, protected CI variable named `GITLAB_TOKEN`. Then drop
   the `GITLAB_TOKEN: $CI_JOB_TOKEN` line.
 
 ## Self-hosted GitLab
 
 `GITLAB_URL` defaults to `https://gitlab.com`. On self-hosted, the
-example sets it from `$CI_SERVER_URL` (auto-provided by GitLab Runner)
-— no extra config needed.
+example sets it from `$CI_SERVER_URL` (auto-provided by GitLab Runner), no extra config needed.
 
 ## What the bot does on re-run
 

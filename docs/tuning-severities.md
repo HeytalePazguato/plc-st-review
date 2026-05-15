@@ -1,8 +1,3 @@
----
-layout: default
-title: Tuning severities
----
-
 # Tuning severities
 
 Every check ships with a default severity, but every shop weighs ST
@@ -76,7 +71,7 @@ A pragmatic ramp:
 2. **Week 2:** disable any check that's consistently noisy (often
    `COMMENT_ONLY` and `PRAGMA_CHANGED`).
 3. **Week 3:** promote any `warn` your team always wants to block
-   merge — typically `TIMER_VALUE_CHANGED` for safety-touched code.
+   merge, typically `TIMER_VALUE_CHANGED` for safety-touched code.
 4. **Steady state:** revisit the config when team feedback collects.
    The config is intentionally small so re-tuning is cheap.
 

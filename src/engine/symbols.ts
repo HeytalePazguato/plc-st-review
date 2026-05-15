@@ -15,20 +15,25 @@ import {
 import type {
   ArrayAccess,
   ArrayDecl,
+  AssignmentTarget,
   AstFile,
   BistableInstance,
   CallSite,
+  CommentNode,
   CounterInstance,
   DivisionExpr,
   EdgeTrigInstance,
+  EmptyStmt,
   EnumDef,
   ForLoop,
   GlobalVar,
   LocalVar,
   MemberAccess,
+  NamedDecl,
   Parameter,
   Pou,
   PouKind,
+  ReturnPoint,
   StNode,
   SymbolTable,
   TimerInstance,
@@ -72,13 +77,111 @@ export function emptySymbolTable(): SymbolTable {
     counterPvAssignments: [],
     edgeTrigInstances: [],
     bistableInstances: [],
+    emptyStatements: [],
+    comments: [],
+    assignmentTargets: [],
+    returnPoints: [],
+    declarations: [],
+    addressOfExprs: [],
   };
 }
 
 export function buildSymbolTable(files: AstFile[]): SymbolTable {
   const t = emptySymbolTable();
   for (const file of files) extractFile(file, t);
+  t.declarations = buildDeclarations(t);
   return t;
+}
+
+function buildDeclarations(t: SymbolTable): NamedDecl[] {
+  const out: NamedDecl[] = [];
+  // POUs themselves (program / function / function_block / method / interface).
+  for (const p of t.pous.values()) {
+    out.push({
+      name: p.name,
+      kind: p.kind,
+      file: p.file,
+      line: p.line,
+      scope: p.parent ?? '__global',
+    });
+    // Parameters: inputs, outputs, in_outs.
+    for (const inp of p.inputs) {
+      out.push({
+        name: inp.name,
+        kind: 'var_input',
+        typeText: inp.typeText,
+        file: p.file,
+        line: inp.line,
+        scope: p.qualifiedName,
+      });
+    }
+    for (const o of p.outputs) {
+      out.push({
+        name: o.name,
+        kind: 'var_output',
+        typeText: o.typeText,
+        file: p.file,
+        line: o.line,
+        scope: p.qualifiedName,
+      });
+    }
+    for (const io of p.inOuts) {
+      out.push({
+        name: io.name,
+        kind: 'var_in_out',
+        typeText: io.typeText,
+        file: p.file,
+        line: io.line,
+        scope: p.qualifiedName,
+      });
+    }
+  }
+  // Locals (incl. timer/counter/edge-trig/bistable instances and FB instances).
+  for (const [, locals] of t.pouLocals) {
+    for (const l of locals) {
+      out.push({
+        name: l.name,
+        kind: inferLocalKind(l, t),
+        typeText: l.typeText,
+        file: l.file,
+        line: l.line,
+        scope: l.scope,
+      });
+    }
+  }
+  // Globals (constants and non-constants).
+  for (const g of t.globals.values()) {
+    out.push({
+      name: g.name,
+      kind: g.constant ? 'constant' : 'var_global',
+      typeText: g.typeText,
+      file: g.file,
+      line: g.line,
+      scope: '__global',
+    });
+  }
+  // Enum types.
+  for (const e of t.enums.values()) {
+    out.push({
+      name: e.name,
+      kind: 'enum_type',
+      file: e.file,
+      line: e.line,
+      scope: '__global',
+    });
+  }
+  return out;
+}
+
+function inferLocalKind(l: LocalVar, t: SymbolTable): NamedDecl['kind'] {
+  const tt = l.typeText.trim().toUpperCase();
+  if (TIMER_TYPE_NAMES.has(tt)) return 'timer_instance';
+  if (COUNTER_TYPE_NAMES.has(tt)) return 'counter_instance';
+  if (EDGE_TRIG_TYPE_NAMES.has(tt)) return 'edge_trig_instance';
+  if (BISTABLE_TYPE_NAMES.has(tt)) return 'bistable_instance';
+  const matched = t.pous.get(l.typeText.trim());
+  if (matched && matched.kind === 'function_block') return 'fb_instance';
+  return 'var_local';
 }
 
 function extractFile(file: AstFile, t: SymbolTable): void {
@@ -104,6 +207,9 @@ function extractFile(file: AstFile, t: SymbolTable): void {
   collectCaseStatements(file, t);
   collectTimerPtAssignments(file, t);
   collectVarReferences(file, t);
+  collectFileScopedStatements(file, t);
+  collectAddressOfExprs(file, t);
+  collectComments(file, t);
   // pragmas inside POUs
   for (const p of descendantsOfType(root, NODE.PRAGMA)) {
     if (childrenOf(root).includes(p)) continue; // already collected at top level
@@ -539,7 +645,7 @@ function pickTypeNode(decl: StNode): StNode | null {
     }
   }
   // Fallback: user-defined types and system FBs (TON/TOF/TP) come through as a
-  // bare identifier — typically the second identifier child of the declaration.
+  // bare identifier, typically the second identifier child of the declaration.
   const idents: StNode[] = [];
   for (const c of childrenOf(decl)) {
     if (c.type === NODE.IDENTIFIER) idents.push(c);
@@ -820,16 +926,131 @@ function collectMemberFieldAssignments(
   }
 }
 
+// Classify an identifier node as a read or a write by walking up to the
+// nearest assignment_statement and checking whether the identifier sits
+// inside the LHS subtree (first named child). Identifiers not under any
+// assignment are treated as reads. Returns 'unknown' only when parent
+// links are unavailable (synthetic test fixtures don't populate them).
+function refContext(node: StNode): VarReference['context'] {
+  if (node.parent === undefined) return 'unknown';
+  let child: StNode = node;
+  let cur: StNode | null | undefined = node.parent;
+  while (cur) {
+    if (cur.type === NODE.ASSIGNMENT_STATEMENT) {
+      const lhs = childrenOf(cur)[0];
+      return lhs && child === lhs ? 'write' : 'read';
+    }
+    child = cur;
+    cur = cur.parent ?? null;
+  }
+  return 'read';
+}
+
+// `ADR(x)` parses as its own `address_of_expression` node (not a
+// call_expression), so it never reaches collectCallSites. Collect it
+// directly so ADDRESS_OF_CONSTANT can see it.
+function collectAddressOfExprs(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, 'address_of_expression')) {
+    const operandNode =
+      node.childForFieldName?.('operand') ?? childrenOf(node)[0] ?? null;
+    if (!operandNode) continue;
+    const line = lineOf(node);
+    t.addressOfExprs.push({
+      operand: operandNode.text.trim(),
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    });
+  }
+}
+
 function collectVarReferences(file: AstFile, t: SymbolTable): void {
   for (const ref of descendantsOfType(file.root, NODE.IDENTIFIER)) {
     const refText = ref.text;
     if (!refText) continue;
+    const line = lineOf(ref);
     const v: VarReference = {
       name: refText,
       file: file.path,
-      line: lineOf(ref),
-      context: 'unknown',
+      line,
+      scope: pouContainingLine(t, file.path, line),
+      context: refContext(ref),
     };
     t.varReferences.push(v);
+  }
+}
+
+// Structured statements whose grammar rule does NOT consume the trailing
+// `;`: for these, the `;` after the closing keyword (END_FOR, END_IF,
+// END_WHILE, END_CASE, END_REPEAT) parses as a standalone `empty_statement`
+// node. That `;` is a statement terminator, not an intentional no-op,
+// so we skip it. Statements that DO consume their `;`
+// (assignment / invocation / return / exit / continue) don't need to be
+// listed here, there's no phantom semicolon to skip.
+const STRUCTURED_NON_SEMI_STATEMENTS = new Set<string>([
+  'for_statement',
+  'if_statement',
+  'while_statement',
+  'repeat_statement',
+  'case_statement',
+  'pragma',
+]);
+
+function collectFileScopedStatements(file: AstFile, t: SymbolTable): void {
+  // Empty statements.
+  for (const node of descendantsOfType(file.root, 'empty_statement')) {
+    const prev = node.previousNamedSibling;
+    if (prev && STRUCTURED_NON_SEMI_STATEMENTS.has(prev.type)) {
+      continue; // grammar artifact, not a real empty statement
+    }
+    const line = lineOf(node);
+    const e: EmptyStmt = {
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.emptyStatements.push(e);
+  }
+  // Return points.
+  for (const node of descendantsOfType(file.root, NODE.RETURN_STATEMENT)) {
+    const line = lineOf(node);
+    const r: ReturnPoint = {
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.returnPoints.push(r);
+  }
+  // Assignment LHS targets.
+  for (const asn of descendantsOfType(file.root, NODE.ASSIGNMENT_STATEMENT)) {
+    const kids = childrenOf(asn);
+    const lhs = kids[0];
+    if (!lhs) continue;
+    const raw = lhs.text;
+    // Extract the leading identifier from the LHS (`T1.PT` → `T1`, `arr[5]` → `arr`).
+    const m = /^([A-Za-z_][A-Za-z0-9_]*)/.exec(raw.trim());
+    if (!m) continue;
+    const line = lineOf(asn);
+    const target: AssignmentTarget = {
+      name: m[1],
+      rawText: raw.trim(),
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.assignmentTargets.push(target);
+  }
+}
+
+function collectComments(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.COMMENT)) {
+    const line = lineOf(node);
+    const c: CommentNode = {
+      text: node.text,
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    };
+    t.comments.push(c);
   }
 }

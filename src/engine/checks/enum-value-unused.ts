@@ -31,7 +31,7 @@ export const enumValueUnused: Check = {
       const beforeDef = ctx.before.enums.get(name);
       for (const value of def.values) {
         if (isReferenced(name, value.name, ctx.after)) continue;
-        // Skip values that were already dead before — surface only regressions.
+        // Skip values that were already dead before, surface only regressions.
         const wasReferenced =
           beforeDef && beforeDef.values.some((v) => v.name === value.name)
             ? isReferenced(name, value.name, ctx.before)

@@ -1,0 +1,33 @@
+# Example preset: type names end with a suffix (_enum, _type), variables use
+# Hungarian-style prefixes. Drop into your repo as a starting point and edit.
+#
+# This is NOT a blessed default — it's a template demonstrating shape.
+
+naming_conventions:
+  # Basic-type variables: Hungarian prefix.
+  bool:            { prefix: x }
+  int:             { prefix: i }
+  real:            { prefix: r }
+  string:          { prefix: s }
+  time:            { prefix: t }
+
+  # Type definitions end with a descriptive suffix.
+  enum_type:       { suffix: _enum }
+  structure_type:  { suffix: _type }
+
+  # POUs.
+  function_block:  { prefix: FB_ }
+  function:        { prefix: fn }
+  program:         { prefix: P_ }
+
+  # Instances and globals.
+  fb_instance:     { prefix: fb }
+  global_var:      { prefix: g }
+
+  # Constants in SCREAMING_SNAKE_CASE.
+  constant:        { pattern: '^[A-Z][A-Z0-9_]*$' }
+
+# Identifiers grandfathered in (legacy code, vendor lib names).
+naming_ignore:
+  - MAIN
+  - /^Tc[0-9]+_/         # TwinCAT-style lib prefix; vendor-neutral example

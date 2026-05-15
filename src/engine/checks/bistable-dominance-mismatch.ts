@@ -37,7 +37,7 @@ export const bistableDominanceMismatch: Check = {
         line: b.line,
         summary: `${b.name} is ${b.bistableType} but its name suggests ${want} (${b.bistableType === 'SR' ? 'set-dominant' : 'reset-dominant'} vs ${want === 'SR' ? 'set-dominant' : 'reset-dominant'})`,
         detail:
-          'Heuristic check: variable name contains a hint about which input should win when both are TRUE. This is a naming convention guess — false positives are expected on shops that name otherwise. Disable via `disabled_checks: [BISTABLE_DOMINANCE_MISMATCH]` if not useful.',
+          'Heuristic check: variable name contains a hint about which input should win when both are TRUE. This is a naming convention guess, false positives are expected on shops that name otherwise. Disable via `disabled_checks: [BISTABLE_DOMINANCE_MISMATCH]` if not useful.',
       });
     }
     return findings;

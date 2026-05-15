@@ -1,0 +1,136 @@
+site_name: plc-st-review
+site_description: Semantic linter, code reviewer, and team-style enforcer for IEC 61131-3 Structured Text — runs as a CI linter, GitHub Action, GitLab CI job, or local CLI
+site_url: https://heytalepazguato.github.io/plc-st-review/
+repo_url: https://github.com/HeytalePazguato/plc-st-review
+repo_name: HeytalePazguato/plc-st-review
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+site_dir: _site
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Checks:
+      - Overview: checks-reference.md
+      - Limitations: check-limitations.md
+      - Diff-based:
+          - SIGNATURE_CHANGED: checks/diff-based/signature_changed.md
+          - CALL_SITE_OUTDATED: checks/diff-based/call_site_outdated.md
+          - TYPE_MISMATCH: checks/diff-based/type_mismatch.md
+          - ENUM_VALUE_REMOVED: checks/diff-based/enum_value_removed.md
+          - ENUM_VALUE_ADDED: checks/diff-based/enum_value_added.md
+          - TIMER_VALUE_CHANGED: checks/diff-based/timer_value_changed.md
+          - CONSTANT_VALUE_CHANGED: checks/diff-based/constant_value_changed.md
+          - COMMENT_ONLY: checks/diff-based/comment_only.md
+          - ARRAY_BOUNDS_CHANGED: checks/diff-based/array_bounds_changed.md
+          - STATE_UNHANDLED: checks/diff-based/state_unhandled.md
+          - UNREACHABLE_CODE: checks/diff-based/unreachable_code.md
+          - LOOP_BOUNDS_CHANGED: checks/diff-based/loop_bounds_changed.md
+          - POU_DELETED: checks/diff-based/pou_deleted.md
+          - POU_RENAMED: checks/diff-based/pou_renamed.md
+          - METHOD_ADDED_TO_INTERFACE: checks/diff-based/method_added_to_interface.md
+          - INHERITANCE_CHANGED: checks/diff-based/inheritance_changed.md
+          - PRAGMA_CHANGED: checks/diff-based/pragma_changed.md
+          - UNUSED_VAR_INTRODUCED: checks/diff-based/unused_var_introduced.md
+          - COUNTER_VALUE_CHANGED: checks/diff-based/counter_value_changed.md
+      - Static integrity:
+          - ENUM_VALUE_UNUSED: checks/static-integrity/enum_value_unused.md
+          - ENUM_MEMBER_UNKNOWN: checks/static-integrity/enum_member_unknown.md
+          - ARRAY_INDEX_OUT_OF_BOUNDS: checks/static-integrity/array_index_out_of_bounds.md
+          - DIVISION_BY_ZERO: checks/static-integrity/division_by_zero.md
+          - INFINITE_LOOP: checks/static-integrity/infinite_loop.md
+          - LOOP_BOUNDS_REVERSED: checks/static-integrity/loop_bounds_reversed.md
+      - FB-instance:
+          - COUNTER_PV_ZERO: checks/fb-instance/counter_pv_zero.md
+          - TIMER_PT_ZERO: checks/fb-instance/timer_pt_zero.md
+          - TIMER_NOT_DRIVEN: checks/fb-instance/timer_not_driven.md
+          - EDGE_TRIG_REUSED: checks/fb-instance/edge_trig_reused.md
+          - FB_INSTANCE_DOUBLE_CALL: checks/fb-instance/fb_instance_double_call.md
+          - FB_INSTANCE_NEVER_CALLED: checks/fb-instance/fb_instance_never_called.md
+          - BISTABLE_DOMINANCE_MISMATCH: checks/fb-instance/bistable_dominance_mismatch.md
+      - Code quality / style:
+          - EMPTY_STATEMENT: checks/code-quality/empty_statement.md
+          - UNUSED_RETURN_VALUE: checks/code-quality/unused_return_value.md
+          - ARRAY_SINGLE_ELEMENT: checks/code-quality/array_single_element.md
+          - VARIABLE_SHADOWING: checks/code-quality/variable_shadowing.md
+          - UNQUALIFIED_ENUM_CONSTANT: checks/code-quality/unqualified_enum_constant.md
+          - IDENTIFIER_CASE_MISMATCH: checks/code-quality/identifier_case_mismatch.md
+          - UNUSED_INPUT_VAR: checks/code-quality/unused_input_var.md
+          - INPUT_VAR_WRITTEN: checks/code-quality/input_var_written.md
+          - BOOL_COMPARISON: checks/code-quality/bool_comparison.md
+          - REAL_EQUALITY: checks/code-quality/real_equality.md
+          - MULTIPLE_EXIT_POINTS: checks/code-quality/multiple_exit_points.md
+          - ASSIGNMENT_IN_CONDITION: checks/code-quality/assignment_in_condition.md
+          - COMMENTED_OUT_CODE: checks/code-quality/commented_out_code.md
+          - RECURSIVE_CALL: checks/code-quality/recursive_call.md
+          - FORBIDDEN_SYMBOL: checks/code-quality/forbidden_symbol.md
+          - ADDRESS_OF_CONSTANT: checks/code-quality/address_of_constant.md
+          - UNUSED_OUTPUT_VAR: checks/code-quality/unused_output_var.md
+          - OUTPUT_VAR_READ_INTERNALLY: checks/code-quality/output_var_read_internally.md
+          - NESTED_COMMENTS: checks/code-quality/nested_comments.md
+          - NAMING_CONVENTION: checks/code-quality/naming_convention.md
+  - Configuration:
+      - Tuning severities: tuning-severities.md
+      - Preset packs: preset-packs.md
+      - Writing custom checks: writing-custom-checks.md
+  - Platforms:
+      - Lint mode (CI, no PR): lint-mode.md
+      - GitHub setup: github-setup.md
+      - GitLab setup: gitlab-setup.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/HeytalePazguato/plc-st-review
+    - icon: fontawesome/brands/npm
+      link: https://www.npmjs.com/package/plc-st-review

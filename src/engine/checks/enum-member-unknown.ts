@@ -2,7 +2,7 @@ import type { Check, Finding, MemberAccess, SymbolTable } from '../types.js';
 
 function isUnknownMember(ref: MemberAccess, t: SymbolTable): boolean {
   const enumDef = t.enums.get(ref.leftText.trim());
-  if (!enumDef) return false; // left side isn't a known enum — skip
+  if (!enumDef) return false; // left side isn't a known enum, skip
   return !enumDef.values.some(
     (v) => v.name.toLowerCase() === ref.rightText.trim().toLowerCase(),
   );

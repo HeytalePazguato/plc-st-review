@@ -261,7 +261,7 @@ function findingMarker(f: Finding): string {
 function renderFindingBody(f: Finding): string {
   const lines: string[] = [
     findingMarker(f),
-    `**${SEVERITY_BADGE[f.severity]} \`${f.category}\`** — ${f.summary}`,
+    `**${SEVERITY_BADGE[f.severity]} \`${f.category}\`**: ${f.summary}`,
   ];
   if (f.detail) {
     lines.push('');
@@ -273,7 +273,7 @@ function renderFindingBody(f: Finding): string {
     lines.push('');
     lines.push('Related:');
     for (const r of f.related) {
-      lines.push(`- \`${r.file}:${r.line}\`${r.note ? ' — ' + r.note : ''}`);
+      lines.push(`- \`${r.file}:${r.line}\`${r.note ? ', ' + r.note : ''}`);
     }
   }
   return lines.join('\n');

@@ -1,8 +1,3 @@
----
-layout: default
-title: Writing custom checks
----
-
 # Writing a custom check
 
 Each check in `plc-st-review` is a self-contained module under
@@ -13,7 +8,7 @@ Each check in `plc-st-review` is a self-contained module under
    `ALL_CATEGORIES` array in `src/engine/types.ts`.
 
 2. **Write the check module.** It exports an object implementing
-   the [`Check`](../src/engine/types.ts) interface:
+   the [`Check`](https://github.com/HeytalePazguato/plc-st-review/blob/main/src/engine/types.ts) interface:
 
    ```ts
    import type { Check } from '../types.js';
@@ -24,8 +19,7 @@ Each check in `plc-st-review` is a self-contained module under
      run(ctx) {
        const findings = [];
        // Walk ctx.before / ctx.after symbol tables, compare,
-       // and push Finding objects. Don't bake severity in stone —
-       // the engine applies `severity_overrides` from the user's
+       // and push Finding objects. Don't bake severity in stone, // the engine applies `severity_overrides` from the user's
        // config on top of whatever you return.
        return findings;
      },

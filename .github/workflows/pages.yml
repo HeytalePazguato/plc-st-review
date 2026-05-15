@@ -1,18 +1,17 @@
 name: pages
 
-# Build and deploy the GitHub Pages site from /docs.
+# Build and deploy the GitHub Pages site from /docs using MkDocs Material.
 #
-# Triggers on changes under /docs (or this workflow itself) on develop or
-# main. develop pushes only run the build job (validation); main pushes
-# additionally deploy. This matches the GitHub Pages environment's default
-# protection (main branch only).
-#
-# Delete this workflow if you don't want a Pages site.
+# Triggers on changes under /docs (or mkdocs.yml / this workflow itself) on
+# develop or main. develop pushes only run the build job (validation); main
+# pushes additionally deploy. This matches the GitHub Pages environment's
+# default protection (main branch only).
 on:
   push:
     branches: [develop, main]
     paths:
       - "docs/**"
+      - "mkdocs.yml"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -30,20 +29,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material
+      - name: Build site
+        run: mkdocs build --strict --site-dir _site
       - uses: actions/configure-pages@v5
         with:
           enablement: true
-      - uses: actions/jekyll-build-pages@v1
-        with:
-          source: ./docs
-          destination: ./_site
       - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
 
   deploy:
     needs: build
     # Only deploy from main; develop pushes still run the build job to
-    # validate the Jekyll site, but the github-pages environment is
-    # protected to main only.
+    # validate the site, but the github-pages environment is protected
+    # to main only.
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:

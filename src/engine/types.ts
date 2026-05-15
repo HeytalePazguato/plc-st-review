@@ -38,7 +38,56 @@ export type Category =
   | 'EDGE_TRIG_REUSED'
   | 'FB_INSTANCE_DOUBLE_CALL'
   | 'FB_INSTANCE_NEVER_CALLED'
-  | 'BISTABLE_DOMINANCE_MISMATCH';
+  | 'BISTABLE_DOMINANCE_MISMATCH'
+  | 'EMPTY_STATEMENT'
+  | 'UNUSED_RETURN_VALUE'
+  | 'ARRAY_SINGLE_ELEMENT'
+  | 'VARIABLE_SHADOWING'
+  | 'UNQUALIFIED_ENUM_CONSTANT'
+  | 'IDENTIFIER_CASE_MISMATCH'
+  | 'UNUSED_INPUT_VAR'
+  | 'INPUT_VAR_WRITTEN'
+  | 'BOOL_COMPARISON'
+  | 'REAL_EQUALITY'
+  | 'MULTIPLE_EXIT_POINTS'
+  | 'ASSIGNMENT_IN_CONDITION'
+  | 'COMMENTED_OUT_CODE'
+  | 'RECURSIVE_CALL'
+  | 'FORBIDDEN_SYMBOL'
+  | 'ADDRESS_OF_CONSTANT'
+  | 'UNUSED_OUTPUT_VAR'
+  | 'OUTPUT_VAR_READ_INTERNALLY'
+  | 'NESTED_COMMENTS'
+  | 'NAMING_CONVENTION';
+
+/**
+ * Categories that only make sense when comparing two revisions of the
+ * code: their definition is "what changed between before and after?".
+ * In `--lint` mode (no base ref, just a static analysis of the current
+ * tree) these are auto-disabled, running them would either silently
+ * produce zero findings or, in two cases (PRAGMA_CHANGED and
+ * UNUSED_VAR_INTRODUCED), surface every pragma / every variable as a
+ * "new" finding.
+ */
+export const DIFF_ONLY_CATEGORIES: ReadonlySet<Category> = new Set<Category>([
+  'SIGNATURE_CHANGED',
+  'TYPE_MISMATCH',
+  'ENUM_VALUE_REMOVED',
+  'ENUM_VALUE_ADDED',
+  'TIMER_VALUE_CHANGED',
+  'CONSTANT_VALUE_CHANGED',
+  'COMMENT_ONLY',
+  'ARRAY_BOUNDS_CHANGED',
+  'LOOP_BOUNDS_CHANGED',
+  'POU_DELETED',
+  'POU_RENAMED',
+  'METHOD_ADDED_TO_INTERFACE',
+  'INHERITANCE_CHANGED',
+  'PRAGMA_CHANGED',
+  'COUNTER_VALUE_CHANGED',
+  'UNUSED_VAR_INTRODUCED',
+  'ENUM_VALUE_UNUSED',
+]);
 
 export const ALL_CATEGORIES: Category[] = [
   'SIGNATURE_CHANGED',
@@ -73,6 +122,26 @@ export const ALL_CATEGORIES: Category[] = [
   'FB_INSTANCE_DOUBLE_CALL',
   'FB_INSTANCE_NEVER_CALLED',
   'BISTABLE_DOMINANCE_MISMATCH',
+  'EMPTY_STATEMENT',
+  'UNUSED_RETURN_VALUE',
+  'ARRAY_SINGLE_ELEMENT',
+  'VARIABLE_SHADOWING',
+  'UNQUALIFIED_ENUM_CONSTANT',
+  'IDENTIFIER_CASE_MISMATCH',
+  'UNUSED_INPUT_VAR',
+  'INPUT_VAR_WRITTEN',
+  'BOOL_COMPARISON',
+  'REAL_EQUALITY',
+  'MULTIPLE_EXIT_POINTS',
+  'ASSIGNMENT_IN_CONDITION',
+  'COMMENTED_OUT_CODE',
+  'RECURSIVE_CALL',
+  'FORBIDDEN_SYMBOL',
+  'ADDRESS_OF_CONSTANT',
+  'UNUSED_OUTPUT_VAR',
+  'OUTPUT_VAR_READ_INTERNALLY',
+  'NESTED_COMMENTS',
+  'NAMING_CONVENTION',
 ];
 
 export interface Position {
@@ -88,6 +157,10 @@ export interface StNode {
   readonly children: readonly StNode[];
   readonly namedChildren?: readonly StNode[];
   readonly parent?: StNode | null;
+  readonly previousSibling?: StNode | null;
+  readonly previousNamedSibling?: StNode | null;
+  readonly nextSibling?: StNode | null;
+  readonly nextNamedSibling?: StNode | null;
   childForFieldName?(name: string): StNode | null;
 }
 
@@ -114,6 +187,37 @@ export interface Finding {
   related?: Array<{ file: string; line: number; note?: string }>;
 }
 
+export interface NamingRule {
+  prefix?: string;
+  suffix?: string;
+  pattern?: string;       // regex against the whole identifier
+  case?: 'sensitive' | 'insensitive';
+  severity?: Severity;
+}
+
+export type NamingDimension =
+  | 'bool'
+  | 'int'
+  | 'real'
+  | 'string'
+  | 'time'
+  | 'pointer'
+  | 'reference'
+  | 'array'
+  | 'enum_type'
+  | 'structure_type'
+  | 'function_block'
+  | 'function'
+  | 'program'
+  | 'method'
+  | 'interface'
+  | 'fb_instance'
+  | 'global_var'
+  | 'input_var'
+  | 'output_var'
+  | 'in_out_var'
+  | 'constant';
+
 export interface ResolvedConfig {
   disabledChecks: Set<Category>;
   severityOverrides: Map<Category, Severity>;
@@ -121,6 +225,9 @@ export interface ResolvedConfig {
   safetyCriticalPrefixes: string[];
   failOnSeverity: Severity;
   commentStyle: 'inline' | 'summary' | 'both';
+  forbiddenSymbols: string[];
+  namingConventions: Partial<Record<NamingDimension, NamingRule>>;
+  namingIgnore: string[];   // identifier patterns to skip for NAMING_CONVENTION
 }
 
 export interface SymbolTable {
@@ -145,6 +252,19 @@ export interface SymbolTable {
   counterPvAssignments: CounterPvAssignment[];
   edgeTrigInstances: EdgeTrigInstance[];
   bistableInstances: BistableInstance[];
+  emptyStatements: EmptyStmt[];
+  comments: CommentNode[];
+  assignmentTargets: AssignmentTarget[];
+  returnPoints: ReturnPoint[];
+  declarations: NamedDecl[];
+  addressOfExprs: AddressOfExpr[];
+}
+
+export interface AddressOfExpr {
+  operand: string; // text of the addressed operand, e.g. `SAFETY_TIMEOUT`, `T1.PT`
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export type PouKind =
@@ -263,7 +383,67 @@ export interface VarReference {
   name: string;
   file: string;
   line: number;
+  scope: string;
   context: 'read' | 'write' | 'unknown';
+}
+
+export interface EmptyStmt {
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface CommentNode {
+  text: string;
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface AssignmentTarget {
+  name: string;          // bare identifier or first segment of member access
+  rawText: string;       // the full LHS text (e.g. `T1.PT`, `arr[5]`)
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface ReturnPoint {
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export type DeclKind =
+  | 'program'
+  | 'function'
+  | 'function_block'
+  | 'method'
+  | 'interface'
+  | 'enum_type'
+  | 'structure_type'
+  | 'array_type'
+  | 'alias_type'
+  | 'var_local'
+  | 'var_global'
+  | 'var_input'
+  | 'var_output'
+  | 'var_in_out'
+  | 'var_temp'
+  | 'constant'
+  | 'fb_instance'
+  | 'timer_instance'
+  | 'counter_instance'
+  | 'edge_trig_instance'
+  | 'bistable_instance';
+
+export interface NamedDecl {
+  name: string;
+  kind: DeclKind;
+  typeText?: string;       // for typed vars: the type name as text
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export interface ArrayDecl {

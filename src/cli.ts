@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-import { writeFile } from 'node:fs/promises';
+import { access, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { loadConfig } from './config.js';
 import { runReview, shouldFail } from './engine/review.js';
 import { renderJson } from './output/json.js';
 import { renderMarkdown } from './output/markdown.js';
 import { renderTerminal } from './output/terminal.js';
-import { loadPathPair, loadRefSnapshot } from './platforms/local.js';
+import { loadLintSnapshot, loadPathPair, loadRefSnapshot } from './platforms/local.js';
 import {
   loadGitlabMrSnapshot,
   postGitlabReview,
@@ -17,12 +18,13 @@ import {
   postGitHubReview,
   resolveGitHubOptionsFromEnv,
 } from './platforms/github.js';
-import { SEVERITY_RANK, type Severity } from './engine/types.js';
+import { DIFF_ONLY_CATEGORIES, SEVERITY_RANK, type Severity } from './engine/types.js';
 
 interface CliOptions {
   base?: string;
   head?: string;
   files?: string[];
+  lint?: string[];
   gitlab?: boolean;
   mr?: string;
   project?: string;
@@ -47,6 +49,11 @@ async function main(): Promise<void> {
     .option('--base <ref>', 'git base ref (e.g. main)')
     .option('--head <ref>', 'git head ref (e.g. feature/x)', 'HEAD')
     .option('--files <before> <after>', 'review two specific files', collectFiles, [])
+    .option(
+      '--lint <patterns...>',
+      'static-lint mode: parse the given files / globs (e.g. `src/**/*.st`) ' +
+        'and run single-revision checks only (no PR or base ref needed)',
+    )
     .option('--gitlab', 'review a GitLab merge request (requires --mr)')
     .option('--mr <iid>', 'GitLab MR IID to review')
     .option('--project <id>', 'GitLab project ID or path (overrides env)')
@@ -69,7 +76,11 @@ async function main(): Promise<void> {
     fail(`Invalid --severity: ${String(opts.severity)}`);
   }
 
-  const config = await loadConfig(opts.config ?? null);
+  const configPath = opts.config ?? (await discoverConfig());
+  if (configPath && !opts.config) {
+    console.error(`plc-st-review: using config ${configPath}`);
+  }
+  const config = await loadConfig(configPath);
 
   if (opts.gitlab) {
     await runGitlabMode(opts, config);
@@ -81,7 +92,23 @@ async function main(): Promise<void> {
   }
 
   let snap;
-  if (opts.files && opts.files.length === 2) {
+  let effectiveConfig = config;
+  if (opts.lint && opts.lint.length > 0) {
+    snap = await loadLintSnapshot(opts.lint);
+    if (snap.after.length === 0) {
+      fail(`--lint matched no .st files. Patterns: ${opts.lint.join(', ')}`);
+    }
+    // Diff-only categories would either silently produce zero findings
+    // or, in two cases, surface every pragma / every variable as "new".
+    // Disable them so lint output is clean.
+    effectiveConfig = {
+      ...config,
+      disabledChecks: new Set([
+        ...config.disabledChecks,
+        ...DIFF_ONLY_CATEGORIES,
+      ]),
+    };
+  } else if (opts.files && opts.files.length === 2) {
     snap = await loadPathPair(opts.files[0], opts.files[1]);
   } else if (opts.base) {
     snap = await loadRefSnapshot({
@@ -90,14 +117,14 @@ async function main(): Promise<void> {
     });
   } else {
     fail(
-      'Provide one of: --base <ref>, --files <old> <new>, --gitlab --mr <iid>, or --github --pr <number>.',
+      'Provide one of: --lint <patterns…>, --base <ref>, --files <old> <new>, --gitlab --mr <iid>, or --github --pr <number>.',
     );
   }
 
   const findings = runReview({
     beforeFiles: snap.before,
     afterFiles: snap.after,
-    config,
+    config: effectiveConfig,
   }).filter((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[opts.severity]);
 
   let rendered: string;
@@ -198,6 +225,23 @@ async function runGitlabMode(
 
 function collectFiles(value: string, prev: string[]): string[] {
   return [...prev, value];
+}
+
+// Look for a config file in CWD when --config is not provided. The two
+// filenames cover both the common dotfile name and the editor-friendly
+// non-dotfile variant. Returns the resolved absolute path, or null if
+// neither exists.
+async function discoverConfig(): Promise<string | null> {
+  for (const name of ['.plc-st-review.yml', 'plc-st-review.yml']) {
+    const candidate = resolve(process.cwd(), name);
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // not present, try next
+    }
+  }
+  return null;
 }
 
 function isOutput(s: string): s is CliOptions['output'] {
