@@ -60,6 +60,35 @@ export type Category =
   | 'NESTED_COMMENTS'
   | 'NAMING_CONVENTION';
 
+/**
+ * Categories that only make sense when comparing two revisions of the
+ * code: their definition is "what changed between before and after?".
+ * In `--lint` mode (no base ref, just a static analysis of the current
+ * tree) these are auto-disabled — running them would either silently
+ * produce zero findings or, in two cases (PRAGMA_CHANGED and
+ * UNUSED_VAR_INTRODUCED), surface every pragma / every variable as a
+ * "new" finding.
+ */
+export const DIFF_ONLY_CATEGORIES: ReadonlySet<Category> = new Set<Category>([
+  'SIGNATURE_CHANGED',
+  'TYPE_MISMATCH',
+  'ENUM_VALUE_REMOVED',
+  'ENUM_VALUE_ADDED',
+  'TIMER_VALUE_CHANGED',
+  'CONSTANT_VALUE_CHANGED',
+  'COMMENT_ONLY',
+  'ARRAY_BOUNDS_CHANGED',
+  'LOOP_BOUNDS_CHANGED',
+  'POU_DELETED',
+  'POU_RENAMED',
+  'METHOD_ADDED_TO_INTERFACE',
+  'INHERITANCE_CHANGED',
+  'PRAGMA_CHANGED',
+  'COUNTER_VALUE_CHANGED',
+  'UNUSED_VAR_INTRODUCED',
+  'ENUM_VALUE_UNUSED',
+]);
+
 export const ALL_CATEGORIES: Category[] = [
   'SIGNATURE_CHANGED',
   'CALL_SITE_OUTDATED',
