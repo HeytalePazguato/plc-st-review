@@ -4,9 +4,7 @@
 
 `ADR(c)` where `c` is a `VAR_GLOBAL CONSTANT`.
 
-**Why it matters.** A CONSTANT may live in flash / read-only storage
-on some runtimes; dereferencing a pointer derived from it can fault.
-Even when it works today, the pointer's value isn't actually mutable.
+**Why it matters.** A CONSTANT may live in flash / read-only storage on some runtimes; dereferencing a pointer derived from it can fault. Even when it works today, the pointer's value isn't actually mutable.
 
 **Settings.** No check-specific config.
 
@@ -29,5 +27,4 @@ A CONSTANT may live in flash/read-only storage on some runtimes;
 dereferencing a pointer derived from it can fault.
 ```
 
-**Fix.** If you need a mutable copy, declare a regular `VAR_GLOBAL`
-initialised to the constant value.
+**Fix.** If you need a mutable copy, declare a regular `VAR_GLOBAL` initialised to the constant value.

@@ -2,13 +2,9 @@
 
 **Severity:** `info`
 
-A bare identifier reference matches a member of exactly one enum
-type. Qualified form (`E_State.IDLE`) is clearer than the bare form
-(`IDLE`).
+A bare identifier reference matches a member of exactly one enum type. Qualified form (`E_State.IDLE`) is clearer than the bare form (`IDLE`).
 
-**Why it matters.** Bare enum refs work because IEC ST hoists enum
-members into scope, but they hide the type from anyone reading the
-code and break grep / IDE refactoring.
+**Why it matters.** Bare enum refs work because IEC ST hoists enum members into scope, but they hide the type from anyone reading the code and break grep / IDE refactoring.
 
 **Settings.** No check-specific config.
 

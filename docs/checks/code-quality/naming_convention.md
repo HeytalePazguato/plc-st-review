@@ -2,30 +2,13 @@
 
 **Severity:** `warn` (config-driven, off by default)
 
-A declaration name doesn't match the configured prefix, suffix, or
-regex for its kind.
+A declaration name doesn't match the configured prefix, suffix, or regex for its kind.
 
-**Why it matters.** Naming conventions are how teams keep large
-codebases skimmable. The engine doesn't ship any blessed convention, your team writes the rules in `naming_conventions:`, optionally
-composed from shared preset files via `extends:` (see
-[`preset-packs.md`](../../preset-packs.md)).
+**Why it matters.** Naming conventions are how teams keep large codebases skimmable. The engine doesn't ship any blessed convention, your team writes the rules in `naming_conventions:`, optionally composed from shared preset files via `extends:` (see [`preset-packs.md`](../../preset-packs.md)).
 
-This is a clean and simple way to enforce team or company coding
-guidelines without needing a separate style review pass: once
-`naming_conventions:` is set in `.plc-st-review.yml`, the PR or MR
-itself becomes the enforcement surface. Every non-conforming
-identifier shows up as an inline comment on the exact line, so the
-guideline lives next to the code instead of in a PDF nobody re-reads.
-Reviewers don't have to remember the rules; the bot does. Onboarding
-a new engineer means pointing them at the comments the bot leaves,
-not at a wiki page.
+This is a clean and simple way to enforce team or company coding guidelines without needing a separate style review pass: once `naming_conventions:` is set in `.plc-st-review.yml`, the PR or MR itself becomes the enforcement surface. Every non-conforming identifier shows up as an inline comment on the exact line, so the guideline lives next to the code instead of in a PDF nobody re-reads. Reviewers don't have to remember the rules; the bot does. Onboarding a new engineer means pointing them at the comments the bot leaves, not at a wiki page.
 
-Typical workflow: agree on the convention once (often distilled from
-an existing internal style guide), drop it into `.plc-st-review.yml`
-on `main`, and from then on every PR/MR that introduces a
-non-conforming name gets an actionable, line-specific note. Grandfather
-legacy code in via `naming_ignore:` so the check only enforces new
-work, no day-one renaming churn required.
+Typical workflow: agree on the convention once (often distilled from an existing internal style guide), drop it into `.plc-st-review.yml` on `main`, and from then on every PR/MR that introduces a non-conforming name gets an actionable, line-specific note. Grandfather legacy code in via `naming_ignore:` so the check only enforces new work, no day-one renaming churn required.
 
 **Settings.** Off by default. Configure per declaration-kind:
 
@@ -63,10 +46,7 @@ naming_ignore:
   - /^Tc[0-9]+_/             # regex inside slashes
 ```
 
-**`prefix`, `suffix`, and `pattern` combine with AND.** Each rule can
-list one, two, or all three at the same time. Whatever you list must
-*all* hold for the identifier to pass, if any one fails, the check
-fires. Listing none means the kind is unconstrained.
+**`prefix`, `suffix`, and `pattern` combine with AND.** Each rule can list one, two, or all three at the same time. Whatever you list must *all* hold for the identifier to pass, if any one fails, the check fires. Listing none means the kind is unconstrained.
 
 Three worked examples, simplest to strictest:
 
@@ -102,11 +82,7 @@ naming_conventions:
     pattern: '^[A-Za-z][A-Za-z0-9]+$'
 ```
 
-`case: insensitive` only affects `prefix` / `suffix` matching;
-`pattern` is always a literal JavaScript regex (add `(?i)`-equivalent
-character classes yourself if you need it case-insensitive). Malformed
-regexes are silently skipped, the rule effectively becomes prefix /
-suffix only, so test your patterns.
+`case: insensitive` only affects `prefix` / `suffix` matching; `pattern` is always a literal JavaScript regex (add `(?i)`-equivalent character classes yourself if you need it case-insensitive). Malformed regexes are silently skipped, the rule effectively becomes prefix / suffix only, so test your patterns.
 
 **Trigger.**
 
@@ -124,6 +100,5 @@ under `naming_conventions:` in your `.plc-st-review.yml`, or add
 the identifier to `naming_ignore:` if it is grandfathered in.
 ```
 
-**Fix.** Rename to match the convention, or add the identifier to
-`naming_ignore:` to grandfather it in.
+**Fix.** Rename to match the convention, or add the identifier to `naming_ignore:` to grandfather it in.
 

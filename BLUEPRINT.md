@@ -1,7 +1,6 @@
 # Project Blueprint
 
-Conventions and reusable scaffolding for any new repo. Language-agnostic in
-structure; per-language slots are called out.
+Conventions and reusable scaffolding for any new repo. Language-agnostic in structure; per-language slots are called out.
 
 > **AI agents:** scroll to [Runbook for agents](#runbook-for-agents) for an
 > ordered checklist. Everything else is reference.
@@ -15,19 +14,10 @@ develop  →  release/<version>  →  main          (planned releases)
                 hotfix/<version> →  main         (emergency patches)
 ```
 
-- **`develop`** — daily integration target. All feature/fix PRs land here.
-  **Never** the source branch of a PR to `main` (see "main" below).
-- **`release/<version>`** (e.g. `release/0.1.0`) — pre-release stabilization
-  branch cut from `develop`. Bump VERSION + CHANGELOG date here.
-- **`hotfix/<version>`** (e.g. `hotfix/0.1.1`) — emergency patch branch cut
-  directly from `main` when `develop` has unfinished work that can't ship.
-  PR back to `main`; after merge, fast-forward `main → develop` so the fix
-  enters integration. Use sparingly; prefer the regular `release/*` flow.
-- **`main`** — stable releases only. Source of any PR to `main` is always
-  `release/*` or `hotfix/*` — **never `develop` directly**. The repo's
-  `delete_branch_on_merge: true` (section 5) auto-deletes the source
-  branch on merge; routing through `release/*` / `hotfix/*` keeps
-  `develop` from being wiped out by that setting on every release.
+- **`develop`**: daily integration target. All feature/fix PRs land here. **Never** the source branch of a PR to `main` (see "main" below).
+- **`release/<version>`** (e.g. `release/0.1.0`), pre-release stabilization branch cut from `develop`. Bump VERSION + CHANGELOG date here.
+- **`hotfix/<version>`** (e.g. `hotfix/0.1.1`), emergency patch branch cut directly from `main` when `develop` has unfinished work that can't ship. PR back to `main`; after merge, fast-forward `main → develop` so the fix enters integration. Use sparingly; prefer the regular `release/*` flow.
+- **`main`**: stable releases only. Source of any PR to `main` is always `release/*` or `hotfix/*`: **never `develop` directly**. The repo's `delete_branch_on_merge: true` (section 5) auto-deletes the source branch on merge; routing through `release/*` / `hotfix/*` keeps `develop` from being wiped out by that setting on every release.
 
 Never force-push shared branches. Never skip hooks.
 
@@ -35,8 +25,7 @@ Never force-push shared branches. Never skip hooks.
 
 ## 2. Versioning
 
-- **Source of truth:** a `VERSION` file at repo root (`0.1.0`, no `v` prefix).
-  Manually bumped on the release branch before merging to `main`.
+- **Source of truth:** a `VERSION` file at repo root (`0.1.0`, no `v` prefix). Manually bumped on the release branch before merging to `main`.
 - **Semver:** strict. Breaking change → major. New feature → minor. Bug fix → patch.
 - **Pre-release identifiers:** `-alpha.N`, `-beta.N`, `-rc.N` (incrementing per stage).
 - **Dev builds:** `0.0.<run_number>-dev` from CI, never tagged.
@@ -64,42 +53,25 @@ concurrency:
   cancel-in-progress: true
 ```
 
-### 3.1 `ci.yml` — gate
+### 3.1 `ci.yml`: gate
 
-Runs lint + build + test on every push to `main`, `develop`, `release/**` and
-on PRs to `main`/`develop`. Must pass before any other workflow's outcome
-matters. Matrix at minimum across Linux + macOS + Windows.
+Runs lint + build + test on every push to `main`, `develop`, `release/**` and on PRs to `main`/`develop`. Must pass before any other workflow's outcome matters. Matrix at minimum across Linux + macOS + Windows.
 
-### 3.2 `prerelease.yml` — develop + release branches
+### 3.2 `prerelease.yml`: develop + release branches
 
 Two jobs gated by `if: github.ref == ...`:
 
-- **`dev-build`** (on `develop`): build snapshot artifacts, upload as workflow
-  artifact named `<project>-0.0.<run>-dev`, retention 90d, trim to last 3 via
-  `gh api`. Requires `permissions: actions: write`.
-- **`prerelease`** (on `release/**`): parse base version from branch
-  (`release/0.1.0` → `0.1.0`), pick stage from commit-message keyword
-  (default `alpha`, `[beta]`, `[rc]`), count existing matching tags,
-  increment, push tag, run release tooling (skip publish to package
-  managers — those have `skip_upload: auto` for prereleases). Trim to last 5
-  prereleases via `gh release list/delete --cleanup-tag`.
+- **`dev-build`** (on `develop`): build snapshot artifacts, upload as workflow artifact named `<project>-0.0.<run>-dev`, retention 90d, trim to last 3 via `gh api`. Requires `permissions: actions: write`.
+- **`prerelease`** (on `release/**`): parse base version from branch (`release/0.1.0` → `0.1.0`), pick stage from commit-message keyword (default `alpha`, `[beta]`, `[rc]`), count existing matching tags, increment, push tag, run release tooling (skip publish to package managers, those have `skip_upload: auto` for prereleases). Trim to last 5 prereleases via `gh release list/delete --cleanup-tag`.
 
-### 3.3 `release.yml` — main
+### 3.3 `release.yml`: main
 
-Triggered on push to `main`. Reads `VERSION`, idempotence-checks the tag
-exists, pushes `v<VERSION>`, runs release tooling to publish to all channels.
+Triggered on push to `main`. Reads `VERSION`, idempotence-checks the tag exists, pushes `v<VERSION>`, runs release tooling to publish to all channels.
 
 Two guards run before any tag is pushed:
 
-- **Template-sentinel guard:** if `VERSION == 0.0.0`, the workflow exits
-  cleanly. `0.0.0` is the value committed by this template, so a fresh
-  clone's first push to `main` is a no-op rather than a release. The user
-  bumps `VERSION` (e.g. to `0.0.1`) on the first `release/*` branch.
-- **Idempotence guard:** if `v<VERSION>` already exists *and* points at an
-  ancestor of `HEAD`, the workflow exits cleanly (re-pushed main without a
-  bump). If the tag exists at an *unrelated* commit (e.g. a stale bootstrap
-  tag created before the sentinel was in place), the workflow fails loudly
-  with cleanup instructions — never silently retag.
+- **Template-sentinel guard:** if `VERSION == 0.0.0`, the workflow exits cleanly. `0.0.0` is the value committed by this template, so a fresh clone's first push to `main` is a no-op rather than a release. The user bumps `VERSION` (e.g. to `0.0.1`) on the first `release/*` branch.
+- **Idempotence guard:** if `v<VERSION>` already exists *and* points at an ancestor of `HEAD`, the workflow exits cleanly (re-pushed main without a bump). If the tag exists at an *unrelated* commit (e.g. a stale bootstrap tag created before the sentinel was in place), the workflow fails loudly with cleanup instructions, never silently retag.
 
 ```yaml
 on:
@@ -113,17 +85,11 @@ concurrency:
   cancel-in-progress: false   # never cancel a release mid-flight
 ```
 
-### 3.4 `pages.yml` (optional) — docs site
+### 3.4 `pages.yml` (optional), docs site
 
-Triggered on `docs/**` (or `mkdocs.yml`) changes on `develop` or `main`.
-Builds **MkDocs Material** from `/docs` and uploads the Pages artifact.
-Deploy step is gated `if: github.ref == 'refs/heads/main'` because the
-`github-pages` environment is protected to the default branch — `develop`
-pushes run the build for validation but don't deploy.
+Triggered on `docs/**` (or `mkdocs.yml`) changes on `develop` or `main`. Builds **MkDocs Material** from `/docs` and uploads the Pages artifact. Deploy step is gated `if: github.ref == 'refs/heads/main'` because the `github-pages` environment is protected to the default branch, `develop` pushes run the build for validation but don't deploy.
 
-The workflow auto-enables Pages on first run via
-`actions/configure-pages@v5` with `enablement: true`, so no extra
-`gh api` Pages-enable step is needed for docs-only repos.
+The workflow auto-enables Pages on first run via `actions/configure-pages@v5` with `enablement: true`, so no extra `gh api` Pages-enable step is needed for docs-only repos.
 
 ---
 
@@ -150,19 +116,17 @@ The workflow auto-enables Pages on first run via
 | `FUNDING.yml`                           | `github: <username>` (or other sponsor links).                       |
 | `dependabot.yml`                        | Per-ecosystem entry, target `develop`, weekly schedule, **`groups:` configured** so a run produces one bundled PR (prod/dev split where useful) instead of one PR per dep. |
 | `PULL_REQUEST_TEMPLATE.md`              | Summary, Changes, Test plan, screenshots-if-visual.                  |
-| `ISSUE_TEMPLATE/bug_report.yml`         | YAML form, not markdown — better UX.                                 |
+| `ISSUE_TEMPLATE/bug_report.yml`         | YAML form, not markdown, better UX.                                 |
 | `ISSUE_TEMPLATE/feature_request.yml`    | YAML form.                                                           |
 | `ISSUE_TEMPLATE/config.yml`             | `blank_issues_enabled: false`, route questions → Discussions, security → private advisory. |
 | `workflows/ci.yml` `prerelease.yml` `release.yml` `pages.yml` | See section 3.                            |
 
 ### Optional
 
-- `docs/` — MkDocs source for the Pages site (one `.md` per page, no
-  front matter required).
-- `mkdocs.yml` — MkDocs site config (Material theme). Required if
-  `/docs` is present and you want the Pages site.
-- `.editorconfig` — consistent indentation across editors.
-- `Dockerfile` — if shipping container images.
+- `docs/`: MkDocs source for the Pages site (one `.md` per page, no front matter required).
+- `mkdocs.yml`: MkDocs site config (Material theme). Required if `/docs` is present and you want the Pages site.
+- `.editorconfig`: consistent indentation across editors.
+- `Dockerfile`: if shipping container images.
 
 ---
 
@@ -183,20 +147,11 @@ gh api -X POST repos/<OWNER>/<REPO>/pages \
   -f "build_type=workflow"
 ```
 
-`--delete-branch-on-merge=true` keeps `release/*` and `hotfix/*` tidy
-after they merge to `main`. It's the reason PRs to `main` must come from
-those branches and **not from `develop`** — the setting deletes the
-source branch of every merged PR, so PR'ing `develop` directly to `main`
-nukes `develop` on the remote.
+`--delete-branch-on-merge=true` keeps `release/*` and `hotfix/*` tidy after they merge to `main`. It's the reason PRs to `main` must come from those branches and **not from `develop`**: the setting deletes the source branch of every merged PR, so PR'ing `develop` directly to `main` nukes `develop` on the remote.
 
-**Topics:** pick 10–20 from the relevant ecosystem (language, domain,
-audience). They drive GitHub's discovery surface.
+**Topics:** pick 10–20 from the relevant ecosystem (language, domain, audience). They drive GitHub's discovery surface.
 
-**Branch protection on `main`** — apply during initial setup, not "once
-releasing." Protecting `main` from day one prevents direct pushes and
-forces the `release/*` → `main` PR flow even for the first version. The
-ruleset below is permissive on review count (`0`) because most templates
-start as solo projects; tighten it the moment a second human joins.
+**Branch protection on `main`**: apply during initial setup, not "once releasing." Protecting `main` from day one prevents direct pushes and forces the `release/*` → `main` PR flow even for the first version. The ruleset below is permissive on review count (`0`) because most templates start as solo projects; tighten it the moment a second human joins.
 
 ```sh
 gh api -X PUT repos/<OWNER>/<REPO>/branches/main/protection \
@@ -219,8 +174,8 @@ EOF
 Pick by audience, not by what's possible.
 
 ### Universal
-- **GitHub Releases** — always. `goreleaser` (Go), `cargo-dist` (Rust), `release-please` (multi-lang) handle it.
-- **`install.sh`** — POSIX-sh installer that detects OS/arch, downloads from latest release. Useful fallback.
+- **GitHub Releases**: always. `goreleaser` (Go), `cargo-dist` (Rust), `release-please` (multi-lang) handle it.
+- **`install.sh`**: POSIX-sh installer that detects OS/arch, downloads from latest release. Useful fallback.
 
 ### By language
 
@@ -237,19 +192,18 @@ Pick by audience, not by what's possible.
 
 | OS          | Channel                | Effort                       |
 | ----------- | ---------------------- | ---------------------------- |
-| macOS       | Homebrew tap           | Low — goreleaser / cargo-dist |
+| macOS       | Homebrew tap           | Low, goreleaser / cargo-dist |
 | Linux       | Homebrew (linuxbrew), AUR, Snap | Low–medium          |
-| Windows     | Scoop bucket           | Low — goreleaser             |
-| Windows     | WinGet                 | Medium — PR per release      |
+| Windows     | Scoop bucket           | Low, goreleaser             |
+| Windows     | WinGet                 | Medium. PR per release      |
 | Cross-distro Linux | Snap, Flatpak    | Medium                       |
-| Containers  | GHCR (free), Docker Hub | Low — multi-arch via buildx |
+| Containers  | GHCR (free), Docker Hub | Low, multi-arch via buildx |
 
 ### Cargo-cult skip list
 
-- npm/pip/cargo for tools NOT written in that language unless the audience
-  already lives there (e.g. esbuild on npm for JS-toolchain users).
-- nixpkgs as the *first* channel — wait for community PRs once popular.
-- Snap if your audience runs server-class Linux — they often disable snapd.
+- npm/pip/cargo for tools NOT written in that language unless the audience already lives there (e.g. esbuild on npm for JS-toolchain users).
+- nixpkgs as the *first* channel, wait for community PRs once popular.
+- Snap if your audience runs server-class Linux, they often disable snapd.
 
 ---
 
@@ -278,31 +232,22 @@ Keywords with workflow side-effects:
 
 ### CHANGELOG
 - Add entries under `[Unreleased]` while working.
-- The Unreleased heading **always names the target version**:
-  `## [Unreleased] — next: 0.1.0`. This makes it obvious what queued
-  entries will ship as and avoids version drift when the release is cut
-  later.
-- On release branch, rename to `[X.Y.Z] - YYYY-MM-DD` and start a fresh
-  `[Unreleased] — next: <next version>` block.
+- The Unreleased heading **always names the target version**: `## [Unreleased], next: 0.1.0`. This makes it obvious what queued entries will ship as and avoids version drift when the release is cut later.
+- On release branch, rename to `[X.Y.Z] - YYYY-MM-DD` and start a fresh `[Unreleased], next: <next version>` block.
 
 ---
 
 ## 8. What NOT to do
 
 - ❌ Push directly to `main`.
-- ❌ PR `develop` directly to `main`. Always cut a `release/*` (planned)
-  or `hotfix/*` (emergency) branch first — otherwise the
-  `delete_branch_on_merge` repo setting wipes `develop` on the remote.
+- ❌ PR `develop` directly to `main`. Always cut a `release/*` (planned) or `hotfix/*` (emergency) branch first, otherwise the `delete_branch_on_merge` repo setting wipes `develop` on the remote.
 - ❌ Force-push shared branches.
 - ❌ Skip hooks (`--no-verify`).
 - ❌ Commit secrets, `.env`, or local IDE state.
-- ❌ Add a co-author trailer for AI tools (your call — but be consistent).
+- ❌ Add a co-author trailer for AI tools (your call, but be consistent).
 - ❌ Mock-up dynamic data in shields.io badges (e.g. fake "A+" Go Report Card).
-- ❌ Declare any `permissions:` block in a workflow without listing every
-  permission you need — unlisted ones default to `none`.
-- ❌ Use `goreleaser` `repository:` blocks without explicit `token:` —
-  defaults to `GITHUB_TOKEN` which is scoped to the current repo only and
-  fails with 403 when pushing to a tap/bucket repo.
+- ❌ Declare any `permissions:` block in a workflow without listing every permission you need, unlisted ones default to `none`.
+- ❌ Use `goreleaser` `repository:` blocks without explicit `token:`: defaults to `GITHUB_TOKEN` which is scoped to the current repo only and fails with 403 when pushing to a tap/bucket repo.
 
 ---
 
@@ -334,59 +279,18 @@ Set via `gh secret set <NAME> --repo <owner>/<repo>` or web UI:
 
 ## 11. Runbook for agents
 
-You're being asked to scaffold a new project (or retrofit an existing one).
-Execute in order; don't skip steps.
+You're being asked to scaffold a new project (or retrofit an existing one). Execute in order; don't skip steps.
 
 1. **Determine basics** with the user (or read from existing files):
    - Project name, owner, primary language, one-sentence description, license.
-2. **Repo metadata** via `gh repo edit` (section 5). Topics + description +
-   homepage + discussions on + wiki off.
-3. **Enable Pages** with `build_type: workflow` (section 5) — or skip and
-   let `pages.yml` auto-enable on first run via
-   `actions/configure-pages@v5` (`enablement: true`).
-4. **Protect `main`** (section 5). Apply branch protection *before* the
-   first push, so the rule-flow is enforced from commit #1.
-5. **Top-level files** (section 4). Use the templates in this blueprint as
-   starting points; replace placeholders.
-6. **`.github/` files** (section 4). YAML issue forms (not markdown).
-   Ensure `dependabot.yml` has `groups:` configured for each enabled
-   ecosystem so chore-PR volume stays one-bundle-per-run.
-7. **VERSION = `0.0.0`** (template sentinel). Do **not** bump to `0.0.1`
-   yet — that's done on the first `release/*` branch. The
-   template-sentinel guard in `release.yml` (section 3.3) refuses to tag
-   a `v0.0.0`, which is what makes initial-push-to-main safe even before
-   you're ready to release. **Never** create a `v*` tag manually on the
-   initial commit.
-8. **Three workflows** (section 3): `ci.yml`, `prerelease.yml`, `release.yml`.
-   Add `pages.yml` if `/docs` exists (with `mkdocs.yml`).
-9. **Distribution config** (e.g. `.goreleaser.yml` for Go). Always set
-   explicit `repository.token` for any cross-repo publish.
-10. **Branches:** create `develop` if it doesn't exist; do all work there.
-    `main` stays at the bootstrap commit (with `VERSION=0.0.0`) until the
-    first real release.
-11. **First commit on `develop`:** scaffolding + initial code. Push.
-12. **Verify CI green** on `develop`.
-13. **Create `release/0.0.1`** from `develop`. Bump `VERSION` from
-    `0.0.0` → `0.0.1`. Move `[Unreleased]` → `[0.0.1] - <today>` in
-    CHANGELOG. Push.
-14. **Verify prerelease workflow** publishes `v0.0.1-alpha.1` cleanly.
-15. **Open PR** `release/0.0.1` → `main`. Wait for CI.
-16. **Confirm with the user** before merging the PR (hard-to-reverse).
-17. **Merge.** `release.yml` runs, tags `v0.0.1`, publishes everywhere.
-18. **Verify** GitHub Release + tap + bucket + container registry + Pages all updated.
-19. **Merge `main` back to `develop`** to close the cycle.
-20. **Delete the release branch** (local + remote).
-21. **Document** anything project-specific in the project's own `CLAUDE.md`
-    or `README.md`, not here.
+2. **Repo metadata** via `gh repo edit` (section 5). Topics + description + homepage + discussions on + wiki off. 3. **Enable Pages** with `build_type: workflow` (section 5), or skip and let `pages.yml` auto-enable on first run via `actions/configure-pages@v5` (`enablement: true`). 4. **Protect `main`** (section 5). Apply branch protection *before* the first push, so the rule-flow is enforced from commit #1. 5. **Top-level files** (section 4). Use the templates in this blueprint as starting points; replace placeholders. 6. **`.github/` files** (section 4). YAML issue forms (not markdown). Ensure `dependabot.yml` has `groups:` configured for each enabled ecosystem so chore-PR volume stays one-bundle-per-run. 7. **VERSION = `0.0.0`** (template sentinel). Do **not** bump to `0.0.1` yet, that's done on the first `release/*` branch. The template-sentinel guard in `release.yml` (section 3.3) refuses to tag a `v0.0.0`, which is what makes initial-push-to-main safe even before you're ready to release. **Never** create a `v*` tag manually on the initial commit. 8. **Three workflows** (section 3): `ci.yml`, `prerelease.yml`, `release.yml`. Add `pages.yml` if `/docs` exists (with `mkdocs.yml`). 9. **Distribution config** (e.g. `.goreleaser.yml` for Go). Always set explicit `repository.token` for any cross-repo publish. 10. **Branches:** create `develop` if it doesn't exist; do all work there. `main` stays at the bootstrap commit (with `VERSION=0.0.0`) until the first real release. 11. **First commit on `develop`:** scaffolding + initial code. Push. 12. **Verify CI green** on `develop`. 13. **Create `release/0.0.1`** from `develop`. Bump `VERSION` from `0.0.0` → `0.0.1`. Move `[Unreleased]` → `[0.0.1] - <today>` in CHANGELOG. Push. 14. **Verify prerelease workflow** publishes `v0.0.1-alpha.1` cleanly. 15. **Open PR** `release/0.0.1` → `main`. Wait for CI. 16. **Confirm with the user** before merging the PR (hard-to-reverse). 17. **Merge.** `release.yml` runs, tags `v0.0.1`, publishes everywhere. 18. **Verify** GitHub Release + tap + bucket + container registry + Pages all updated. 19. **Merge `main` back to `develop`** to close the cycle. 20. **Delete the release branch** (local + remote). 21. **Document** anything project-specific in the project's own `CLAUDE.md` or `README.md`, not here.
 
 ### Anti-patterns to refuse
 
 - Pushing directly to `main`.
 - Adding co-author trailers without explicit permission.
 - Inventing dynamic-looking badges with hardcoded values.
-- Adding "best practices" the user didn't ask for (extra error handling,
-  unused abstractions, premature monitoring).
+- Adding "best practices" the user didn't ask for (extra error handling, unused abstractions, premature monitoring).
 - Skipping the idempotence guard on the release workflow.
 - Granting `permissions: write-all` instead of the minimum set.
-- Treating prereleases (`-alpha`, `-beta`, `-rc`) as stable when computing
-  `:latest` Docker tags or moving Homebrew formula heads.
+- Treating prereleases (`-alpha`, `-beta`, `-rc`) as stable when computing `:latest` Docker tags or moving Homebrew formula heads.

@@ -1,13 +1,8 @@
 # What each check can and can't catch
 
-`plc-st-review` is a *static* reviewer, it works from the syntax tree, not
-from running code. That means every check has things it can see and things
-it can't. This page is the honest accounting.
+`plc-st-review` is a *static* reviewer, it works from the syntax tree, not from running code. That means every check has things it can see and things it can't. This page is the honest accounting.
 
-The single biggest limitation across the whole tool: **there is no flow
-analysis**. Nothing knows what value a variable holds at runtime. So
-anywhere the check needs "the value of `i`" or "is this branch reachable",
-the answer is approximated from literals and resolvable constants only.
+The single biggest limitation across the whole tool: **there is no flow analysis**. Nothing knows what value a variable holds at runtime. So anywhere the check needs "the value of `i`" or "is this branch reachable", the answer is approximated from literals and resolvable constants only.
 
 ## Diff-based checks (compare before vs after)
 
@@ -36,12 +31,7 @@ These fire when something changes between revisions.
 
 ## Static checks (look at the new revision in isolation)
 
-These fire on bugs that exist in the new code, regardless of whether the
-PR introduced them. By default they only flag bugs that **weren't already
-present** in the old revision, adopting the tool on a legacy repo
-shouldn't dump a wall of pre-existing findings on day one. Toggle that
-filter via `severity_overrides` or `disabled_checks` if you want all
-hits.
+These fire on bugs that exist in the new code, regardless of whether the PR introduced them. By default they only flag bugs that **weren't already present** in the old revision, adopting the tool on a legacy repo shouldn't dump a wall of pre-existing findings on day one. Toggle that filter via `severity_overrides` or `disabled_checks` if you want all hits.
 
 | Check | Catches | Doesn't catch |
 |---|---|---|
@@ -82,6 +72,4 @@ hits.
 
 ## When a check has no opinion
 
-A check that doesn't fire isn't necessarily a sign that the code is fine, just that nothing this check looks at is wrong. If you want broader
-coverage of a category, file an issue with a concrete example: it's easier
-to extend an existing check than to argue about what one means.
+A check that doesn't fire isn't necessarily a sign that the code is fine, just that nothing this check looks at is wrong. If you want broader coverage of a category, file an issue with a concrete example: it's easier to extend an existing check than to argue about what one means.

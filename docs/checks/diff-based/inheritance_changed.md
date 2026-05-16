@@ -4,9 +4,7 @@
 
 An `EXTENDS` clause was added, removed, or changed.
 
-**Why it matters.** A new base brings new methods, possibly with
-different bodies than expected; removing one orphans `super`
-references. The check makes the change loud.
+**Why it matters.** A new base brings new methods, possibly with different bodies than expected; removing one orphans `super` references. The check makes the change loud.
 
 **Settings.** No check-specific config.
 
@@ -26,5 +24,4 @@ Derived behavior may have changed. Verify that the new base provides
 the expected methods and that overrides still align.
 ```
 
-**Fix.** Walk every overridden method to make sure it still applies
-to the new base. Smoke-test on a representative input.
+**Fix.** Walk every overridden method to make sure it still applies to the new base. Smoke-test on a representative input.

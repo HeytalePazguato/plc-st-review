@@ -4,8 +4,7 @@
 
 `ARRAY [n..n] OF T`: bounds are equal, only one element.
 
-**Why it matters.** Either the bounds are wrong or a scalar would
-be clearer. Almost always a copy-paste artifact.
+**Why it matters.** Either the bounds are wrong or a scalar would be clearer. Almost always a copy-paste artifact.
 
 **Settings.** No check-specific config.
 

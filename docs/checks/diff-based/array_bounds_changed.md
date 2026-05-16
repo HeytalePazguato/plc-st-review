@@ -4,9 +4,7 @@
 
 An `ARRAY [a..b] OF T` declaration's bounds changed.
 
-**Why it matters.** Shrinking an array means any indexed access at
-the old upper bound is now out of range; growing it changes memory
-layout and may invalidate hard-coded loop bounds in callers.
+**Why it matters.** Shrinking an array means any indexed access at the old upper bound is now out of range; growing it changes memory layout and may invalidate hard-coded loop bounds in callers.
 
 **Settings.** No check-specific config.
 
@@ -26,5 +24,4 @@ Array shrank, any indexed access that hit the old upper bound is
 now out of range.
 ```
 
-**Fix.** Ensure every accessor uses indices within the new range, or
-keep the old size.
+**Fix.** Ensure every accessor uses indices within the new range, or keep the old size.

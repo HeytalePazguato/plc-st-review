@@ -22,5 +22,4 @@ If this changes user-facing output, paste a before/after sample.
 
 - [ ] Targets `develop` (not `main`)
 - [ ] Branch name is descriptive (`feat/...`, `fix/...`, `docs/...`)
-- [ ] No `[beta]` / `[rc]` keywords in commit messages (those are reserved
-      for release branches)
+- [ ] No `[beta]` / `[rc]` keywords in commit messages (those are reserved for release branches)
