@@ -1,7 +1,7 @@
 {
   "name": "plc-st-review",
-  "version": "0.0.1",
-  "description": "Semantic code review for IEC 61131-3 Structured Text pull requests",
+  "version": "0.1.0",
+  "description": "Semantic linter, code reviewer, and team-style enforcer for IEC 61131-3 Structured Text. Runs as a CI linter, GitHub Action, GitLab CI job, or local CLI. 52 checks across static analysis, FB-instance integrity, and diff-based PR review.",
   "type": "module",
   "bin": {
     "plc-st-review": "./dist/cli.js"
