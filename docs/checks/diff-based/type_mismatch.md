@@ -4,11 +4,7 @@
 
 A `VAR_GLOBAL` declaration's type changed between revisions.
 
-**Why it matters.** Global type changes often pass compile (especially
-between numerically-similar types like `INT` and `WORD`) but produce
-silent precision loss or sign-bit surprises at runtime. Listing every
-file that references the global makes the cleanup scope obvious in
-review.
+**Why it matters.** Global type changes often pass compile (especially between numerically-similar types like `INT` and `WORD`) but produce silent precision loss or sign-bit surprises at runtime. Listing every file that references the global makes the cleanup scope obvious in review.
 
 **Settings.** No check-specific config.
 

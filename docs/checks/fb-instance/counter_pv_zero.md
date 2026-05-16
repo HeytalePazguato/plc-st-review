@@ -4,9 +4,7 @@
 
 A `CTU` / `CTD` / `CTUD` is initialized with `PV := 0`.
 
-**Why it matters.** A preset of 0 makes the counter trip immediately
-on `CTU` (Q is TRUE the first scan) or never on `CTD` (CV can't go
-below 0). Either way the counter isn't useful.
+**Why it matters.** A preset of 0 makes the counter trip immediately on `CTU` (Q is TRUE the first scan) or never on `CTD` (CV can't go below 0). Either way the counter isn't useful.
 
 **Settings.** No check-specific config.
 
@@ -25,5 +23,4 @@ A preset of 0 makes the counter trip immediately on the first
 count or never count at all, depending on type.
 ```
 
-**Fix.** Set a positive preset, or remove the counter if it isn't
-needed.
+**Fix.** Set a positive preset, or remove the counter if it isn't needed.

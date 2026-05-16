@@ -2,12 +2,9 @@
 
 **Severity:** `info`
 
-A `VAR_INPUT` parameter is declared but never read inside the POU
-body.
+A `VAR_INPUT` parameter is declared but never read inside the POU body.
 
-**Why it matters.** Either the input was added speculatively and
-forgotten, or the consuming logic was deleted and the input left
-behind. Either way it pollutes the interface.
+**Why it matters.** Either the input was added speculatively and forgotten, or the consuming logic was deleted and the input left behind. Either way it pollutes the interface.
 
 **Settings.** No check-specific config.
 
@@ -30,5 +27,4 @@ Either remove the input or replace its usages with the actual
 logic that should have consumed it.
 ```
 
-**Fix.** Remove the input, or add the logic that should have used
-it.
+**Fix.** Remove the input, or add the logic that should have used it.

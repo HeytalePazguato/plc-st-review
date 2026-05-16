@@ -2,13 +2,9 @@
 
 **Severity:** `error`
 
-A `FOR` loop's bounds and step point opposite directions: positive
-step with `start > end`, or negative step with `start < end`.
+A `FOR` loop's bounds and step point opposite directions: positive step with `start > end`, or negative step with `start < end`.
 
-**Why it matters.** Per IEC 61131-3 the body never runs (the
-condition is false on entry). On runtimes that wrap integer overflow,
-the loop runs hundreds of times before the counter comes back around
-to the end value, a runaway loop disguised as a no-op.
+**Why it matters.** Per IEC 61131-3 the body never runs (the condition is false on entry). On runtimes that wrap integer overflow, the loop runs hundreds of times before the counter comes back around to the end value, a runaway loop disguised as a no-op.
 
 **Settings.** No check-specific config.
 

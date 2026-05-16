@@ -2,12 +2,9 @@
 
 **Severity:** `info`
 
-A comment whose body contains code-shaped tokens (`:=`, `=>`, or
-keywords like `IF`, `FOR`, `RETURN`).
+A comment whose body contains code-shaped tokens (`:=`, `=>`, or keywords like `IF`, `FOR`, `RETURN`).
 
-**Why it matters.** Commented-out code rots within weeks. Git
-remembers the previous version; the inline comment just confuses
-readers. Either delete it or mark the intent clearly.
+**Why it matters.** Commented-out code rots within weeks. Git remembers the previous version; the inline comment just confuses readers. Either delete it or mark the intent clearly.
 
 **Settings.** No check-specific config.
 
@@ -27,5 +24,4 @@ remembers it) or wrap it in a clearly-labeled `(* TODO: ... *)`
 if you really want to keep the snippet for later.
 ```
 
-**Fix.** Delete the comment, or convert to an explicit
-`(* TODO: ... *)` with a date and rationale.
+**Fix.** Delete the comment, or convert to an explicit `(* TODO: ... *)` with a date and rationale.

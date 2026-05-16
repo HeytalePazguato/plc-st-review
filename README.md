@@ -1,35 +1,14 @@
 # plc-st-review
 
-[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest)
-[![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml)
-[![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json)
-[![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/)
-[![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review)
-[![Checks](https://img.shields.io/badge/checks-52%20categories-orange)](docs/checks-reference.md)
+[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest) [![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE) [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json) [![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/) [![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review) [![Checks](https://img.shields.io/badge/checks-52%20categories-orange)](docs/checks-reference.md)
 
-A **semantic linter, code reviewer, and team-style enforcer** for
-IEC 61131-3 Structured Text, built for CI on PLC codebases that can't
-be compiled outside the vendor IDE. Parses `.st` files with the
-[tree-sitter-iec61131-3-st](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st)
-grammar and reports semantic problems, not textual diffs.
+A **semantic linter, code reviewer, and team-style enforcer** for IEC 61131-3 Structured Text, built for CI on PLC codebases that can't be compiled outside the vendor IDE. Parses `.st` files with the [tree-sitter-iec61131-3-st](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st) grammar and reports semantic problems, not textual diffs.
 
-`plc-st-review` runs in **three modes**, each backed by the same
-52-check engine:
+`plc-st-review` runs in **three modes**, each backed by the same 52-check engine:
 
-- **Static linter** (`--lint src/**/*.st`), run on every push. 35
-  single-revision checks for ST bugs: division by zero, out-of-range
-  array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads,
-  unused vars, naming-convention drift, `forbidden_symbols`, and more.
-- **PR / MR reviewer** (GitHub Action or GitLab CI job), posts inline
-  review comments on lines that triggered findings. Adds 17 diff-based
-  checks that compare the PR against its base: signature drift,
-  outdated call sites, enum removals, timer-value changes, EXTENDS
-  swaps, pragmas, `SAFETY_*` constant changes, and more.
-- **Team-style enforcer**: drop a `.plc-st-review.yml` in the repo
-  root listing your `naming_conventions` (prefix / suffix / pattern per
-  declaration kind) and `forbidden_symbols`. Both modes pick it up
-  automatically.
+- **Static linter** (`--lint src/**/*.st`), run on every push. 35 single-revision checks for ST bugs: division by zero, out-of-range array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads, unused vars, naming-convention drift, `forbidden_symbols`, and more.
+- **PR / MR reviewer** (GitHub Action or GitLab CI job), posts inline review comments on lines that triggered findings. Adds 17 diff-based checks that compare the PR against its base: signature drift, outdated call sites, enum removals, timer-value changes, EXTENDS swaps, pragmas, `SAFETY_*` constant changes, and more.
+- **Team-style enforcer**: drop a `.plc-st-review.yml` in the repo root listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`. Both modes pick it up automatically.
 
 Catches the bugs reviewers miss on visual scan:
 
@@ -41,23 +20,11 @@ Catches the bugs reviewers miss on visual scan:
 
 ## See it in action
 
-**Live demo:**
-[**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1)
-👈 open this for the full bot output. The PR exercises **all 52 check
-categories** the tool ships with: each shows up as an inline review
-comment on the changed line that triggered it, and findings on lines
-outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor
-line wasn't itself edited) collect in a single summary comment at the
-bottom. The PR is intentionally kept open as a fixture; conversation is
-locked.
+**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises **all 52 check categories** the tool ships with: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. The PR is intentionally kept open as a fixture; conversation is locked.
 
 A single finding looks like this in the GitHub UI:
 
-<!--
-  Single-finding screenshot from PR #1. The markdown block below renders
-  as a fallback when the image is missing on a fresh checkout.
--->
-<img src="docs/screenshots/single-finding.png" alt="plc-st-review inline review comment example: FB_INSTANCE_NEVER_CALLED" width="720" />
+<!-- Single-finding screenshot from PR #1. The markdown block below renders as a fallback when the image is missing on a fresh checkout. --> <img src="docs/screenshots/single-finding.png" alt="plc-st-review inline review comment example: FB_INSTANCE_NEVER_CALLED" width="720" />
 
 ```
 🟧 warn  FB_INSTANCE_NEVER_CALLED
@@ -91,22 +58,16 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
 - **Phase 2**: GitLab MR integration. Done.
 - **Phase 3**: GitHub Action + 10 additional check categories. Done.
 - **Static checks**: 6 single-revision checks for common ST bugs.
-- **FB-instance checks**: 8 more checks for standard IEC 61131-3
-  function blocks: timer / counter / edge-trig / bistable misuse.
-- **Code-quality + style checks**: 19 more, plus a configurable
-  `NAMING_CONVENTION` check and a config preset-pack mechanism
-  (`extends:`).
+- **FB-instance checks**: 8 more checks for standard IEC 61131-3 function blocks: timer / counter / edge-trig / bistable misuse.
+- **Code-quality + style checks**: 19 more, plus a configurable `NAMING_CONVENTION` check and a config preset-pack mechanism (`extends:`).
 
-Total: **52 check categories** (35 single-revision + 17 diff-based),
-148 tests across 53 files, all passing.
+Total: **52 check categories** (35 single-revision + 17 diff-based), 148 tests across 53 files, all passing.
 
 ## Quick start
 
 ### CI linter (no PR required)
 
-Most industrial ST repos don't run on a PR/MR workflow, code lands
-on `main` after a manual code review and an IDE-side build. You can
-still get every single-revision check on every push:
+Most industrial ST repos don't run on a PR/MR workflow, code lands on `main` after a manual code review and an IDE-side build. You can still get every single-revision check on every push:
 
 ```yaml
 # .gitlab-ci.yml, lint every .st file on every push, no MR needed
@@ -128,17 +89,11 @@ jobs:
       - run: npx plc-st-review --lint "src/**/*.st"
 ```
 
-`--lint` accepts file paths, directories, or globs (`*`, `**`,
-mixed). It parses each `.st` file in isolation and runs the **35
-single-revision checks**: the 17 diff-based ones are auto-disabled
-because there's no "before" state. Exit code is non-zero when any
-finding meets `reporting.fail_on_severity` (default `error`), so the
-job fails the pipeline on real bugs.
+`--lint` accepts file paths, directories, or globs (`*`, `**`, mixed). It parses each `.st` file in isolation and runs the **35 single-revision checks**: the 17 diff-based ones are auto-disabled because there's no "before" state. Exit code is non-zero when any finding meets `reporting.fail_on_severity` (default `error`), so the job fails the pipeline on real bugs.
 
 ### GitHub pull request
 
-Drop this into `.github/workflows/plc-st-review.yml` (full example at
-[`examples/github-workflow.yml`](examples/github-workflow.yml)):
+Drop this into `.github/workflows/plc-st-review.yml` (full example at [`examples/github-workflow.yml`](examples/github-workflow.yml)):
 
 ```yaml
 name: PLC ST Review
@@ -158,13 +113,11 @@ jobs:
       - uses: HeytalePazguato/plc-st-review@v0
 ```
 
-The action posts findings as inline review comments. Re-runs update
-existing comments rather than duplicating.
+The action posts findings as inline review comments. Re-runs update existing comments rather than duplicating.
 
 ### GitLab merge request
 
-Drop this into `.gitlab-ci.yml` (full example at
-[`examples/gitlab-ci.yml`](examples/gitlab-ci.yml)):
+Drop this into `.gitlab-ci.yml` (full example at [`examples/gitlab-ci.yml`](examples/gitlab-ci.yml)):
 
 ```yaml
 plc-st-review:
@@ -180,32 +133,16 @@ plc-st-review:
     - plc-st-review --gitlab --mr "$CI_MERGE_REQUEST_IID"
 ```
 
-The job fetches the MR's changed `.st` files, runs the review, posts
-findings as inline discussions, and updates them (rather than creating
-duplicates) on re-runs.
+The job fetches the MR's changed `.st` files, runs the review, posts findings as inline discussions, and updates them (rather than creating duplicates) on re-runs.
 
 **Important notes for GitLab users:**
 
-- **Pull credentials**: GitLab runners pull the image from GHCR
-  anonymously. The image is published as **public**, so no
-  `docker login` step is needed. If your runner is offline and you
-  mirror the image internally, pull `ghcr.io/heytalepazguato/plc-st-review:v0`
-  once and push to your internal registry.
-- **Self-hosted GitLab**: supported. The example above reads
-  `GITLAB_URL` from `$CI_SERVER_URL`, which is auto-provided by every
-  GitLab runner regardless of whether you're on `gitlab.com` or your
-  own instance.
-- **Token scope**: `$CI_JOB_TOKEN` works for most projects with
-  default settings. If your instance restricts job tokens, mint a
-  project access token with `api` scope and set it as a masked,
-  protected CI/CD variable named `GITLAB_TOKEN`, then drop the
-  `GITLAB_TOKEN: $CI_JOB_TOKEN` line.
-- **Same engine as the GitHub Action**: every check listed below
-  fires identically on GitLab. There is no GitHub-only path in the
-  engine.
+- **Pull credentials**: GitLab runners pull the image from GHCR anonymously. The image is published as **public**, so no `docker login` step is needed. If your runner is offline and you mirror the image internally, pull `ghcr.io/heytalepazguato/plc-st-review:v0` once and push to your internal registry.
+- **Self-hosted GitLab**: supported. The example above reads `GITLAB_URL` from `$CI_SERVER_URL`, which is auto-provided by every GitLab runner regardless of whether you're on `gitlab.com` or your own instance.
+- **Token scope**: `$CI_JOB_TOKEN` works for most projects with default settings. If your instance restricts job tokens, mint a project access token with `api` scope and set it as a masked, protected CI/CD variable named `GITLAB_TOKEN`, then drop the `GITLAB_TOKEN: $CI_JOB_TOKEN` line.
+- **Same engine as the GitHub Action**: every check listed below fires identically on GitLab. There is no GitHub-only path in the engine.
 
-See [`docs/gitlab-setup.md`](docs/gitlab-setup.md) for the full
-walkthrough and the common-gotchas list.
+See [`docs/gitlab-setup.md`](docs/gitlab-setup.md) for the full walkthrough and the common-gotchas list.
 
 ### CLI
 
@@ -221,23 +158,15 @@ plc-st-review --base main --output json --out-file findings.json
 
 Output formats: `terminal` (ANSI when stdout is a TTY), `markdown`, `json`.
 
-The CLI exits non-zero when at least one finding meets or exceeds the
-`reporting.fail_on_severity` threshold (default `error`).
+The CLI exits non-zero when at least one finding meets or exceeds the `reporting.fail_on_severity` threshold (default `error`).
 
 ## Live demo
 
-[PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open
-as the canonical demo, every check below fires at least once on that PR,
-with the exact inline comments the bot posts. Open it to see the tool in
-action on real ST.
+[PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open as the canonical demo, every check below fires at least once on that PR, with the exact inline comments the bot posts. Open it to see the tool in action on real ST.
 
 ## Checks
 
-Each row links to a per-check section in
-[docs/checks-reference.md](docs/checks-reference.md) with a ST code example
-and a suggested fix. See also
-[docs/check-limitations.md](docs/check-limitations.md) for what each check
-deliberately doesn't catch.
+Each row links to a per-check section in [docs/checks-reference.md](docs/checks-reference.md) with a ST code example and a suggested fix. See also [docs/check-limitations.md](docs/check-limitations.md) for what each check deliberately doesn't catch.
 
 ### Diff-based (compare before vs after)
 
@@ -337,13 +266,7 @@ reporting:
 
 Every change is reduced to an AST diff. The engine:
 
-1. Parses the `before` and `after` versions of every changed `.st` file with
-   the tree-sitter grammar.
-2. Builds a **symbol table** per revision: POUs (with parameter signatures),
-   global variables, enums, timer instances, call sites, `CASE` statements.
-3. Hands both tables to each registered check. Each check is a self-contained
-   module under `src/engine/checks/`.
-4. Renders the resulting findings to terminal / Markdown / JSON.
+1. Parses the `before` and `after` versions of every changed `.st` file with the tree-sitter grammar. 2. Builds a **symbol table** per revision: POUs (with parameter signatures), global variables, enums, timer instances, call sites, `CASE` statements. 3. Hands both tables to each registered check. Each check is a self-contained module under `src/engine/checks/`. 4. Renders the resulting findings to terminal / Markdown / JSON.
 
 No LLM is involved. Findings are deterministic.
 
@@ -366,47 +289,25 @@ npm run lint               # tsc --noEmit
 npm run bootstrap
 ```
 
-`bootstrap` runs `npm install --ignore-scripts`, applies the local
-`tree-sitter` C++20 patch, and rebuilds the two native deps in the right
-order. This dance is needed because `tree-sitter` 0.25.0's `binding.gyp`
-specifies `/std:c++17`, but Node 20+'s V8 headers require C++20, and a
-plain `npm install` triggers tree-sitter's source build before
-`postinstall: patch-package` ever gets a chance to fix it.
+`bootstrap` runs `npm install --ignore-scripts`, applies the local `tree-sitter` C++20 patch, and rebuilds the two native deps in the right order. This dance is needed because `tree-sitter` 0.25.0's `binding.gyp` specifies `/std:c++17`, but Node 20+'s V8 headers require C++20, and a plain `npm install` triggers tree-sitter's source build before `postinstall: patch-package` ever gets a chance to fix it.
 
-A plain `npm install` works once `node_modules/` already exists and the
-patch has been applied (the `postinstall` hook keeps the patch fresh on
-subsequent installs).
+A plain `npm install` works once `node_modules/` already exists and the patch has been applied (the `postinstall` hook keeps the patch fresh on subsequent installs).
 
 ### Native build prerequisites
 
-- **Windows:** Visual Studio 2022 with the **Desktop development with C++**
-  workload, plus the individual components **C++ Clang Compiler for Windows**
-  and **MSBuild support for LLVM (clang-cl) toolset**. Both are required:
-  `node-addon-api` 8.5+ uses the `ClangCL` MSBuild platform toolset.
+- **Windows:** Visual Studio 2022 with the **Desktop development with C++** workload, plus the individual components **C++ Clang Compiler for Windows** and **MSBuild support for LLVM (clang-cl) toolset**. Both are required: `node-addon-api` 8.5+ uses the `ClangCL` MSBuild platform toolset.
 - **Linux/macOS:** standard `gcc`/`clang` + `make` chain.
-- **All platforms:** npm ≥ 10 (bundles `node-gyp` ≥ 10 with VS2022 detection
-  on Windows).
+- **All platforms:** npm ≥ 10 (bundles `node-gyp` ≥ 10 with VS2022 detection on Windows).
 
-The `patches/tree-sitter+0.25.0.patch` file goes away once upstream
-tree-sitter publishes a release with C++20 set as the default.
+The `patches/tree-sitter+0.25.0.patch` file goes away once upstream tree-sitter publishes a release with C++20 set as the default.
 
 ## Roadmap
 
 Likely additions, in rough priority order:
 
-- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`,
-  etc. as GitHub Release assets, for shops that don't have Node installed.
-  Skipped for 0.0.1 because the native deps (`tree-sitter`,
-  `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle
-  cleanly through `pkg` or `bun --compile` without per-platform asset
-  handling. Revisit if real users without Node ask.
-- **Optional LLM-powered explanations**: a `--explain` flag that
-  paraphrases deterministic findings in plain English for less-experienced
-  reviewers. Strictly additive, every explanation is grounded in a
-  deterministic finding; the LLM never surfaces new issues.
-- **Vendor-specific checks**: PLCopen `MC_*` motion patterns, TwinCAT /
-  CODESYS / ABB-specific library FBs. Currently the engine sticks to
-  standard IEC 61131-3 to stay portable across vendors.
+- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. Skipped for 0.0.1 because the native deps (`tree-sitter`, `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle cleanly through `pkg` or `bun --compile` without per-platform asset handling. Revisit if real users without Node ask.
+- **Optional LLM-powered explanations**: a `--explain` flag that paraphrases deterministic findings in plain English for less-experienced reviewers. Strictly additive, every explanation is grounded in a deterministic finding; the LLM never surfaces new issues.
+- **Vendor-specific checks**: PLCopen `MC_*` motion patterns, TwinCAT / CODESYS / ABB-specific library FBs. Currently the engine sticks to standard IEC 61131-3 to stay portable across vendors.
 
 ## License
 

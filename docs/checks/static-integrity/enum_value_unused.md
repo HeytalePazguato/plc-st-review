@@ -2,12 +2,9 @@
 
 **Severity:** `info`
 
-An enum value is declared but no longer referenced in any CASE or
-member access in the repo.
+An enum value is declared but no longer referenced in any CASE or member access in the repo.
 
-**Why it matters.** Dead states accumulate. They're noise to the
-reader and risk a typo (someone writes `E_State.OBSOLETE` thinking
-it's still active). Surfacing them prompts a cleanup decision.
+**Why it matters.** Dead states accumulate. They're noise to the reader and risk a typo (someone writes `E_State.OBSOLETE` thinking it's still active). Surfacing them prompts a cleanup decision.
 
 **Settings.** No check-specific config.
 

@@ -4,14 +4,9 @@
 
 A `VAR_GLOBAL CONSTANT`'s initial value changed.
 
-**Why it matters.** Constants encode design assumptions (max speed,
-trip thresholds, retry counts). Changing one without a note in the PR
-often surfaces months later as a regression. The safety-prefix bump
-catches the high-risk cases automatically.
+**Why it matters.** Constants encode design assumptions (max speed, trip thresholds, retry counts). Changing one without a note in the PR often surfaces months later as a regression. The safety-prefix bump catches the high-risk cases automatically.
 
-**Settings.** `safety_critical_prefixes` (default:
-`SAFETY_, INTERLOCK_, SIL_, LIMIT_, MAX_, MIN_`) controls which
-identifiers elevate to `warn`.
+**Settings.** `safety_critical_prefixes` (default: `SAFETY_, INTERLOCK_, SIL_, LIMIT_, MAX_, MIN_`) controls which identifiers elevate to `warn`.
 
 ```yaml
 safety_critical_prefixes:
@@ -38,5 +33,4 @@ Identifier prefix matches a safety-critical pattern;
 double-check the change is approved.
 ```
 
-**Fix.** If documented and reviewed, suppress with `disabled_checks`
-or tune `safety_critical_prefixes`. Otherwise revert.
+**Fix.** If documented and reviewed, suppress with `disabled_checks` or tune `safety_critical_prefixes`. Otherwise revert.

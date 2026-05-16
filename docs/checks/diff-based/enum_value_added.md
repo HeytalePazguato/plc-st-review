@@ -2,15 +2,11 @@
 
 **Severity:** `warn`
 
-An enum gained a value and a `CASE` on that enum (in any file) has no
-matching branch and no `ELSE`.
+An enum gained a value and a `CASE` on that enum (in any file) has no matching branch and no `ELSE`.
 
-**Why it matters.** Adding a new state without updating every consumer
-is the most common state-machine bug. The check is the inverse of
-ENUM_VALUE_REMOVED, both directions need surveillance.
+**Why it matters.** Adding a new state without updating every consumer is the most common state-machine bug. The check is the inverse of ENUM_VALUE_REMOVED, both directions need surveillance.
 
-**Settings.** No check-specific config. See also `STATE_UNHANDLED`,
-which fires on the same shape even when the enum hasn't changed.
+**Settings.** No check-specific config. See also `STATE_UNHANDLED`, which fires on the same shape even when the enum hasn't changed.
 
 **Trigger.**
 
@@ -32,5 +28,4 @@ CASE does not handle new enum value(s): E_State.ERROR_RECOVERY
 Enum E_State gained 1 value(s); this CASE has no ELSE branch.
 ```
 
-**Fix.** Add the missing branch, or add an `ELSE` that handles
-unknown states.
+**Fix.** Add the missing branch, or add an `ELSE` that handles unknown states.

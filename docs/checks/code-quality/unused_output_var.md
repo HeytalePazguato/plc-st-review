@@ -4,9 +4,7 @@
 
 A `VAR_OUTPUT` is declared but never written inside the POU.
 
-**Why it matters.** Callers reading the output only ever see its
-initial value. Often a half-finished refactor or a TODO that never
-landed.
+**Why it matters.** Callers reading the output only ever see its initial value. Often a half-finished refactor or a TODO that never landed.
 
 **Settings.** No check-specific config.
 

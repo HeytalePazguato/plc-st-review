@@ -4,9 +4,7 @@
 
 The set of pragmas in a file is different from the previous revision.
 
-**Why it matters.** Pragmas (`{attribute '...'}`) often control
-codegen, retention, persistence, build-task assignment, invisible
-to the language but loud in the binary. Worth a glance.
+**Why it matters.** Pragmas (`{attribute '...'}`) often control codegen, retention, persistence, build-task assignment, invisible to the language but loud in the binary. Worth a glance.
 
 **Settings.** No check-specific config.
 
@@ -28,5 +26,4 @@ Pragma(s) changed in FB.st (1 added, 1 removed)
   - {attribute 'no_check'}
 ```
 
-**Fix.** Confirm the new pragma set matches the intent. Suppress
-per-repo if your team uses pragmas heavily and the noise dominates.
+**Fix.** Confirm the new pragma set matches the intent. Suppress per-repo if your team uses pragmas heavily and the noise dominates.

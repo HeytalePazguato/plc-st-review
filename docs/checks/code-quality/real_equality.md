@@ -2,13 +2,9 @@
 
 **Severity:** `warn`
 
-`=` or `<>` against a `REAL` / `LREAL` literal. Floating-point
-arithmetic almost never produces the exact bit pattern of a literal,
-so the comparison is unreliable.
+`=` or `<>` against a `REAL` / `LREAL` literal. Floating-point arithmetic almost never produces the exact bit pattern of a literal, so the comparison is unreliable.
 
-**Why it matters.** Classic floating-point trap. The expression
-*looks* obvious but can return FALSE for values you'd consider equal,
-and TRUE for values you'd consider different.
+**Why it matters.** Classic floating-point trap. The expression *looks* obvious but can return FALSE for values you'd consider equal, and TRUE for values you'd consider different.
 
 **Settings.** No check-specific config.
 
@@ -28,5 +24,4 @@ Floating-point arithmetic almost never produces the exact bit
 pattern of a literal. Compare against a tolerance band.
 ```
 
-**Fix.** Compare against a tolerance band, or convert to a
-fixed-point integer before comparing.
+**Fix.** Compare against a tolerance band, or convert to a fixed-point integer before comparing.

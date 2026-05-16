@@ -4,9 +4,7 @@
 
 The same FB instance is invoked more than once within one POU's scan.
 
-**Why it matters.** FB instances hold state between calls. Two calls
-in one scan means the second overwrites outputs the first produced,
-plus any internal counters / timers tick twice per scan.
+**Why it matters.** FB instances hold state between calls. Two calls in one scan means the second overwrites outputs the first produced, plus any internal counters / timers tick twice per scan.
 
 **Settings.** No check-specific config.
 
@@ -26,5 +24,4 @@ An FB instance holds state between calls. Multiple calls in one
 scan overwrite outputs from earlier calls. Lines: 68, 71.
 ```
 
-**Fix.** Use one instance per call site, or consolidate the calls
-behind a single condition.
+**Fix.** Use one instance per call site, or consolidate the calls behind a single condition.

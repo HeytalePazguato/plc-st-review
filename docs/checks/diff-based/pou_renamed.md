@@ -2,13 +2,9 @@
 
 **Severity:** `info`
 
-Heuristic: a deleted POU plus an added POU with an identical
-signature in the same PR. Suggests a rename refactor.
+Heuristic: a deleted POU plus an added POU with an identical signature in the same PR. Suggests a rename refactor.
 
-**Why it matters.** Sometimes the engine sees "POU_DELETED" + "new
-function block declared", and these are the same thing. The
-heuristic surfaces the likely intent so reviewers don't chase a
-false alarm.
+**Why it matters.** Sometimes the engine sees "POU_DELETED" + "new function block declared", and these are the same thing. The heuristic surfaces the likely intent so reviewers don't chase a false alarm.
 
 **Settings.** No check-specific config.
 
@@ -31,5 +27,4 @@ Possible rename: FB_Old → FB_New
 Both POUs share the same kind and signature.
 ```
 
-**Fix.** If it was a rename, update every call site. If they're
-actually different POUs that happen to share a signature, ignore.
+**Fix.** If it was a rename, update every call site. If they're actually different POUs that happen to share a signature, ignore.

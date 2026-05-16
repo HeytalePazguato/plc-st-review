@@ -2,13 +2,9 @@
 
 **Severity:** `info` (default) / `warn` (≥ 10× iteration change)
 
-A `FOR` loop's start / end / step changed. Resolves
-`VAR_GLOBAL CONSTANT` identifiers in the bounds to numeric values
-before comparing.
+A `FOR` loop's start / end / step changed. Resolves `VAR_GLOBAL CONSTANT` identifiers in the bounds to numeric values before comparing.
 
-**Why it matters.** A 10× increase in iteration count can move a
-control loop from "fits in scan" to "blows the watchdog". The ratio
-calc makes the magnitude visible at a glance.
+**Why it matters.** A 10× increase in iteration count can move a control loop from "fits in scan" to "blows the watchdog". The ratio calc makes the magnitude visible at a glance.
 
 **Settings.** No check-specific config.
 
@@ -27,6 +23,4 @@ FOR loop bounds: 1..10 BY 1 → 1..100 BY 1
 Iterations: 10 → 100 (10.0×)
 ```
 
-**Fix.** Confirm the iteration count fits within your scan time
-budget. If yes, suppress per-file. If no, cap the loop or split the
-work across scans.
+**Fix.** Confirm the iteration count fits within your scan time budget. If yes, suppress per-file. If no, cap the loop or split the work across scans.

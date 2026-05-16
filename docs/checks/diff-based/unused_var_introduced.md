@@ -2,12 +2,9 @@
 
 **Severity:** `info`
 
-A new local variable was declared in this PR but isn't referenced
-anywhere in its scope.
+A new local variable was declared in this PR but isn't referenced anywhere in its scope.
 
-**Why it matters.** A leftover from a refactor that never finished,
-or a placeholder that someone forgot to wire up. Cheap to flag,
-cheap to fix.
+**Why it matters.** A leftover from a refactor that never finished, or a placeholder that someone forgot to wire up. Cheap to flag, cheap to fix.
 
 **Settings.** No check-specific config.
 
