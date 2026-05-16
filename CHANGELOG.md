@@ -5,6 +5,33 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - next: 0.1.1
+
+### Changed
+
+- Dev tooling refresh: `vitest` 2 -> 4, `typescript` 5 -> 6,
+  `@types/node` 22 -> 25, `tsx` 4.21 -> 4.22. `@types/node` v25
+  no longer injects ambient globals automatically, so `tsconfig.json`
+  gained `"types": ["node"]` so `process`, `setTimeout`, and the
+  `node:*` import names still resolve.
+- Runtime CLI: `commander` 12 -> 14. Our usage surface is stable
+  across both majors; no API rewiring required.
+- GitHub Actions bundle: 11 action versions bumped via Dependabot
+  (`actions/checkout`, `actions/setup-node`, `docker/build-push-action`,
+  and friends). No workflow logic changes.
+
+### Fixed
+
+- Documentation and Marketplace surfaces: README's `## Install`
+  (which was actually the contributor-only bootstrap section)
+  renamed to `### Building from source` under `## Development`;
+  stale test count corrected from 33 to 148; `# once published`
+  removed from the CLI snippet now that 0.1.0 is on npm. The
+  `action.yml` description was refreshed to name the headline
+  check families. The `docs/index.md` Pages landing was rewritten
+  as a marketing surface (hero, "why this matters", 52-category
+  table, 60-second CTA per integration).
+
 ## [0.1.0] - 2026-05-15
 
 A substantial release covering 57 commits since 0.0.1. The headline
