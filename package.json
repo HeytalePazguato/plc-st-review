@@ -63,10 +63,10 @@
     "yaml": "^2.6.1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^25.8.0",
     "patch-package": "^8.0.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "tsx": "^4.22.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
   }
 }
