@@ -209,8 +209,10 @@ walkthrough and the common-gotchas list.
 
 ### CLI
 
+Published on npm:
+
 ```sh
-npm install -g plc-st-review               # once published
+npm install -g plc-st-review               # https://www.npmjs.com/package/plc-st-review
 plc-st-review --lint "src/**/*.st"         # static linting, no PR / base ref needed
 plc-st-review --base main --head HEAD      # diff current branch against main
 plc-st-review --files old.st new.st        # compare two specific files
@@ -345,7 +347,20 @@ Every change is reduced to an AST diff. The engine:
 
 No LLM is involved. Findings are deterministic.
 
-## Install
+## Development
+
+> Contributors only. End users don't need this section: the GitHub
+> Action, GitLab CI image, and npm CLI are all ready to use without
+> building from source.
+
+```sh
+npm run bootstrap          # first-time only; see "Building from source" below
+npm run build              # tsc to dist/
+npm test                   # vitest, ~5s, 148 tests across 53 files
+npm run lint               # tsc --noEmit
+```
+
+### Building from source
 
 ```sh
 npm run bootstrap
@@ -374,15 +389,6 @@ subsequent installs).
 
 The `patches/tree-sitter+0.25.0.patch` file goes away once upstream
 tree-sitter publishes a release with C++20 set as the default.
-
-## Development
-
-```sh
-npm run bootstrap          # first-time only; see "Install" above
-npm run build              # tsc to dist/
-npm test                   # vitest, ~2s, 33 tests
-npm run lint               # tsc --noEmit
-```
 
 ## Roadmap
 
