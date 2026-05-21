@@ -29,7 +29,7 @@ FB instance T3 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows **all 52 categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots.
+The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows **all 55 categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots.
 
 ## Why this matters
 
@@ -47,11 +47,11 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 - **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 17 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
 - **Team-style enforcer**: drop a `.plc-st-review.yml` listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`; both modes pick it up automatically.
 
-## The 52 check categories
+## The 55 check categories
 
 | Category | What fires it |
 |---|---|
-| **Diff-based (17)**: compare before and after | |
+| **Diff-based (20)**: compare before and after | |
 | `SIGNATURE_CHANGED` | POU input / output signature changed |
 | `CALL_SITE_OUTDATED` | call doesn't pass required args, or passes unknown ones |
 | `TYPE_MISMATCH` | global's declared type changed |
@@ -69,6 +69,9 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 | `PRAGMA_CHANGED` | pragma added / removed / changed |
 | `COUNTER_VALUE_CHANGED` | `CTU` / `CTD` / `CTUD` `PV` changed |
 | `UNUSED_VAR_INTRODUCED` | new variable declared but never used |
+| `COMPLEXITY_INCREASED` | POU cyclomatic complexity rose past the threshold |
+| `NESTING_INCREASED` | POU nesting depth rose past the threshold |
+| `LOC_SPIKE` | POU lines of code grew by more than 50% in one PR |
 | **Static integrity (6)**: single-revision, AST-level | |
 | `ENUM_VALUE_UNUSED` | enum value declared but never referenced |
 | `ENUM_MEMBER_UNKNOWN` | `E_State.IDEL`-style typo against a known enum |

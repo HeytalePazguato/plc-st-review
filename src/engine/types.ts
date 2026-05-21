@@ -58,7 +58,10 @@ export type Category =
   | 'UNUSED_OUTPUT_VAR'
   | 'OUTPUT_VAR_READ_INTERNALLY'
   | 'NESTED_COMMENTS'
-  | 'NAMING_CONVENTION';
+  | 'NAMING_CONVENTION'
+  | 'COMPLEXITY_INCREASED'
+  | 'NESTING_INCREASED'
+  | 'LOC_SPIKE';
 
 /**
  * Categories that only make sense when comparing two revisions of the
@@ -87,6 +90,11 @@ export const DIFF_ONLY_CATEGORIES: ReadonlySet<Category> = new Set<Category>([
   'COUNTER_VALUE_CHANGED',
   'UNUSED_VAR_INTRODUCED',
   'ENUM_VALUE_UNUSED',
+  // Metric-regression checks compare a POU's metrics between revisions, so
+  // they need a `before` to diff against and are auto-disabled in --lint mode.
+  'COMPLEXITY_INCREASED',
+  'NESTING_INCREASED',
+  'LOC_SPIKE',
 ]);
 
 export const ALL_CATEGORIES: Category[] = [
@@ -142,6 +150,9 @@ export const ALL_CATEGORIES: Category[] = [
   'OUTPUT_VAR_READ_INTERNALLY',
   'NESTED_COMMENTS',
   'NAMING_CONVENTION',
+  'COMPLEXITY_INCREASED',
+  'NESTING_INCREASED',
+  'LOC_SPIKE',
 ];
 
 export interface Position {
@@ -218,6 +229,26 @@ export type NamingDimension =
   | 'in_out_var'
   | 'constant';
 
+/** A metric with a warn band and an error band (higher is worse). */
+export interface RangeThreshold {
+  warn: number;
+  error: number;
+}
+
+/**
+ * Thresholds for the metrics feature. Used by the metric-regression checks
+ * (Phase 1) and, later, the standalone `--metrics` mode (Phase 2). `fanOut`
+ * and `commentRatio` are carried here so the config surface is stable; only
+ * `cyclomaticComplexity` and `nestingDepth` are consumed in Phase 1.
+ */
+export interface MetricsThresholds {
+  cyclomaticComplexity: RangeThreshold;
+  nestingDepth: RangeThreshold;
+  linesOfCode: RangeThreshold;
+  commentRatio: { warnBelow: number };
+  fanOut: RangeThreshold;
+}
+
 export interface ResolvedConfig {
   disabledChecks: Set<Category>;
   severityOverrides: Map<Category, Severity>;
@@ -228,6 +259,7 @@ export interface ResolvedConfig {
   forbiddenSymbols: string[];
   namingConventions: Partial<Record<NamingDimension, NamingRule>>;
   namingIgnore: string[];   // identifier patterns to skip for NAMING_CONVENTION
+  metricsThresholds: MetricsThresholds;
 }
 
 export interface SymbolTable {

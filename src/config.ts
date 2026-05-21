@@ -4,6 +4,7 @@ import { parse as parseYaml } from 'yaml';
 import {
   ALL_CATEGORIES,
   type Category,
+  type MetricsThresholds,
   type NamingDimension,
   type NamingRule,
   type ResolvedConfig,
@@ -16,6 +17,12 @@ interface RawNamingRule {
   pattern?: string;
   case?: 'sensitive' | 'insensitive';
   severity?: string;
+}
+
+interface RawMetricThreshold {
+  warn?: number;
+  error?: number;
+  warn_below?: number;
 }
 
 interface RawConfig {
@@ -31,6 +38,9 @@ interface RawConfig {
     fail_on_severity?: string;
     comment_style?: string;
   };
+  metrics?: {
+    thresholds?: Record<string, RawMetricThreshold>;
+  };
 }
 
 const NAMING_DIMENSIONS: NamingDimension[] = [
@@ -43,6 +53,14 @@ const NAMING_DIMENSIONS: NamingDimension[] = [
   'constant',
 ];
 
+export const DEFAULT_METRICS_THRESHOLDS: MetricsThresholds = Object.freeze({
+  cyclomaticComplexity: { warn: 15, error: 25 },
+  nestingDepth: { warn: 5, error: 8 },
+  linesOfCode: { warn: 300, error: 600 },
+  commentRatio: { warnBelow: 10 },
+  fanOut: { warn: 15, error: 25 },
+});
+
 export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
   disabledChecks: new Set<Category>(),
   severityOverrides: new Map<Category, Severity>(),
@@ -53,7 +71,18 @@ export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
   forbiddenSymbols: [],
   namingConventions: {},
   namingIgnore: [],
+  metricsThresholds: cloneMetricsThresholds(DEFAULT_METRICS_THRESHOLDS),
 });
+
+function cloneMetricsThresholds(m: MetricsThresholds): MetricsThresholds {
+  return {
+    cyclomaticComplexity: { ...m.cyclomaticComplexity },
+    nestingDepth: { ...m.nestingDepth },
+    linesOfCode: { ...m.linesOfCode },
+    commentRatio: { ...m.commentRatio },
+    fanOut: { ...m.fanOut },
+  };
+}
 
 /**
  * Load a config from disk. Resolves `extends:` paths relative to each file's
@@ -113,6 +142,12 @@ function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
     naming_conventions: { ...base.naming_conventions, ...override.naming_conventions },
     naming_ignore: union(base.naming_ignore, override.naming_ignore),
     reporting: { ...base.reporting, ...override.reporting },
+    metrics: {
+      thresholds: {
+        ...base.metrics?.thresholds,
+        ...override.metrics?.thresholds,
+      },
+    },
   };
 }
 
@@ -147,6 +182,7 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
   }
   if (raw.forbidden_symbols) cfg.forbiddenSymbols = [...raw.forbidden_symbols];
   if (raw.naming_ignore) cfg.namingIgnore = [...raw.naming_ignore];
+  applyMetricThresholds(cfg.metricsThresholds, raw.metrics?.thresholds);
   if (raw.naming_conventions) {
     for (const [k, v] of Object.entries(raw.naming_conventions)) {
       if (!isNamingDimension(k) || !v) continue;
@@ -173,7 +209,31 @@ function cloneDefault(): ResolvedConfig {
     forbiddenSymbols: [...DEFAULT_CONFIG.forbiddenSymbols],
     namingConventions: { ...DEFAULT_CONFIG.namingConventions },
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
+    metricsThresholds: cloneMetricsThresholds(DEFAULT_CONFIG.metricsThresholds),
   };
+}
+
+/**
+ * Map the snake_case YAML threshold keys onto the resolved structure,
+ * mutating `target` in place. Unknown metric keys are ignored; within a
+ * known metric, only the bands present in the YAML are overridden.
+ */
+function applyMetricThresholds(
+  target: MetricsThresholds,
+  raw: Record<string, RawMetricThreshold> | undefined,
+): void {
+  if (!raw) return;
+  const range = (band: { warn: number; error: number }, r: RawMetricThreshold) => {
+    if (typeof r.warn === 'number') band.warn = r.warn;
+    if (typeof r.error === 'number') band.error = r.error;
+  };
+  if (raw.cyclomatic_complexity) range(target.cyclomaticComplexity, raw.cyclomatic_complexity);
+  if (raw.nesting_depth) range(target.nestingDepth, raw.nesting_depth);
+  if (raw.lines_of_code) range(target.linesOfCode, raw.lines_of_code);
+  if (raw.fan_out) range(target.fanOut, raw.fan_out);
+  if (raw.comment_ratio && typeof raw.comment_ratio.warn_below === 'number') {
+    target.commentRatio.warnBelow = raw.comment_ratio.warn_below;
+  }
 }
 
 function isCategory(s: string): s is Category {

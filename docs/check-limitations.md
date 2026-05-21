@@ -28,6 +28,9 @@ These fire when something changes between revisions.
 | `INHERITANCE_CHANGED` | `EXTENDS` clause added / removed / changed | New method on the base that the derived FB now silently inherits |
 | `PRAGMA_CHANGED` | The set of pragmas in a file is different between revisions | Semantic effect of the pragma (we don't know what your codegen does with it) |
 | `UNUSED_VAR_INTRODUCED` | New local declared in this PR, never referenced in its scope | Vars whose only use is via reflection / pragma-driven generated code |
+| `COMPLEXITY_INCREASED` | A POU present in both revisions whose cyclomatic complexity rose | Complexity moved into a new helper POU (each piece looks fine); methods are scored as part of the enclosing FB, not separately (Phase 1) |
+| `NESTING_INCREASED` | A POU whose maximum control-structure nesting depth rose past the warn band | Refactors that keep the same max depth while adding many sibling branches; depth reduced in one branch but added in another at equal max |
+| `LOC_SPIKE` | A POU present in both revisions whose LOC grew by more than 50% | Brand-new POUs (no prior revision to compare); growth spread thinly across many POUs |
 
 ## Static checks (look at the new revision in isolation)
 

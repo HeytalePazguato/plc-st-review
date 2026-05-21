@@ -1,5 +1,5 @@
 name: 'plc-st-review'
-description: 'Semantic linter and code reviewer for IEC 61131-3 Structured Text pull requests. 52 checks: signature drift, outdated call sites, enum / array / pragma diffs, FB-instance misuse, timer / counter value changes, naming conventions, and 30+ more.'
+description: 'Semantic linter and code reviewer for IEC 61131-3 Structured Text pull requests. 55 checks: signature drift, outdated call sites, enum / array / pragma diffs, FB-instance misuse, timer / counter value changes, complexity / nesting / LOC regressions, naming conventions, and 30+ more.'
 author: 'HeytalePazguato'
 branding:
   icon: 'check-circle'

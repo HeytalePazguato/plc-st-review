@@ -83,6 +83,9 @@ nav:
           - PRAGMA_CHANGED: checks/diff-based/pragma_changed.md
           - UNUSED_VAR_INTRODUCED: checks/diff-based/unused_var_introduced.md
           - COUNTER_VALUE_CHANGED: checks/diff-based/counter_value_changed.md
+          - COMPLEXITY_INCREASED: checks/diff-based/complexity_increased.md
+          - NESTING_INCREASED: checks/diff-based/nesting_increased.md
+          - LOC_SPIKE: checks/diff-based/loc_spike.md
       - Static integrity:
           - ENUM_VALUE_UNUSED: checks/static-integrity/enum_value_unused.md
           - ENUM_MEMBER_UNKNOWN: checks/static-integrity/enum_member_unknown.md
