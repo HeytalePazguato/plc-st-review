@@ -8,9 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
-- **Metrics feature, Phase 1: three metric-regression checks** (bringing the total to **55 categories**, 35 single-revision + 20 diff-based): `COMPLEXITY_INCREASED` (cyclomatic complexity rose by more than 5, or crossed the error threshold), `NESTING_INCREASED` (max control-structure nesting depth rose past the warn threshold), and `LOC_SPIKE` (a POU's lines of code grew by more than 50% in one PR). They are diff-based, so they auto-disable in `--lint` mode, and reuse the existing tree-sitter AST, no new parsing.
-- **Per-POU metric primitives** under `src/engine/metrics/`: `complexity.ts` (McCabe adapted for ST), `nesting.ts` (max nesting depth), `loc.ts` (LOC / total / comment ratio, comment-aware), and `pou-metrics.ts` (per-file rollup keyed by POU). These are the shared foundation for the upcoming standalone `--metrics` mode (Phase 2).
-- **`metrics:` config block** in `.plc-st-review.yml`: `metrics.thresholds.cyclomatic_complexity` and `nesting_depth` drive the threshold-aware checks; `lines_of_code`, `comment_ratio`, and `fan_out` are accepted now and reserved for Phase 2. Defaults match the documented values; the block is optional.
+- **Three metric-regression checks** (bringing the total to **55 categories**, 35 single-revision + 20 diff-based): `COMPLEXITY_INCREASED` (a POU's cyclomatic complexity rose by more than 5, or crossed the error threshold), `NESTING_INCREASED` (max control-structure nesting depth rose past the warn threshold), and `LOC_SPIKE` (a POU's lines of code grew by more than 50% in one PR). They are diff-based, so they auto-disable in `--lint` mode, and reuse the existing tree-sitter AST, no new parsing.
+- **Per-POU metric primitives** under `src/engine/metrics/`: `complexity.ts` (McCabe adapted for ST), `nesting.ts` (max nesting depth), `loc.ts` (LOC / total / comment ratio, comment-aware), and `pou-metrics.ts` (per-file rollup keyed by POU).
+- **`metrics:` config block** in `.plc-st-review.yml`: `metrics.thresholds.cyclomatic_complexity` and `nesting_depth` drive the threshold-aware checks; `lines_of_code`, `comment_ratio`, and `fan_out` are accepted now and reserved for a future whole-codebase metrics report. Defaults match the documented values; the block is optional.
 
 ### Changed
 
