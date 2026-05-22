@@ -4,9 +4,14 @@ import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { loadConfig } from './config.js';
 import { runReview, shouldFail } from './engine/review.js';
+import { runMetrics, type PouReport } from './engine/metrics/index.js';
 import { renderJson } from './output/json.js';
 import { renderMarkdown } from './output/markdown.js';
 import { renderTerminal } from './output/terminal.js';
+import { renderMetricsTerminal } from './output/metrics-terminal.js';
+import { renderMetricsJson } from './output/metrics-json.js';
+import { renderDot } from './output/dot.js';
+import { renderBadge } from './output/badge.js';
 import { loadLintSnapshot, loadPathPair, loadRefSnapshot } from './platforms/local.js';
 import {
   loadGitlabMrSnapshot,
@@ -18,7 +23,14 @@ import {
   postGitHubReview,
   resolveGitHubOptionsFromEnv,
 } from './platforms/github.js';
-import { DIFF_ONLY_CATEGORIES, SEVERITY_RANK, type Severity } from './engine/types.js';
+import { projectScopedCategories } from './engine/checks/index.js';
+import {
+  DIFF_ONLY_CATEGORIES,
+  SEVERITY_RANK,
+  type AstFile,
+  type ResolvedConfig,
+  type Severity,
+} from './engine/types.js';
 
 interface CliOptions {
   base?: string;
@@ -37,7 +49,35 @@ interface CliOptions {
   config?: string;
   outFile?: string;
   noColor?: boolean;
+  metrics?: string[];
+  sort?: string;
+  top?: string;
+  threshold?: string[];
+  format: 'terminal' | 'json' | 'dot' | 'badge';
+  dependencyGraph?: boolean;
+  projectScope?: string | boolean;
 }
+
+type MetricKey = 'complexity' | 'nesting' | 'loc' | 'fan_in' | 'fan_out';
+
+const METRIC_ACCESSOR: Record<MetricKey, (p: PouReport) => number> = {
+  complexity: (p) => p.complexity,
+  nesting: (p) => p.nestingDepth,
+  loc: (p) => p.loc,
+  fan_in: (p) => p.fanIn,
+  fan_out: (p) => p.fanOut,
+};
+
+// Sort aliases accepted by --sort, mapped to the canonical metric key.
+const SORT_ALIASES: Record<string, MetricKey> = {
+  complexity: 'complexity',
+  nesting: 'nesting',
+  nesting_depth: 'nesting',
+  loc: 'loc',
+  lines_of_code: 'loc',
+  fan_in: 'fan_in',
+  fan_out: 'fan_out',
+};
 
 async function main(): Promise<void> {
   const program = new Command();
@@ -66,6 +106,21 @@ async function main(): Promise<void> {
     .option('--config <path>', 'path to .plc-st-review.yml')
     .option('--out-file <path>', 'write output to file instead of stdout')
     .option('--no-color', 'disable ANSI color')
+    .option(
+      '--metrics <patterns...>',
+      'metrics mode: compute complexity / nesting / LOC / call-graph metrics ' +
+        'for the given files / globs (e.g. `src/**/*.st`). Does not run review checks.',
+    )
+    .option('--sort <metric>', 'metrics: sort POUs by complexity|nesting|loc|fan_in|fan_out', 'complexity')
+    .option('--top <n>', 'metrics: show only the worst N POUs')
+    .option('--threshold <metric=value...>', 'metrics: exit nonzero if any POU exceeds (e.g. complexity=20)', collectThreshold, [])
+    .option('--format <fmt>', 'metrics: terminal|json|dot|badge', 'terminal')
+    .option('--dependency-graph', 'metrics: emit the call graph (use with --format dot)')
+    .option(
+      '--project-scope [glob]',
+      'review: also parse the whole repo (default `**/*.st`) so project-scoped ' +
+        'checks like DEAD_POU_INTRODUCED can see callers outside the diff',
+    )
     .parse(process.argv);
 
   const opts = program.opts<CliOptions>();
@@ -82,6 +137,10 @@ async function main(): Promise<void> {
   }
   const config = await loadConfig(configPath);
 
+  if (opts.metrics && opts.metrics.length > 0) {
+    await runMetricsMode(opts, config);
+    return;
+  }
   if (opts.gitlab) {
     await runGitlabMode(opts, config);
     return;
@@ -121,10 +180,14 @@ async function main(): Promise<void> {
     );
   }
 
+  const isLint = Boolean(opts.lint && opts.lint.length > 0);
+  if (!isLint) maybeHintProjectScope(opts, effectiveConfig);
+  const projectFiles = isLint ? undefined : await loadProjectScope(opts);
   const findings = runReview({
     beforeFiles: snap.before,
     afterFiles: snap.after,
     config: effectiveConfig,
+    projectFiles,
   }).filter((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[opts.severity]);
 
   let rendered: string;
@@ -162,10 +225,12 @@ async function runGitHubMode(
   const gh = resolveGitHubOptionsFromEnv({ pullNumber, owner, repo });
 
   const { before, after, context } = await loadGitHubPrSnapshot(gh);
+  maybeHintProjectScope(opts, config);
   const findings = runReview({
     beforeFiles: before,
     afterFiles: after,
     config,
+    projectFiles: await loadProjectScope(opts),
   }).filter((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[opts.severity]);
 
   const result = await postGitHubReview(findings, context, {
@@ -200,10 +265,12 @@ async function runGitlabMode(
   });
 
   const { before, after, context } = await loadGitlabMrSnapshot(gl);
+  maybeHintProjectScope(opts, config);
   const findings = runReview({
     beforeFiles: before,
     afterFiles: after,
     config,
+    projectFiles: await loadProjectScope(opts),
   }).filter((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[opts.severity]);
 
   const result = await postGitlabReview(findings, context, {
@@ -221,6 +288,120 @@ async function runGitlabMode(
   if (shouldFail(findings, config.failOnSeverity)) {
     process.exitCode = 1;
   }
+}
+
+async function runMetricsMode(
+  opts: CliOptions,
+  config: Awaited<ReturnType<typeof loadConfig>>,
+): Promise<void> {
+  const { after: files } = await loadLintSnapshot(opts.metrics!);
+  if (files.length === 0) {
+    fail(`--metrics matched no .st files. Patterns: ${opts.metrics!.join(', ')}`);
+  }
+
+  const result = runMetrics(files, config.metricsThresholds);
+
+  // Order POUs by the requested metric (descending), worst first.
+  const sortKey = SORT_ALIASES[opts.sort ?? 'complexity'];
+  if (!sortKey) fail(`Invalid --sort: ${String(opts.sort)} (complexity|nesting|loc|fan_in|fan_out)`);
+  const accessor = METRIC_ACCESSOR[sortKey];
+  result.perPou.sort((a, b) => accessor(b) - accessor(a) || a.name.localeCompare(b.name));
+
+  const top = opts.top ? Number.parseInt(opts.top, 10) : undefined;
+  if (opts.top && (top === undefined || !Number.isFinite(top) || top < 1)) {
+    fail(`Invalid --top: ${String(opts.top)}`);
+  }
+
+  const format = opts.format;
+  if (!isMetricsFormat(format)) fail(`Invalid --format: ${String(format)} (terminal|json|dot|badge)`);
+
+  let rendered: string;
+  if (format === 'json') {
+    rendered = renderMetricsJson(result);
+  } else if (format === 'dot') {
+    rendered = renderDot(result);
+  } else if (format === 'badge') {
+    rendered = renderBadge(result, config.metricsThresholds);
+  } else {
+    rendered = renderMetricsTerminal(result, {
+      label: opts.metrics!.join(' '),
+      thresholds: config.metricsThresholds,
+      top,
+      sortLabel: sortKey,
+      color: !opts.noColor,
+    });
+  }
+
+  if (opts.outFile) {
+    await writeFile(opts.outFile, rendered + (rendered.endsWith('\n') ? '' : '\n'), 'utf8');
+  } else {
+    process.stdout.write(rendered + '\n');
+  }
+
+  const breached = checkThresholds(result.perPou, opts.threshold ?? []);
+  if (breached.length > 0) {
+    for (const b of breached) process.stderr.write(`plc-st-review: ${b}\n`);
+    process.exitCode = 1;
+  }
+}
+
+/**
+ * Parse `--threshold metric=value` entries and return a message per breach.
+ * A breach is any POU whose metric strictly exceeds the given value.
+ */
+function checkThresholds(pous: PouReport[], specs: string[]): string[] {
+  const breaches: string[] = [];
+  for (const spec of specs) {
+    const [rawKey, rawVal] = spec.split('=');
+    const key = SORT_ALIASES[rawKey?.trim() ?? ''];
+    const limit = Number.parseInt(rawVal ?? '', 10);
+    if (!key || !Number.isFinite(limit)) {
+      breaches.push(`invalid --threshold "${spec}" (expected e.g. complexity=20)`);
+      continue;
+    }
+    const accessor = METRIC_ACCESSOR[key];
+    const over = pous.filter((p) => accessor(p) > limit);
+    for (const p of over) {
+      breaches.push(`${p.name} ${key}=${accessor(p)} exceeds threshold ${limit}`);
+    }
+  }
+  return breaches;
+}
+
+function collectThreshold(value: string, prev: string[]): string[] {
+  return [...prev, value];
+}
+
+function isMetricsFormat(s: string): s is CliOptions['format'] {
+  return s === 'terminal' || s === 'json' || s === 'dot' || s === 'badge';
+}
+
+/**
+ * When `--project-scope` is set, parse the whole repo from disk (the head
+ * checkout) so project-scoped checks can see callers the diff doesn't include.
+ * The optional value overrides the default glob.
+ */
+async function loadProjectScope(opts: CliOptions): Promise<AstFile[] | undefined> {
+  if (!opts.projectScope) return undefined;
+  const glob = typeof opts.projectScope === 'string' ? opts.projectScope : '**/*.st';
+  const { after } = await loadLintSnapshot([glob]);
+  return after;
+}
+
+/**
+ * If project-scoped checks are enabled but `--project-scope` wasn't passed,
+ * print a one-line note to stderr so the user knows they were skipped (rather
+ * than silently producing nothing).
+ */
+function maybeHintProjectScope(opts: CliOptions, config: ResolvedConfig): void {
+  if (opts.projectScope) return;
+  const skipped = projectScopedCategories().filter(
+    (c) => !config.disabledChecks.has(c),
+  );
+  if (skipped.length === 0) return;
+  process.stderr.write(
+    `plc-st-review: ${skipped.join(', ')} need --project-scope (whole-repo parse); skipped\n`,
+  );
 }
 
 function collectFiles(value: string, prev: string[]): string[] {

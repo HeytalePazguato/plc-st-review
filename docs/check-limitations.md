@@ -31,6 +31,7 @@ These fire when something changes between revisions.
 | `COMPLEXITY_INCREASED` | A POU present in both revisions whose cyclomatic complexity rose | Complexity moved into a new helper POU (each piece looks fine); methods are scored as part of the enclosing FB, not separately |
 | `NESTING_INCREASED` | A POU whose maximum control-structure nesting depth rose past the warn band | Refactors that keep the same max depth while adding many sibling branches; depth reduced in one branch but added in another at equal max |
 | `LOC_SPIKE` | A POU present in both revisions whose LOC grew by more than 50% | Brand-new POUs (no prior revision to compare); growth spread thinly across many POUs |
+| `DEAD_POU_INTRODUCED` | A new FUNCTION / FUNCTION_BLOCK with no caller anywhere in the project (needs `--project-scope`) | Callers reached only through pointers / interface refs; instantiated-but-never-invoked FBs (that is `FB_INSTANCE_NEVER_CALLED`); anything when project scope is not enabled |
 
 ## Static checks (look at the new revision in isolation)
 

@@ -61,7 +61,8 @@ export type Category =
   | 'NAMING_CONVENTION'
   | 'COMPLEXITY_INCREASED'
   | 'NESTING_INCREASED'
-  | 'LOC_SPIKE';
+  | 'LOC_SPIKE'
+  | 'DEAD_POU_INTRODUCED';
 
 /**
  * Categories that only make sense when comparing two revisions of the
@@ -95,6 +96,7 @@ export const DIFF_ONLY_CATEGORIES: ReadonlySet<Category> = new Set<Category>([
   'COMPLEXITY_INCREASED',
   'NESTING_INCREASED',
   'LOC_SPIKE',
+  'DEAD_POU_INTRODUCED',
 ]);
 
 export const ALL_CATEGORIES: Category[] = [
@@ -153,6 +155,7 @@ export const ALL_CATEGORIES: Category[] = [
   'COMPLEXITY_INCREASED',
   'NESTING_INCREASED',
   'LOC_SPIKE',
+  'DEAD_POU_INTRODUCED',
 ];
 
 export interface Position {
@@ -556,10 +559,22 @@ export interface ReviewContext {
   pairs: FilePair[];
   before: SymbolTable;
   after: SymbolTable;
+  /**
+   * Whole-repo symbol table at the head revision, present only when the run
+   * was invoked with project scope. Checks with `scope: 'project'` need this;
+   * it is undefined on a normal diff-only run.
+   */
+  project?: SymbolTable;
 }
 
 export interface Check {
   readonly category: Category;
   readonly defaultSeverity: Severity;
+  /**
+   * `'diff'` (default) checks run on the before/after pair. `'project'` checks
+   * additionally need `ctx.project` (the whole-repo table) and are skipped when
+   * it is absent.
+   */
+  readonly scope?: 'diff' | 'project';
   run(ctx: ReviewContext): Finding[];
 }

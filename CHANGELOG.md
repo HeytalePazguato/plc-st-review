@@ -4,13 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - next: 0.1.1
+## [Unreleased] - next: 0.2.0
 
 ### Added
 
-- **Three metric-regression checks** (bringing the total to **55 categories**, 35 single-revision + 20 diff-based): `COMPLEXITY_INCREASED` (a POU's cyclomatic complexity rose by more than 5, or crossed the error threshold), `NESTING_INCREASED` (max control-structure nesting depth rose past the warn threshold), and `LOC_SPIKE` (a POU's lines of code grew by more than 50% in one PR). They are diff-based, so they auto-disable in `--lint` mode, and reuse the existing tree-sitter AST, no new parsing.
-- **Per-POU metric primitives** under `src/engine/metrics/`: `complexity.ts` (McCabe adapted for ST), `nesting.ts` (max nesting depth), `loc.ts` (LOC / total / comment ratio, comment-aware), and `pou-metrics.ts` (per-file rollup keyed by POU).
-- **`metrics:` config block** in `.plc-st-review.yml`: `metrics.thresholds.cyclomatic_complexity` and `nesting_depth` drive the threshold-aware checks; `lines_of_code`, `comment_ratio`, and `fan_out` are accepted now and reserved for a future whole-codebase metrics report. Defaults match the documented values; the block is optional.
+- **`--metrics` mode**: a standalone whole-codebase report (it does not run the review checks). Per POU it computes cyclomatic complexity, nesting depth, lines of code, variable / input / output / method counts, statement / branch / return counts, and call-graph fan-in / fan-out; project-wide it rolls up dead POUs, orphan types, dependency depth, call cycles, and doc coverage. Output as `terminal`, `json`, Graphviz `dot` (call graph), or a shields.io `badge`, with `--sort`, `--top`, and `--threshold metric=value` (CI gate). Reuses the existing tree-sitter AST and symbol table, no new parser. See `docs/metrics-mode.md`.
+- **Four new diff-based checks** (total now **56 categories**, 35 single-revision + 21 diff-based): `COMPLEXITY_INCREASED` (cyclomatic complexity rose by more than 5, or crossed the error threshold), `NESTING_INCREASED` (max nesting depth rose past the warn threshold), `LOC_SPIKE` (a POU's lines of code grew by more than 50% in one PR), and `DEAD_POU_INTRODUCED` (a newly added FUNCTION / FUNCTION_BLOCK that nothing in the project calls). All are diff-based and auto-disable in `--lint` mode.
+- **`--project-scope` (opt-in whole-repo parse)**: review modes can additionally parse the whole repository from the head checkout so project-scoped checks like `DEAD_POU_INTRODUCED` can see callers outside the diff. Off by default and never run on a normal PR; enable it on demand, a PR label is the recommended trigger. Exposed as the `project-scope` GitHub Action input; recipe in `examples/github-workflow-project-scope.yml`. See `docs/project-scope.md`.
+- **`metrics:` config block** in `.plc-st-review.yml`: `cyclomatic_complexity`, `nesting_depth`, `lines_of_code`, `comment_ratio`, and `fan_out` bands, consumed by the metric-regression checks and by `--metrics` status colouring and badge. Defaults match the documented values; the block is optional.
 
 ### Changed
 

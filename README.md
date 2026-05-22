@@ -1,13 +1,13 @@
 # plc-st-review
 
-[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest) [![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE) [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json) [![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/) [![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review) [![Checks](https://img.shields.io/badge/checks-55%20categories-orange)](docs/checks-reference.md)
+[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest) [![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE) [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json) [![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/) [![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review) [![Checks](https://img.shields.io/badge/checks-56%20categories-orange)](docs/checks-reference.md)
 
 A **semantic linter, code reviewer, and team-style enforcer** for IEC 61131-3 Structured Text, built for CI on PLC codebases that can't be compiled outside the vendor IDE. Parses `.st` files with the [tree-sitter-iec61131-3-st](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st) grammar and reports semantic problems, not textual diffs.
 
-`plc-st-review` runs in **three modes**, each backed by the same 55-check engine:
+`plc-st-review` runs in **three modes**, each backed by the same 56-check engine:
 
 - **Static linter** (`--lint src/**/*.st`), run on every push. 35 single-revision checks for ST bugs: division by zero, out-of-range array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads, unused vars, naming-convention drift, `forbidden_symbols`, and more.
-- **PR / MR reviewer** (GitHub Action or GitLab CI job), posts inline review comments on lines that triggered findings. Adds 20 diff-based checks that compare the PR against its base: signature drift, outdated call sites, enum removals, timer-value changes, EXTENDS swaps, pragmas, `SAFETY_*` constant changes, and metric regressions (complexity, nesting, LOC growth).
+- **PR / MR reviewer** (GitHub Action or GitLab CI job), posts inline review comments on lines that triggered findings. Adds 21 diff-based checks that compare the PR against its base: signature drift, outdated call sites, enum removals, timer-value changes, EXTENDS swaps, pragmas, `SAFETY_*` constant changes, and metric regressions (complexity, nesting, LOC growth). With [`--project-scope`](docs/project-scope.md) it also flags newly added POUs that nothing in the repo calls.
 - **Team-style enforcer**: drop a `.plc-st-review.yml` in the repo root listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`. Both modes pick it up automatically.
 
 Catches the bugs reviewers miss on visual scan:
@@ -20,7 +20,7 @@ Catches the bugs reviewers miss on visual scan:
 
 ## See it in action
 
-**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises **all 55 check categories** the tool ships with: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. The PR is intentionally kept open as a fixture; conversation is locked.
+**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises **all 56 check categories** the tool ships with: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. The PR is intentionally kept open as a fixture; conversation is locked.
 
 A single finding looks like this in the GitHub UI:
 
@@ -61,7 +61,7 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
 - **FB-instance checks**: 8 more checks for standard IEC 61131-3 function blocks: timer / counter / edge-trig / bistable misuse.
 - **Code-quality + style checks**: 19 more, plus a configurable `NAMING_CONVENTION` check and a config preset-pack mechanism (`extends:`).
 
-Total: **55 check categories** (35 single-revision + 20 diff-based), 167 tests across 59 files, all passing.
+Total: **56 check categories** (35 single-revision + 21 diff-based), 181 tests across 63 files, all passing.
 
 ## Quick start
 
@@ -89,7 +89,7 @@ jobs:
       - run: npx plc-st-review --lint "src/**/*.st"
 ```
 
-`--lint` accepts file paths, directories, or globs (`*`, `**`, mixed). It parses each `.st` file in isolation and runs the **35 single-revision checks**: the 20 diff-based ones are auto-disabled because there's no "before" state. Exit code is non-zero when any finding meets `reporting.fail_on_severity` (default `error`), so the job fails the pipeline on real bugs.
+`--lint` accepts file paths, directories, or globs (`*`, `**`, mixed). It parses each `.st` file in isolation and runs the **35 single-revision checks**: the 21 diff-based ones are auto-disabled because there's no "before" state. Exit code is non-zero when any finding meets `reporting.fail_on_severity` (default `error`), so the job fails the pipeline on real bugs.
 
 ### GitHub pull request
 
@@ -160,6 +160,19 @@ Output formats: `terminal` (ANSI when stdout is a TTY), `markdown`, `json`.
 
 The CLI exits non-zero when at least one finding meets or exceeds the `reporting.fail_on_severity` threshold (default `error`).
 
+### Metrics
+
+`--metrics` is a standalone mode that measures a whole codebase instead of reviewing a diff: cyclomatic complexity, nesting depth, LOC, call-graph fan-in/out, dead code, dependency depth, and more. It does not run the review checks. Full reference: [docs/metrics-mode.md](docs/metrics-mode.md).
+
+```sh
+plc-st-review --metrics src/                              # per-POU + project report
+plc-st-review --metrics src/ --sort complexity --top 20  # worst 20 POUs
+plc-st-review --metrics src/ --threshold complexity=25   # exit nonzero past the bar
+plc-st-review --metrics src/ --format json               # machine-readable
+plc-st-review --metrics src/ --format dot | dot -Tsvg -o deps.svg   # call graph
+plc-st-review --metrics src/ --format badge              # shields.io URL
+```
+
 ## Live demo
 
 [PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open as the canonical demo, every check below fires at least once on that PR, with the exact inline comments the bot posts. Open it to see the tool in action on real ST.
@@ -194,6 +207,7 @@ Each row links to a per-check section in [docs/checks-reference.md](docs/checks-
 | `COMPLEXITY_INCREASED` | `warn` (`error` on crossing threshold) | A POU's cyclomatic complexity rose by more than 5, or crossed the configured error threshold. |
 | `NESTING_INCREASED` | `warn` (`error` on crossing threshold) | A POU's max control-structure nesting depth rose beyond the configured warn threshold. |
 | `LOC_SPIKE` | `info` | A POU's lines of code grew by more than 50% in a single PR. |
+| `DEAD_POU_INTRODUCED` | `info` | A newly added FUNCTION/FUNCTION_BLOCK that nothing in the project calls. Needs [`--project-scope`](docs/project-scope.md). |
 
 ### Static (look at the new revision in isolation, filter to bugs new in this PR)
 
@@ -293,7 +307,7 @@ No LLM is involved. Findings are deterministic.
 ```sh
 npm run bootstrap          # first-time only; see "Building from source" below
 npm run build              # tsc to dist/
-npm test                   # vitest, ~9s, 167 tests across 59 files
+npm test                   # vitest, ~9s, 181 tests across 63 files
 npm run lint               # tsc --noEmit
 ```
 
