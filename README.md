@@ -173,6 +173,29 @@ plc-st-review --metrics src/ --format dot | dot -Tsvg -o deps.svg   # call graph
 plc-st-review --metrics src/ --format badge              # shields.io URL
 ```
 
+Running it on the bundled `examples/state-machine/` fixtures prints a ranked report (🟢/🟡/🔴 against the configured thresholds):
+
+```
+Project: examples/state-machine  (9 POUs, 143 LOC)
+
+Top 5 by complexity:
+  FB_ConveyorState  complexity:  10  nesting:  2  LOC:    42  🟢
+  Conveyor_HMI      complexity:   6  nesting:  1  LOC:    14  🟢
+  FB_AxisRamp       complexity:   5  nesting:  1  LOC:    27  🟢
+  FB_SpeedCalc      complexity:   2  nesting:  1  LOC:    18  🟢
+  FB_Base           complexity:   1  nesting:  0  LOC:     6  🟢
+
+Dead code:
+  FB_Legacy    (0 callers)
+  FB_Watchdog  (0 callers)
+
+Summary:
+  Avg complexity: 3.1  Avg nesting: 0.6  Doc coverage: 0%  Dependency depth: 2
+  All POUs within complexity thresholds
+```
+
+`--format dot` emits the call graph (pipe to Graphviz); `--format json` emits the full per-POU + project report for dashboards or CI gates.
+
 ## Live demo
 
 [PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open as the canonical demo, every check below fires at least once on that PR, with the exact inline comments the bot posts. Open it to see the tool in action on real ST.
