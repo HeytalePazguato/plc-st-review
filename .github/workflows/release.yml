@@ -119,6 +119,11 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
 
+      # OIDC trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.
+      - name: Upgrade npm for OIDC trusted publishing
+        if: steps.guard.outputs.exists == 'false'
+        run: npm install -g npm@latest
+
       - name: Bootstrap (install + patch + rebuild)
         if: steps.guard.outputs.exists == 'false'
         run: npm run bootstrap
@@ -127,12 +132,15 @@ jobs:
         if: steps.guard.outputs.exists == 'false'
         run: npm run build
 
-      - name: Publish to npm
-        if: steps.guard.outputs.exists == 'false' && env.NPM_TOKEN != ''
+      # No token: authentication is via GitHub OIDC (npm Trusted Publishing).
+      # Configure the trusted publisher once at npmjs.com -> the plc-st-review
+      # package -> Settings -> Trusted Publisher (GitHub Actions, repo
+      # HeytalePazguato/plc-st-review, workflow release.yml). Provenance is
+      # generated automatically. The `id-token: write` permission above is
+      # what makes the OIDC exchange possible.
+      - name: Publish to npm (OIDC trusted publishing)
+        if: steps.guard.outputs.exists == 'false'
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         if: steps.guard.outputs.exists == 'false'
