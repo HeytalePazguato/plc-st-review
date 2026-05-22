@@ -68,8 +68,9 @@ These compare the *before* and *after* trees of a PR. Every finding implies a ch
 - [COMPLEXITY_INCREASED](checks/diff-based/complexity_increased.md)
 - [NESTING_INCREASED](checks/diff-based/nesting_increased.md)
 - [LOC_SPIKE](checks/diff-based/loc_spike.md)
+- [DEAD_POU_INTRODUCED](checks/diff-based/dead_pou_introduced.md)
 
-The last three are **metric-regression** checks: they compare a POU's complexity, nesting depth, and lines of code between revisions and fire when a metric degrades. Their bands live in a `metrics:` block (see [Metric thresholds](#metric-thresholds) below).
+`COMPLEXITY_INCREASED`, `NESTING_INCREASED`, and `LOC_SPIKE` are **metric-regression** checks: they compare a POU's complexity, nesting depth, and lines of code between revisions and fire when a metric degrades. Their bands live in a `metrics:` block (see [Metric thresholds](#metric-thresholds) below). `DEAD_POU_INTRODUCED` is **project-scoped**: it needs a whole-repo parse and runs only with [`--project-scope`](project-scope.md).
 
 ## Static integrity checks
 

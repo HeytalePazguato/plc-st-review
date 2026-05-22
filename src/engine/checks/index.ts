@@ -1,4 +1,4 @@
-import type { Check } from '../types.js';
+import type { Category, Check } from '../types.js';
 import { addressOfConstant } from './address-of-constant.js';
 import { arrayBoundsChanged } from './array-bounds-changed.js';
 import { arrayIndexOutOfBounds } from './array-index-out-of-bounds.js';
@@ -11,6 +11,7 @@ import { commentedOutCode } from './commented-out-code.js';
 import { commentOnly } from './comment-only.js';
 import { complexityIncreased } from './complexity-increased.js';
 import { constantValueChanged } from './constant-value-changed.js';
+import { deadPouIntroduced } from './dead-pou-introduced.js';
 import { counterPvZero } from './counter-pv-zero.js';
 import { counterValueChanged } from './counter-value-changed.js';
 import { divisionByZero } from './division-by-zero.js';
@@ -112,5 +113,13 @@ export function allChecks(): Check[] {
     complexityIncreased,
     nestingIncreased,
     locSpike,
+    deadPouIntroduced,
   ];
+}
+
+/** Categories whose checks need `ctx.project` (the whole-repo symbol table). */
+export function projectScopedCategories(): Category[] {
+  return allChecks()
+    .filter((c) => c.scope === 'project')
+    .map((c) => c.category);
 }

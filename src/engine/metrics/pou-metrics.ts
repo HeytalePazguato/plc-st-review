@@ -1,4 +1,4 @@
-import { NODE, descendantsOfAnyType, findIdentifierText } from '../grammar.js';
+import { NODE, childrenOf, descendantsOfAnyType, findIdentifierText } from '../grammar.js';
 import type { AstFile, ReviewContext, StNode } from '../types.js';
 import { cyclomaticComplexity } from './complexity.js';
 import { locMetrics } from './loc.js';
@@ -13,7 +13,30 @@ export interface PouMetrics {
   loc: number;
   locTotal: number;
   commentRatio: number;
+  statementCount: number;
+  branchCount: number;
+  returnCount: number;
 }
+
+const STATEMENT_NODES = new Set<string>([
+  NODE.ASSIGNMENT_STATEMENT,
+  NODE.INVOCATION_STATEMENT,
+  NODE.IF_STATEMENT,
+  NODE.CASE_STATEMENT,
+  NODE.FOR_STATEMENT,
+  NODE.WHILE_STATEMENT,
+  NODE.REPEAT_STATEMENT,
+  NODE.RETURN_STATEMENT,
+  NODE.EXIT_STATEMENT,
+  NODE.CONTINUE_STATEMENT,
+]);
+
+const BRANCH_NODES = new Set<string>([
+  NODE.IF_STATEMENT,
+  NODE.ELSIF_CLAUSE,
+  NODE.ELSE_CLAUSE,
+  NODE.CASE_CLAUSE,
+]);
 
 /**
  * The POU kinds metrics are reported for. METHODs are intentionally not listed
@@ -66,6 +89,7 @@ export function matchedPouMetrics(ctx: ReviewContext): PouMetricDelta[] {
 
 function metricsForPou(pou: StNode, name: string, file: AstFile): PouMetrics {
   const loc = locMetrics(pou, file.source);
+  const counts = countNodes(pou);
   return {
     name,
     file: file.path,
@@ -75,5 +99,27 @@ function metricsForPou(pou: StNode, name: string, file: AstFile): PouMetrics {
     loc: loc.loc,
     locTotal: loc.total,
     commentRatio: loc.commentRatio,
+    statementCount: counts.statements,
+    branchCount: counts.branches,
+    returnCount: counts.returns,
   };
+}
+
+function countNodes(pou: StNode): {
+  statements: number;
+  branches: number;
+  returns: number;
+} {
+  let statements = 0;
+  let branches = 0;
+  let returns = 0;
+  const stack: StNode[] = [...childrenOf(pou)];
+  while (stack.length) {
+    const n = stack.pop()!;
+    if (STATEMENT_NODES.has(n.type)) statements += 1;
+    if (BRANCH_NODES.has(n.type)) branches += 1;
+    if (n.type === NODE.RETURN_STATEMENT) returns += 1;
+    for (const c of childrenOf(n)) stack.push(c);
+  }
+  return { statements, branches, returns };
 }
