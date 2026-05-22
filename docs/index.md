@@ -29,7 +29,7 @@ FB instance T3 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows **all 56 categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots.
+The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **55 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (The 56th, `DEAD_POU_INTRODUCED`, is opt-in, a whole-repo parse is too slow for every PR, so it's label-triggered; see [Project scope](project-scope.md).)
 
 ## Why this matters
 

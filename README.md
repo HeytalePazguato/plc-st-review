@@ -20,7 +20,7 @@ Catches the bugs reviewers miss on visual scan:
 
 ## See it in action
 
-**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises **all 56 check categories** the tool ships with: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. The PR is intentionally kept open as a fixture; conversation is locked.
+**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises the **55 always-on check categories**, the ones that run on every PR: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. The 56th category, `DEAD_POU_INTRODUCED`, is **opt-in**: it needs a whole-repo parse, which is too slow to run on every PR, so it's off by default and triggered on demand with a label (see [project scope](docs/project-scope.md)). The PR is intentionally kept open as a fixture; conversation is locked.
 
 A single finding looks like this in the GitHub UI:
 
