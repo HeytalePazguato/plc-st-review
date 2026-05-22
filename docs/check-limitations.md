@@ -1,13 +1,8 @@
 # What each check can and can't catch
 
-`plc-st-review` is a *static* reviewer, it works from the syntax tree, not
-from running code. That means every check has things it can see and things
-it can't. This page is the honest accounting.
+`plc-st-review` is a *static* reviewer, it works from the syntax tree, not from running code. That means every check has things it can see and things it can't. This page is the honest accounting.
 
-The single biggest limitation across the whole tool: **there is no flow
-analysis**. Nothing knows what value a variable holds at runtime. So
-anywhere the check needs "the value of `i`" or "is this branch reachable",
-the answer is approximated from literals and resolvable constants only.
+The single biggest limitation across the whole tool: **there is no flow analysis**. Nothing knows what value a variable holds at runtime. So anywhere the check needs "the value of `i`" or "is this branch reachable", the answer is approximated from literals and resolvable constants only.
 
 ## Diff-based checks (compare before vs after)
 
@@ -33,15 +28,14 @@ These fire when something changes between revisions.
 | `INHERITANCE_CHANGED` | `EXTENDS` clause added / removed / changed | New method on the base that the derived FB now silently inherits |
 | `PRAGMA_CHANGED` | The set of pragmas in a file is different between revisions | Semantic effect of the pragma (we don't know what your codegen does with it) |
 | `UNUSED_VAR_INTRODUCED` | New local declared in this PR, never referenced in its scope | Vars whose only use is via reflection / pragma-driven generated code |
+| `COMPLEXITY_INCREASED` | A POU present in both revisions whose cyclomatic complexity rose | Complexity moved into a new helper POU (each piece looks fine); methods are scored as part of the enclosing FB, not separately |
+| `NESTING_INCREASED` | A POU whose maximum control-structure nesting depth rose past the warn band | Refactors that keep the same max depth while adding many sibling branches; depth reduced in one branch but added in another at equal max |
+| `LOC_SPIKE` | A POU present in both revisions whose LOC grew by more than 50% | Brand-new POUs (no prior revision to compare); growth spread thinly across many POUs |
+| `DEAD_POU_INTRODUCED` | A new FUNCTION / FUNCTION_BLOCK with no caller anywhere in the project (needs `--project-scope`) | Callers reached only through pointers / interface refs; instantiated-but-never-invoked FBs (that is `FB_INSTANCE_NEVER_CALLED`); anything when project scope is not enabled |
 
 ## Static checks (look at the new revision in isolation)
 
-These fire on bugs that exist in the new code, regardless of whether the
-PR introduced them. By default they only flag bugs that **weren't already
-present** in the old revision, adopting the tool on a legacy repo
-shouldn't dump a wall of pre-existing findings on day one. Toggle that
-filter via `severity_overrides` or `disabled_checks` if you want all
-hits.
+These fire on bugs that exist in the new code, regardless of whether the PR introduced them. By default they only flag bugs that **weren't already present** in the old revision, adopting the tool on a legacy repo shouldn't dump a wall of pre-existing findings on day one. Toggle that filter via `severity_overrides` or `disabled_checks` if you want all hits.
 
 | Check | Catches | Doesn't catch |
 |---|---|---|
@@ -82,6 +76,4 @@ hits.
 
 ## When a check has no opinion
 
-A check that doesn't fire isn't necessarily a sign that the code is fine, just that nothing this check looks at is wrong. If you want broader
-coverage of a category, file an issue with a concrete example: it's easier
-to extend an existing check than to argue about what one means.
+A check that doesn't fire isn't necessarily a sign that the code is fine, just that nothing this check looks at is wrong. If you want broader coverage of a category, file an issue with a concrete example: it's easier to extend an existing check than to argue about what one means.

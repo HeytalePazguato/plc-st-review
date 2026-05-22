@@ -13,22 +13,33 @@ export interface ReviewInput {
   beforeFiles: AstFile[];
   afterFiles: AstFile[];
   config: ResolvedConfig;
+  /**
+   * Whole-repo files at the head revision. When present, `scope: 'project'`
+   * checks (e.g. DEAD_POU_INTRODUCED) run against the resulting symbol table;
+   * when absent, they are skipped.
+   */
+  projectFiles?: AstFile[];
 }
 
 export function runReview(input: ReviewInput): Finding[] {
   const pairs = pairFiles(input.beforeFiles, input.afterFiles);
   const before = buildSymbolTable(input.beforeFiles);
   const after = buildSymbolTable(input.afterFiles);
+  const project = input.projectFiles
+    ? buildSymbolTable(input.projectFiles)
+    : undefined;
   const ctx: ReviewContext = {
     config: input.config,
     pairs,
     before,
     after,
+    project,
   };
 
   const findings: Finding[] = [];
   for (const check of allChecks()) {
     if (input.config.disabledChecks.has(check.category)) continue;
+    if (check.scope === 'project' && !ctx.project) continue;
     const raw = check.run(ctx);
     for (const f of raw) {
       const overridden =

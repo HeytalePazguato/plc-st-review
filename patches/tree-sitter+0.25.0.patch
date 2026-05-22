@@ -1,3 +1,27 @@
+# Why: tree-sitter 0.25.0 ships a binding.gyp that pins the C++ standard to
+# C++17 (cflags_cc, mac xcode_settings, msvs_settings). Node 20+ ships V8
+# headers that require C++20, so a plain `npm install` fails its native
+# build with errors like:
+#   error C7555: use of designated initializers requires at least '/std:c++20'
+#   error C2039: 'string_view': is not a member of 'std'
+# The fix is three identical edits: c++17 -> c++20 in each of the three
+# build-config blocks. patch-package applies it on `postinstall`; the
+# `npm run bootstrap` script ensures the patch lands before the first
+# native build attempt.
+#
+# Remove this patch once tree-sitter ships a release with C++20 as the
+# default. The upstream project lives at:
+#   https://github.com/tree-sitter/node-tree-sitter
+# Last upstream release: 0.25.0 on 2025-06-02 (slow but not abandoned).
+# If 0.26+ ships the fix, bump the `tree-sitter` pin in package.json
+# and delete this file plus the `npm rebuild tree-sitter` step in the
+# `bootstrap` script.
+#
+# Lines starting with `#` above the first `diff --git` line are silently
+# ignored by patch-package's parser (verified in
+# node_modules/patch-package/dist/patch/parse.js), so this header has
+# no runtime effect.
+
 diff --git a/node_modules/tree-sitter/binding.gyp b/node_modules/tree-sitter/binding.gyp
 index bb40aa7..1e1641b 100644
 --- a/node_modules/tree-sitter/binding.gyp

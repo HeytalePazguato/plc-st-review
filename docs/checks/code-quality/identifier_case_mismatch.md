@@ -2,13 +2,9 @@
 
 **Severity:** `warn`
 
-A reference uses a different case than the declaration. IEC ST
-identifiers are case-insensitive, but inconsistent casing hurts
-readability and breaks tools that aren't case-folding.
+A reference uses a different case than the declaration. IEC ST identifiers are case-insensitive, but inconsistent casing hurts readability and breaks tools that aren't case-folding.
 
-**Why it matters.** `iCount` vs `icount` vs `Icount` in the same
-file is a real maintenance smell. Pick a spelling at declaration
-time and stick to it.
+**Why it matters.** `iCount` vs `icount` vs `Icount` in the same file is a real maintenance smell. Pick a spelling at declaration time and stick to it.
 
 **Settings.** No check-specific config.
 

@@ -2,12 +2,9 @@
 
 **Severity:** `info`
 
-The file's AST is structurally identical between revisions; only
-comments or whitespace changed.
+The file's AST is structurally identical between revisions; only comments or whitespace changed.
 
-**Why it matters.** Lets reviewers skim past files that won't change
-behavior. Pair-aware: only triggers when the two ASTs match, a
-single-character semantic change defeats it.
+**Why it matters.** Lets reviewers skim past files that won't change behavior. Pair-aware: only triggers when the two ASTs match, a single-character semantic change defeats it.
 
 **Settings.** No check-specific config.
 

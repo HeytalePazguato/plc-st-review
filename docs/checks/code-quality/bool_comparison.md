@@ -2,12 +2,9 @@
 
 **Severity:** `info`
 
-A BOOL variable is compared with `= TRUE` or `= FALSE`. The
-comparison adds no information.
+A BOOL variable is compared with `= TRUE` or `= FALSE`. The comparison adds no information.
 
-**Why it matters.** Style nit, `IF b THEN` is universally clearer
-than `IF b = TRUE THEN`, and the latter sometimes hides intent in
-nested logic.
+**Why it matters.** Style nit, `IF b THEN` is universally clearer than `IF b = TRUE THEN`, and the latter sometimes hides intent in nested logic.
 
 **Settings.** No check-specific config.
 
@@ -27,5 +24,4 @@ A BOOL variable is already true/false. `IF b` and `IF NOT b` are
 clearer than `IF b = TRUE` / `IF b = FALSE`.
 ```
 
-**Fix.** Drop the comparison: `IF xEnable THEN` or `IF NOT xEnable
-THEN`.
+**Fix.** Drop the comparison: `IF xEnable THEN` or `IF NOT xEnable THEN`.

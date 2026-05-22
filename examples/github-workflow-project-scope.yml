@@ -1,0 +1,37 @@
+# On-demand whole-repo audit, gated on a PR label.
+#
+# The normal review (see github-workflow.yml) runs on every PR and stays
+# diff-only and fast. This second workflow runs ONLY when the `full-audit`
+# label is present on the PR, and it passes `project-scope` so project-scoped
+# checks (e.g. DEAD_POU_INTRODUCED) can see callers outside the diff.
+#
+# Drop into .github/workflows/plc-st-review-audit.yml. Add the `full-audit`
+# label to a PR whenever you want the deep pass; remove it to stop.
+
+name: PLC ST Review (full audit)
+
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  full-audit:
+    # Only run when the PR carries the `full-audit` label.
+    if: contains(github.event.pull_request.labels.*.name, 'full-audit')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 is required: the whole-repo parse reads every .st
+          # file in the checked-out tree, not just the PR's changed files.
+          fetch-depth: 0
+      - uses: HeytalePazguato/plc-st-review@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Any glob enables project scope; '**/*.st' covers the whole repo.
+          project-scope: '**/*.st'

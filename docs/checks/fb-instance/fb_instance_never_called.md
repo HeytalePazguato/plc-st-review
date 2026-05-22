@@ -2,12 +2,9 @@
 
 **Severity:** `warn`
 
-An FB instance is declared, its outputs are read somewhere in the
-POU, but no call site invokes it.
+An FB instance is declared, its outputs are read somewhere in the POU, but no call site invokes it.
 
-**Why it matters.** Outputs only update when the instance is called.
-Reading `T1.Q` without ever calling `T1(...)` returns stale data
-(usually the initial value forever).
+**Why it matters.** Outputs only update when the instance is called. Reading `T1.Q` without ever calling `T1(...)` returns stale data (usually the initial value forever).
 
 **Settings.** No check-specific config.
 
@@ -29,5 +26,4 @@ FB instance T1 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-**Fix.** Add a call site for the instance, or remove the declaration
-if it isn't needed.
+**Fix.** Add a call site for the instance, or remove the declaration if it isn't needed.

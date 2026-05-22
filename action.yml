@@ -1,5 +1,5 @@
 name: 'plc-st-review'
-description: 'Semantic linter and code reviewer for IEC 61131-3 Structured Text pull requests. 52 checks: signature drift, outdated call sites, enum / array / pragma diffs, FB-instance misuse, timer / counter value changes, naming conventions, and 30+ more.'
+description: 'Semantic linter and code reviewer for IEC 61131-3 Structured Text pull requests. 56 checks: signature drift, outdated call sites, enum / array / pragma diffs, FB-instance misuse, timer / counter value changes, complexity / nesting / LOC regressions, dead-code detection, naming conventions, and 30+ more.'
 author: 'HeytalePazguato'
 branding:
   icon: 'check-circle'
@@ -22,6 +22,10 @@ inputs:
     description: 'Minimum severity to report (info|warn|error).'
     required: false
     default: 'info'
+  project-scope:
+    description: 'If set (e.g. "**/*.st"), also parse the whole repo so project-scoped checks like DEAD_POU_INTRODUCED can see callers outside the diff. Requires actions/checkout with fetch-depth: 0. Leave empty to keep reviews diff-only and fast.'
+    required: false
+    default: ''
 
 outputs:
   result:
@@ -39,3 +43,4 @@ runs:
     PLC_PR_INPUT: ${{ inputs.pr-number }}
     PLC_REPO_INPUT: ${{ inputs.repo }}
     PLC_SEVERITY_INPUT: ${{ inputs.severity }}
+    PLC_PROJECT_SCOPE_INPUT: ${{ inputs.project-scope }}

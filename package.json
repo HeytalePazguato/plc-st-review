@@ -1,7 +1,7 @@
 {
   "name": "plc-st-review",
-  "version": "0.1.0",
-  "description": "Semantic linter, code reviewer, and team-style enforcer for IEC 61131-3 Structured Text. Runs as a CI linter, GitHub Action, GitLab CI job, or local CLI. 52 checks across static analysis, FB-instance integrity, and diff-based PR review.",
+  "version": "0.2.0",
+  "description": "Semantic linter, code reviewer, and team-style enforcer for IEC 61131-3 Structured Text. Runs as a CI linter, GitHub Action, GitLab CI job, or local CLI. 56 checks plus a --metrics mode (complexity, nesting, call graph, dead code) across static analysis, FB-instance integrity, and diff-based PR review.",
   "type": "module",
   "bin": {
     "plc-st-review": "./dist/cli.js"
@@ -55,7 +55,7 @@
   "dependencies": {
     "@gitbeaker/rest": "^43.8.0",
     "@octokit/rest": "^22.0.1",
-    "commander": "^12.1.0",
+    "commander": "^14.0.3",
     "picocolors": "^1.1.1",
     "simple-git": "^3.27.0",
     "tree-sitter": "^0.25.0",
@@ -63,10 +63,10 @@
     "yaml": "^2.6.1"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^25.8.0",
     "patch-package": "^8.0.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "tsx": "^4.22.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.6"
   }
 }

@@ -2,13 +2,9 @@
 
 **Severity:** `error`
 
-A qualified reference like `E_State.IDEL` doesn't match any declared
-member of `E_State`. Likely a typo. The detail lists the actual
-members as candidates.
+A qualified reference like `E_State.IDEL` doesn't match any declared member of `E_State`. Likely a typo. The detail lists the actual members as candidates.
 
-**Why it matters.** Catches a common typo class (transposition,
-missing letter, wrong casing on case-sensitive runtimes) before it
-compiles fine due to misleading defaults.
+**Why it matters.** Catches a common typo class (transposition, missing letter, wrong casing on case-sensitive runtimes) before it compiles fine due to misleading defaults.
 
 **Settings.** No check-specific config.
 

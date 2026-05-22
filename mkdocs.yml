@@ -83,6 +83,10 @@ nav:
           - PRAGMA_CHANGED: checks/diff-based/pragma_changed.md
           - UNUSED_VAR_INTRODUCED: checks/diff-based/unused_var_introduced.md
           - COUNTER_VALUE_CHANGED: checks/diff-based/counter_value_changed.md
+          - COMPLEXITY_INCREASED: checks/diff-based/complexity_increased.md
+          - NESTING_INCREASED: checks/diff-based/nesting_increased.md
+          - LOC_SPIKE: checks/diff-based/loc_spike.md
+          - DEAD_POU_INTRODUCED: checks/diff-based/dead_pou_introduced.md
       - Static integrity:
           - ENUM_VALUE_UNUSED: checks/static-integrity/enum_value_unused.md
           - ENUM_MEMBER_UNKNOWN: checks/static-integrity/enum_member_unknown.md
@@ -123,6 +127,9 @@ nav:
       - Tuning severities: tuning-severities.md
       - Preset packs: preset-packs.md
       - Writing custom checks: writing-custom-checks.md
+  - Metrics:
+      - Metrics mode: metrics-mode.md
+      - Project scope: project-scope.md
   - Platforms:
       - Lint mode (CI, no PR): lint-mode.md
       - GitHub setup: github-setup.md

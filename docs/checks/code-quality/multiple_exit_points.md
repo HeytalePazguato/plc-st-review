@@ -4,9 +4,7 @@
 
 A POU has more than one `RETURN`.
 
-**Why it matters.** Multiple exits make control flow harder to
-trace and tend to accumulate dead code or duplicate cleanup. Not
-universally bad, but worth flagging once you have 3+.
+**Why it matters.** Multiple exits make control flow harder to trace and tend to accumulate dead code or duplicate cleanup. Not universally bad, but worth flagging once you have 3+.
 
 **Settings.** No check-specific config.
 
@@ -32,5 +30,4 @@ Multi-exit POUs are harder to reason about and to trace. Where
 practical, refactor so the POU has a single exit point.
 ```
 
-**Fix.** Restructure with a single return point at the end of the
-POU, using `IF` / `CASE` to set the return variable.
+**Fix.** Restructure with a single return point at the end of the POU, using `IF` / `CASE` to set the return variable.

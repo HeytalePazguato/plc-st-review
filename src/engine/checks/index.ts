@@ -1,4 +1,4 @@
-import type { Check } from '../types.js';
+import type { Category, Check } from '../types.js';
 import { addressOfConstant } from './address-of-constant.js';
 import { arrayBoundsChanged } from './array-bounds-changed.js';
 import { arrayIndexOutOfBounds } from './array-index-out-of-bounds.js';
@@ -9,7 +9,9 @@ import { boolComparison } from './bool-comparison.js';
 import { callSiteOutdated } from './call-site-outdated.js';
 import { commentedOutCode } from './commented-out-code.js';
 import { commentOnly } from './comment-only.js';
+import { complexityIncreased } from './complexity-increased.js';
 import { constantValueChanged } from './constant-value-changed.js';
+import { deadPouIntroduced } from './dead-pou-introduced.js';
 import { counterPvZero } from './counter-pv-zero.js';
 import { counterValueChanged } from './counter-value-changed.js';
 import { divisionByZero } from './division-by-zero.js';
@@ -26,12 +28,14 @@ import { identifierCaseMismatch } from './identifier-case-mismatch.js';
 import { infiniteLoop } from './infinite-loop.js';
 import { inheritanceChanged } from './inheritance-changed.js';
 import { inputVarWritten } from './input-var-written.js';
+import { locSpike } from './loc-spike.js';
 import { loopBoundsChanged } from './loop-bounds-changed.js';
 import { loopBoundsReversed } from './loop-bounds-reversed.js';
 import { methodAddedToInterface } from './method-added-to-interface.js';
 import { multipleExitPoints } from './multiple-exit-points.js';
 import { namingConvention } from './naming-convention.js';
 import { nestedComments } from './nested-comments.js';
+import { nestingIncreased } from './nesting-increased.js';
 import { outputVarReadInternally } from './output-var-read-internally.js';
 import { pouDeleted } from './pou-deleted.js';
 import { pouRenamed } from './pou-renamed.js';
@@ -106,5 +110,16 @@ export function allChecks(): Check[] {
     outputVarReadInternally,
     nestedComments,
     namingConvention,
+    complexityIncreased,
+    nestingIncreased,
+    locSpike,
+    deadPouIntroduced,
   ];
+}
+
+/** Categories whose checks need `ctx.project` (the whole-repo symbol table). */
+export function projectScopedCategories(): Category[] {
+  return allChecks()
+    .filter((c) => c.scope === 'project')
+    .map((c) => c.category);
 }

@@ -4,9 +4,7 @@
 
 A `VAR_OUTPUT` is read inside the same POU.
 
-**Why it matters.** Outputs are for publishing state to callers, not
-internal working storage. Reading one back inside the POU usually
-means you wanted a local intermediate variable.
+**Why it matters.** Outputs are for publishing state to callers, not internal working storage. Reading one back inside the POU usually means you wanted a local intermediate variable.
 
 **Settings.** No check-specific config.
 
@@ -30,5 +28,4 @@ Reading it back inside the same POU usually means you wanted a
 local intermediate.
 ```
 
-**Fix.** Introduce a local for the working value and assign the
-output once at the end of the POU.
+**Fix.** Introduce a local for the working value and assign the output once at the end of the POU.

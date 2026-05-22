@@ -1,19 +1,12 @@
 # Preset packs
 
-`plc-st-review` ships **no opinionated naming or style defaults**: the
-out-of-the-box config has every per-team rule disabled. Different shops
-disagree on conventions (some prefix bools with `x`, some suffix enum
-types with `_enum`, some use both, some neither), and the engine has
-no business taking a side.
+`plc-st-review` ships **no opinionated naming or style defaults**: the out-of-the-box config has every per-team rule disabled. Different shops disagree on conventions (some prefix bools with `x`, some suffix enum types with `_enum`, some use both, some neither), and the engine has no business taking a side.
 
-The `extends:` mechanism lets your team compose its own policy and
-share it across projects, the same way ESLint and Prettier do.
+The `extends:` mechanism lets your team compose its own policy and share it across projects, the same way ESLint and Prettier do.
 
 ## How extends works
 
-`.plc-st-review.yml` is the project's config file. Anywhere it accepts
-a value, it also accepts an `extends:` pointing at one or more "preset"
-files that contribute the same shape:
+`.plc-st-review.yml` is the project's config file. Anywhere it accepts a value, it also accepts an `extends:` pointing at one or more "preset" files that contribute the same shape:
 
 ```yaml
 # .plc-st-review.yml at the project root
@@ -32,18 +25,12 @@ naming_conventions:
 
 **Rules of resolution:**
 
-- `extends:` accepts a single path or an array. The list is walked in
-  order; entries later in the list override earlier ones.
-- Paths can be relative to the file that declares `extends:`, or
-  absolute.
-- A preset can itself extend another preset, `extends:` chains as
-  deep as you want.
-- The local config (the file you're loading) always overrides any
-  values its presets set.
+- `extends:` accepts a single path or an array. The list is walked in order; entries later in the list override earlier ones.
+- Paths can be relative to the file that declares `extends:`, or absolute.
+- A preset can itself extend another preset, `extends:` chains as deep as you want.
+- The local config (the file you're loading) always overrides any values its presets set.
 - Cycles (`a → b → a`) are detected and reported as an error.
-- Resolution is **filesystem-only** in v0.x. No npm packages, no HTTP
-  URLs, no git refs. If you want to share presets across repos, vendor
-  them via a git submodule or copy them in.
+- Resolution is **filesystem-only** in v0.x. No npm packages, no HTTP URLs, no git refs. If you want to share presets across repos, vendor them via a git submodule or copy them in.
 
 ## Merge semantics by field
 
@@ -61,9 +48,7 @@ naming_conventions:
 
 ## A worked example
 
-Imagine your shop builds two product lines: injection-molding machines
-and CNC mills. You want a common baseline and a vertical-specific
-overlay.
+Imagine your shop builds two product lines: injection-molding machines and CNC mills. You want a common baseline and a vertical-specific overlay.
 
 ```yaml
 # presets/company-standards.yml, reused across all projects
@@ -145,39 +130,22 @@ extends:
 
 Three patterns, in increasing complexity:
 
-1. **Copy**: every project keeps a `presets/` directory; you update
-   them when the standard changes. Lowest friction, highest drift.
-2. **Git submodule**: keep `presets/` as a submodule of a shared
-   `standards` repo. One source of truth; updates are explicit per
-   project.
-3. **CI-injected**: your CI clones the `standards` repo before
-   running `plc-st-review` and points `extends:` at the checkout.
-   Same single-source-of-truth without per-project submodule
-   plumbing.
+1. **Copy**: every project keeps a `presets/` directory; you update them when the standard changes. Lowest friction, highest drift. 2. **Git submodule**: keep `presets/` as a submodule of a shared `standards` repo. One source of truth; updates are explicit per project. 3. **CI-injected**: your CI clones the `standards` repo before running `plc-st-review` and points `extends:` at the checkout. Same single-source-of-truth without per-project submodule plumbing.
 
-There is no "right" answer; pick the one that matches how your team
-already handles shared standards.
+There is no "right" answer; pick the one that matches how your team already handles shared standards.
 
 ## What the engine does NOT ship
 
-- **No vendor-flavored presets** (no Beckhoff / CODESYS / TwinCAT /
-  ABB / Siemens preset). The engine stays portable; conventions live
-  in your repo.
-- **No "recommended" preset.** Every check ships with a default
-  severity, but no preset tells you what to ban or rename. Your team
-  decides.
-- **No preset versioning or registry.** Presets are plain YAML files
-  in your control; their lifecycle is part of your project, not the
-  tool.
+- **No vendor-flavored presets** (no Beckhoff / CODESYS / TwinCAT / ABB / Siemens preset). The engine stays portable; conventions live in your repo.
+- **No "recommended" preset.** Every check ships with a default severity, but no preset tells you what to ban or rename. Your team decides.
+- **No preset versioning or registry.** Presets are plain YAML files in your control; their lifecycle is part of your project, not the tool.
 
 ## Validating a preset
 
-To check that a preset file loads cleanly, point the CLI at it (with
-no diff target) and let the config loader validate the syntax:
+To check that a preset file loads cleanly, point the CLI at it (with no diff target) and let the config loader validate the syntax:
 
 ```sh
 plc-st-review --config presets/injection-molding.yml --files placeholder.st placeholder.st
 ```
 
-If the file has invalid YAML, an unknown naming dimension, or a
-malformed regex, the CLI exits with a clear error.
+If the file has invalid YAML, an unknown naming dimension, or a malformed regex, the CLI exits with a clear error.

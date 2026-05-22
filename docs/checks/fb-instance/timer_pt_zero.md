@@ -2,12 +2,9 @@
 
 **Severity:** `error`
 
-A `TON` / `TOF` / `TP` is set with `PT := T#0s`, or a constant that
-resolves to zero.
+A `TON` / `TOF` / `TP` is set with `PT := T#0s`, or a constant that resolves to zero.
 
-**Why it matters.** `PT = 0` fires immediately on `TON` / `TP` (the
-delay is zero) or never on `TOF` (the off-delay is zero). Almost
-always the wrong intent.
+**Why it matters.** `PT = 0` fires immediately on `TON` / `TP` (the delay is zero) or never on `TOF` (the off-delay is zero). Almost always the wrong intent.
 
 **Settings.** No check-specific config.
 

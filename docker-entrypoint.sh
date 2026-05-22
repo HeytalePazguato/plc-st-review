@@ -32,14 +32,15 @@ fi
 
 repo="${PLC_REPO_INPUT:-${GITHUB_REPOSITORY:-}}"
 severity="${PLC_SEVERITY_INPUT:-info}"
+project_scope="${PLC_PROJECT_SCOPE_INPUT:-}"
 
 if [ -n "$pr_number" ] && [ -n "$repo" ]; then
-  echo "plc-st-review entrypoint: running --github --pr $pr_number --repo $repo --severity $severity"
-  exec node /app/dist/cli.js \
-    --github \
-    --pr "$pr_number" \
-    --repo "$repo" \
-    --severity "$severity"
+  set -- --github --pr "$pr_number" --repo "$repo" --severity "$severity"
+  if [ -n "$project_scope" ]; then
+    set -- "$@" --project-scope "$project_scope"
+  fi
+  echo "plc-st-review entrypoint: running cli.js $*"
+  exec node /app/dist/cli.js "$@"
 fi
 
 echo "plc-st-review entrypoint: no PR context found, passing args through"

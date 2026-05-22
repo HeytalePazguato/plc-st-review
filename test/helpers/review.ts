@@ -17,6 +17,7 @@ export function review(
     forbiddenSymbols: [...DEFAULT_CONFIG.forbiddenSymbols],
     namingConventions: { ...DEFAULT_CONFIG.namingConventions },
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
+    metricsThresholds: DEFAULT_CONFIG.metricsThresholds,
     ...configPatch,
   };
   return runReview({ beforeFiles: before, afterFiles: after, config });

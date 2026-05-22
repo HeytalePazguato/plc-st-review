@@ -2,13 +2,9 @@
 
 **Severity:** `error`
 
-A literal index sits outside the array's declared bounds. Dynamic
-indices (variables, expressions) aren't checked, would need flow
-analysis.
+A literal index sits outside the array's declared bounds. Dynamic indices (variables, expressions) aren't checked, would need flow analysis.
 
-**Why it matters.** Compile-time bounds checking catches the obvious
-case; runtime crashes do the rest. Catching the literal-index variant
-at PR-review time eliminates the cheap mistakes.
+**Why it matters.** Compile-time bounds checking catches the obvious case; runtime crashes do the rest. Catching the literal-index variant at PR-review time eliminates the cheap mistakes.
 
 **Settings.** No check-specific config.
 

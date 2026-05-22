@@ -4,9 +4,7 @@
 
 A POU invokes itself directly.
 
-**Why it matters.** IEC 61131-3 implementations have a bounded
-stack; recursion risks overflow on any input that nests beyond a
-shallow depth. Convert to iteration where the algorithm allows.
+**Why it matters.** IEC 61131-3 implementations have a bounded stack; recursion risks overflow on any input that nests beyond a shallow depth. Convert to iteration where the algorithm allows.
 
 **Settings.** No check-specific config.
 
@@ -28,5 +26,4 @@ IEC 61131-3 implementations have a bounded stack; recursion risks
 overflow on any input that nests deeper than a few levels.
 ```
 
-**Fix.** Convert to iteration with an explicit stack / queue, or
-prove the recursion depth is bounded and document the bound.
+**Fix.** Convert to iteration with an explicit stack / queue, or prove the recursion depth is bounded and document the bound.

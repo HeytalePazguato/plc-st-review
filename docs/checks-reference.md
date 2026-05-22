@@ -17,6 +17,31 @@ disabled_checks:
 
 Each per-check page below only lists **additional** knobs (check-specific config, prefix lists, etc.).
 
+## Metric thresholds
+
+The metric-regression checks (`COMPLEXITY_INCREASED`, `NESTING_INCREASED`, `LOC_SPIKE`) read their bands from an optional `metrics:` block. Omit it and the defaults below apply:
+
+```yaml
+metrics:
+  thresholds:
+    cyclomatic_complexity:
+      warn: 15
+      error: 25
+    nesting_depth:
+      warn: 5
+      error: 8
+    lines_of_code:      # reserved for the standalone --metrics mode
+      warn: 300
+      error: 600
+    comment_ratio:      # reserved for the standalone --metrics mode
+      warn_below: 10
+    fan_out:            # reserved for the standalone --metrics mode
+      warn: 15
+      error: 25
+```
+
+`cyclomatic_complexity` and `nesting_depth` drive the two threshold-aware checks today; the rest of the block is accepted now so the config is stable ahead of the standalone metrics mode. `LOC_SPIKE` has no threshold, it fires on any single-PR growth over 50%.
+
 ## Diff-based checks
 
 These compare the *before* and *after* trees of a PR. Every finding implies a change happened in this PR.
@@ -40,6 +65,12 @@ These compare the *before* and *after* trees of a PR. Every finding implies a ch
 - [PRAGMA_CHANGED](checks/diff-based/pragma_changed.md)
 - [UNUSED_VAR_INTRODUCED](checks/diff-based/unused_var_introduced.md)
 - [COUNTER_VALUE_CHANGED](checks/diff-based/counter_value_changed.md)
+- [COMPLEXITY_INCREASED](checks/diff-based/complexity_increased.md)
+- [NESTING_INCREASED](checks/diff-based/nesting_increased.md)
+- [LOC_SPIKE](checks/diff-based/loc_spike.md)
+- [DEAD_POU_INTRODUCED](checks/diff-based/dead_pou_introduced.md)
+
+`COMPLEXITY_INCREASED`, `NESTING_INCREASED`, and `LOC_SPIKE` are **metric-regression** checks: they compare a POU's complexity, nesting depth, and lines of code between revisions and fire when a metric degrades. Their bands live in a `metrics:` block (see [Metric thresholds](#metric-thresholds) below). `DEAD_POU_INTRODUCED` is **project-scoped**: it needs a whole-repo parse and runs only with [`--project-scope`](project-scope.md).
 
 ## Static integrity checks
 

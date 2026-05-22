@@ -2,12 +2,9 @@
 
 **Severity:** `error`
 
-An `INTERFACE` gained a method but a `FUNCTION_BLOCK` that
-`IMPLEMENTS` it doesn't declare one.
+An `INTERFACE` gained a method but a `FUNCTION_BLOCK` that `IMPLEMENTS` it doesn't declare one.
 
-**Why it matters.** The compiler eventually catches this, but only
-when the interface is actually used. The check surfaces it at PR
-review so the implementer can be updated in the same PR.
+**Why it matters.** The compiler eventually catches this, but only when the interface is actually used. The check surfaces it at PR review so the implementer can be updated in the same PR.
 
 **Settings.** No check-specific config.
 
@@ -31,5 +28,4 @@ FB_Pump does not implement new method(s) on IDrivable: Stop
 Implementing FBs must declare matching methods.
 ```
 
-**Fix.** Add the missing method to every implementer, or revert
-the interface change.
+**Fix.** Add the missing method to every implementer, or revert the interface change.

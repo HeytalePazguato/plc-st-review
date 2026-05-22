@@ -1,14 +1,8 @@
 # plc-st-review
 
-**Catch the PLC bugs your IDE can't.**
-Semantic linter, code reviewer, and team-style enforcer for IEC 61131-3
-Structured Text. Built for CI on PLC codebases that can't be compiled
-outside the vendor IDE — so your pipeline catches what the compiler
-never even sees.
+**Catch the PLC bugs your IDE can't.** Semantic linter, code reviewer, and team-style enforcer for IEC 61131-3 Structured Text. Built for CI on PLC codebases that can't be compiled outside the vendor IDE, so your pipeline catches what the compiler never even sees.
 
-[Try it in 60 seconds](#try-it-in-60-seconds){ .md-button .md-button--primary }
-[View on GitHub](https://github.com/HeytalePazguato/plc-st-review){ .md-button }
-[Install from npm](https://www.npmjs.com/package/plc-st-review){ .md-button }
+[Try it in 60 seconds](#try-it-in-60-seconds){ .md-button .md-button--primary } [View on GitHub](https://github.com/HeytalePazguato/plc-st-review){ .md-button } [Install from npm](https://www.npmjs.com/package/plc-st-review){ .md-button }
 
 ![plc-st-review inline review comment example: FB_INSTANCE_NEVER_CALLED](screenshots/single-finding.png){ width="720" }
 
@@ -35,55 +29,29 @@ FB instance T3 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1)
-shows **all 52 categories** firing on a single PR, with the exact inline
-comments the bot posts. No mock-ups, no edited screenshots.
+The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **55 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (The 56th, `DEAD_POU_INTRODUCED`, is opt-in, a whole-repo parse is too slow for every PR, so it's label-triggered; see [Project scope](project-scope.md).)
 
 ## Why this matters
 
-Industrial PLC code rarely runs through the kind of pre-merge review
-that modern software shops take for granted:
+Industrial PLC code rarely runs through the kind of pre-merge review that modern software shops take for granted:
 
-- **No headless compiler.** TwinCAT, CODESYS, GX Works — the build only
-  happens inside the vendor IDE, on the developer's workstation. CI
-  pipelines can't repeat it.
-- **Code review by visual scan.** Even good shops review `.st` diffs
-  by reading them, and the human eye misses ten-times-faster timers,
-  silently-removed enum values, and renamed-but-not-updated POU callers.
-- **High blast radius.** A wrong `TON.PT` doesn't crash a test suite;
-  it crashes the conveyor at 03:00.
+- **No headless compiler.** TwinCAT, CODESYS, GX Works, the build only happens inside the vendor IDE, on the developer's workstation. CI pipelines can't repeat it.
+- **Code review by visual scan.** Even good shops review `.st` diffs by reading them, and the human eye misses ten-times-faster timers, silently-removed enum values, and renamed-but-not-updated POU callers.
+- **High blast radius.** A wrong `TON.PT` doesn't crash a test suite; it crashes the conveyor at 03:00.
 
-`plc-st-review` reads `.st` files with a real
-[tree-sitter](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st)
-grammar — the same kind GitHub itself uses for syntax highlighting — and
-flags the changes that matter, deterministically. **No LLM involved.**
-Findings are reproducible, the same input always produces the same
-output, and you can read every check's source code in
-[`src/engine/checks/`](https://github.com/HeytalePazguato/plc-st-review/tree/main/src/engine/checks).
+`plc-st-review` reads `.st` files with a real [tree-sitter](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st) grammar, the same kind GitHub itself uses for syntax highlighting, and flags the changes that matter, deterministically. **No LLM involved.** Findings are reproducible, the same input always produces the same output, and you can read every check's source code in [`src/engine/checks/`](https://github.com/HeytalePazguato/plc-st-review/tree/main/src/engine/checks).
 
 ## Three ways to use it
 
-- **Static linter on every push** —
-  `plc-st-review --lint "src/**/*.st"`. 35 single-revision checks
-  for ST bugs (division by zero, infinite loops, timer / counter
-  misuse, output-var reads, unused vars, naming conventions,
-  forbidden symbols, more). No PR workflow required.
-- **PR / MR reviewer** — posts inline review comments anchored to
-  the lines that triggered findings. Adds 17 diff-based checks
-  (signature drift, outdated call sites, enum removals, `EXTENDS`
-  swaps, pragma changes, timer / counter value bumps, etc.). Ships
-  as a [GitHub Action](github-setup.md) and a
-  [GitLab CI job](gitlab-setup.md).
-- **Team-style enforcer** — drop a `.plc-st-review.yml` listing
-  your `naming_conventions` (prefix / suffix / pattern per
-  declaration kind) and `forbidden_symbols`; both modes pick it up
-  automatically.
+- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 35 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, more). No PR workflow required.
+- **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 17 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
+- **Team-style enforcer**: drop a `.plc-st-review.yml` listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`; both modes pick it up automatically.
 
-## The 52 check categories
+## The 56 check categories
 
 | Category | What fires it |
 |---|---|
-| **Diff-based (17)** — compare before and after | |
+| **Diff-based (21)**: compare before and after | |
 | `SIGNATURE_CHANGED` | POU input / output signature changed |
 | `CALL_SITE_OUTDATED` | call doesn't pass required args, or passes unknown ones |
 | `TYPE_MISMATCH` | global's declared type changed |
@@ -101,14 +69,18 @@ output, and you can read every check's source code in
 | `PRAGMA_CHANGED` | pragma added / removed / changed |
 | `COUNTER_VALUE_CHANGED` | `CTU` / `CTD` / `CTUD` `PV` changed |
 | `UNUSED_VAR_INTRODUCED` | new variable declared but never used |
-| **Static integrity (6)** — single-revision, AST-level | |
+| `COMPLEXITY_INCREASED` | POU cyclomatic complexity rose past the threshold |
+| `NESTING_INCREASED` | POU nesting depth rose past the threshold |
+| `LOC_SPIKE` | POU lines of code grew by more than 50% in one PR |
+| `DEAD_POU_INTRODUCED` | new POU nothing in the project calls (needs `--project-scope`) |
+| **Static integrity (6)**: single-revision, AST-level | |
 | `ENUM_VALUE_UNUSED` | enum value declared but never referenced |
 | `ENUM_MEMBER_UNKNOWN` | `E_State.IDEL`-style typo against a known enum |
 | `ARRAY_INDEX_OUT_OF_BOUNDS` | literal index outside declared bounds |
 | `DIVISION_BY_ZERO` | literal `/ 0` or constant resolving to 0 |
 | `INFINITE_LOOP` | `WHILE TRUE` with no `EXIT` |
 | `LOOP_BOUNDS_REVERSED` | `FOR` step direction disagrees with start / end |
-| **FB-instance integrity (7)** — standard IEC 61131-3 FB patterns | |
+| **FB-instance integrity (7)**: standard IEC 61131-3 FB patterns | |
 | `COUNTER_PV_ZERO` | counter preset of 0 |
 | `TIMER_PT_ZERO` | `TON(PT := T#0s)` fires immediately |
 | `TIMER_NOT_DRIVEN` | `T1.Q` read but no call sets `IN` |
@@ -138,8 +110,7 @@ output, and you can read every check's source code in
 | `NESTED_COMMENTS` | `(* outer (* nested *) *)` |
 | `NAMING_CONVENTION` | team-configured prefix / suffix / pattern violation |
 
-The [Checks reference](checks-reference.md) has a dedicated page per
-category, with an ST code example and a suggested fix.
+The [Checks reference](checks-reference.md) has a dedicated page per category, with an ST code example and a suggested fix.
 
 ## Try it in 60 seconds
 
@@ -165,8 +136,7 @@ jobs:
       - uses: HeytalePazguato/plc-st-review@v0
 ```
 
-Open any PR that touches a `.st` file. The bot posts inline review
-comments within ~30 s.
+Open any PR that touches a `.st` file. The bot posts inline review comments within ~30 s.
 
 ### GitLab
 
@@ -185,8 +155,7 @@ plc-st-review:
     - plc-st-review --gitlab --mr "$CI_MERGE_REQUEST_IID"
 ```
 
-Works on `gitlab.com` and self-hosted instances. The image is **public**
-on GHCR — no `docker login` required.
+Works on `gitlab.com` and self-hosted instances. The image is **public** on GHCR, no `docker login` required.
 
 ### Static linter (no PR workflow required)
 
@@ -197,9 +166,7 @@ lint-st:
     - plc-st-review --lint "src/**/*.st"
 ```
 
-Runs on every push, fails the pipeline on findings at or above the
-`reporting.fail_on_severity` threshold. The 17 diff-based categories
-auto-disable; the other 35 fire as a static linter.
+Runs on every push, fails the pipeline on findings at or above the `reporting.fail_on_severity` threshold. The 17 diff-based categories auto-disable; the other 35 fire as a static linter.
 
 ### Local
 
@@ -212,11 +179,11 @@ plc-st-review --files old.st new.st          # compare two files
 
 ## What's next
 
-- [Checks reference](checks-reference.md) — every category, with ST examples
-- [Tuning severities](tuning-severities.md) — per-category overrides, fail thresholds
-- [Preset packs](preset-packs.md) — share naming / severity bundles via `extends:`
-- [Writing custom checks](writing-custom-checks.md) — the engine internals
-- [Lint mode](lint-mode.md) — the static-only CI path
+- [Checks reference](checks-reference.md), every category, with ST examples
+- [Tuning severities](tuning-severities.md), per-category overrides, fail thresholds
+- [Preset packs](preset-packs.md), share naming / severity bundles via `extends:`
+- [Writing custom checks](writing-custom-checks.md), the engine internals
+- [Lint mode](lint-mode.md), the static-only CI path
 - [GitHub setup](github-setup.md) · [GitLab setup](gitlab-setup.md)
 
 ## Links
