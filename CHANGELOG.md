@@ -21,6 +21,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- `--files <before> <after>`: the space-separated form documented in the README errored with `too many arguments` (the option consumed only one path). It is now variadic and accepts two paths as documented; passing any count other than two fails with a clear message.
+
+### Fixed
+
 - Documentation and Marketplace surfaces: README's `## Install` (which was actually the contributor-only bootstrap section) renamed to `### Building from source` under `## Development`; stale test count corrected from 33 to 148; `# once published` removed from the CLI snippet now that 0.1.0 is on npm. The `action.yml` description was refreshed to name the headline check families. The `docs/index.md` Pages landing was rewritten as a marketing surface (hero, "why this matters", 52-category table, 60-second CTA per integration).
 
 ## [0.1.0] - 2026-05-15

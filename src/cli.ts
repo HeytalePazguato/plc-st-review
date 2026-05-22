@@ -88,7 +88,7 @@ async function main(): Promise<void> {
     )
     .option('--base <ref>', 'git base ref (e.g. main)')
     .option('--head <ref>', 'git head ref (e.g. feature/x)', 'HEAD')
-    .option('--files <before> <after>', 'review two specific files', collectFiles, [])
+    .option('--files <paths...>', 'review two specific files: --files <before> <after>')
     .option(
       '--lint <patterns...>',
       'static-lint mode: parse the given files / globs (e.g. `src/**/*.st`) ' +
@@ -167,7 +167,10 @@ async function main(): Promise<void> {
         ...DIFF_ONLY_CATEGORIES,
       ]),
     };
-  } else if (opts.files && opts.files.length === 2) {
+  } else if (opts.files && opts.files.length > 0) {
+    if (opts.files.length !== 2) {
+      fail(`--files needs exactly two paths: <before> <after> (got ${opts.files.length})`);
+    }
     snap = await loadPathPair(opts.files[0], opts.files[1]);
   } else if (opts.base) {
     snap = await loadRefSnapshot({
@@ -402,10 +405,6 @@ function maybeHintProjectScope(opts: CliOptions, config: ResolvedConfig): void {
   process.stderr.write(
     `plc-st-review: ${skipped.join(', ')} need --project-scope (whole-repo parse); skipped\n`,
   );
-}
-
-function collectFiles(value: string, prev: string[]): string[] {
-  return [...prev, value];
 }
 
 // Look for a config file in CWD when --config is not provided. The two
