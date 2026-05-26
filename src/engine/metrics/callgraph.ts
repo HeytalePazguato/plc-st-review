@@ -13,7 +13,12 @@ export interface CallGraph {
   adjacency: Map<string, Set<string>>;
   fanIn: Map<string, number>;
   fanOut: Map<string, number>;
-  /** FUNCTION / FUNCTION_BLOCK POUs that nothing calls (PROGRAMs excluded). */
+  /**
+   * FUNCTION / FUNCTION_BLOCK POUs that nothing calls (PROGRAMs excluded). A
+   * POU reached only through `EXTENDS` / `IMPLEMENTS` is NOT dead: it is used,
+   * just not via a call site. Base classes and implemented FBs are therefore
+   * excluded even though their call fan-in is zero.
+   */
   deadPous: string[];
   /** Strongly-connected components with more than one POU (mutual recursion). */
   cycles: string[][];
@@ -58,8 +63,22 @@ export function buildCallGraph(table: SymbolTable): CallGraph {
     for (const callee of callees) fanIn.set(callee, (fanIn.get(callee) ?? 0) + 1);
   }
 
+  // A POU named as another POU's base (`EXTENDS`) or implemented interface is
+  // "used" even with zero call fan-in, so it is not dead. Inheritance is not a
+  // call edge, so it never appears in `adjacency` / `fanIn`; we track it here.
+  const inheritedTypes = new Set<string>();
+  for (const p of table.pous.values()) {
+    if (p.extends) inheritedTypes.add(p.extends.toLowerCase());
+    for (const impl of p.implements) inheritedTypes.add(impl.toLowerCase());
+  }
+
   const deadPous = nodes
-    .filter((n) => table.pous.get(n)?.kind !== 'program' && (fanIn.get(n) ?? 0) === 0)
+    .filter(
+      (n) =>
+        table.pous.get(n)?.kind !== 'program' &&
+        (fanIn.get(n) ?? 0) === 0 &&
+        !inheritedTypes.has(n.toLowerCase()),
+    )
     .sort();
 
   const { cycles, dependencyDepth } = analyzeStructure(nodes, adjacency);

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **`--metrics` Graphviz `dot` export is now self-describing**: every node is labelled with its complexity / nesting / LOC, dead POUs are filled dashed-grey and marked `(dead - no callers)`, and a legend maps each fill to its meaning. A rendered call graph now shows what is complex and what is abandoned instead of a field of identical green boxes.
+- **Dead-POU detection is inheritance-aware.** A POU reached only through `EXTENDS` / `IMPLEMENTS` is now treated as used, so base classes and implemented function blocks are no longer false-flagged as dead. Applies to both the `--metrics` dead-code list and the `DEAD_POU_INTRODUCED` check.
 - Release workflow now publishes to npm via **OIDC Trusted Publishing** instead of a long-lived `NPM_TOKEN` (npm bumped to latest in CI for OIDC support). Requires a one-time trusted-publisher configuration on npmjs.com for this repo + `release.yml`; the `NPM_TOKEN` secret is no longer used and can be removed.
 
 ## [0.2.0] - 2026-05-21
