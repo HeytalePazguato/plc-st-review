@@ -19,10 +19,14 @@ export const deadPouIntroduced: Check = {
     if (!ctx.project) return [];
     const findings: Finding[] = [];
     const graph = buildCallGraph(ctx.project);
+    // Single source of truth for "dead": the call graph's dead set already
+    // excludes POUs reached via EXTENDS / IMPLEMENTS, so a newly added base
+    // class or implemented FB is not falsely flagged.
+    const deadSet = new Set(graph.deadPous);
     for (const [name, pou] of ctx.after.pous) {
       if (!KINDS.has(pou.kind)) continue;
       if (ctx.before.pous.has(name)) continue; // existed before; not introduced here
-      if ((graph.fanIn.get(name) ?? 0) > 0) continue;
+      if (!deadSet.has(name)) continue;
       findings.push({
         severity: 'info',
         category: 'DEAD_POU_INTRODUCED',
