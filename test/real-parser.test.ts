@@ -391,4 +391,46 @@ END_FUNCTION_BLOCK
       sensitive.filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH'),
     ).toHaveLength(0);
   });
+
+  // LOOP_BOUNDS_REVERSED with the real grammar. A negative literal step (`-2`)
+  // parses as a single signed integer_literal, but `(-2)` is a
+  // parenthesized_expression and `-STEP` a unary_expression; all three must be
+  // recognized as the BY step so a valid descending loop is not misread as
+  // ascending (default +1) and falsely flagged.
+  async function loopFb(bodyLoop: string): Promise<AstFile> {
+    return parseSource(
+      `VAR_GLOBAL CONSTANT
+    STEP : INT := 2;
+END_VAR
+FUNCTION_BLOCK FB_L
+VAR
+    i : INT;
+    x : INT;
+END_VAR
+${bodyLoop}
+END_FUNCTION_BLOCK
+`,
+      'FB_L.st',
+    );
+  }
+  const reversed = (fs: Awaited<ReturnType<typeof loopFb>>) =>
+    review([], [fs]).filter((f) => f.category === 'LOOP_BOUNDS_REVERSED');
+
+  it('does NOT flag valid descending loops with literal, parenthesized, or constant negative steps', async () => {
+    for (const step of ['-2', '(-2)', '-STEP']) {
+      const fs = await loopFb(`FOR i := 10 TO 1 BY ${step} DO\n    x := x + 1;\nEND_FOR;`);
+      expect(reversed(fs), `BY ${step} descending should be quiet`).toHaveLength(0);
+    }
+  });
+
+  it('flags genuinely reversed loops regardless of how the step is written', async () => {
+    const negSteps = ['-2', '(-2)', '-STEP']; // ascending bounds + negative step = never runs
+    for (const step of negSteps) {
+      const fs = await loopFb(`FOR i := 1 TO 10 BY ${step} DO\n    x := x + 1;\nEND_FOR;`);
+      expect(reversed(fs), `BY ${step} ascending should fire`).toHaveLength(1);
+    }
+    // descending bounds with a positive step also never runs
+    const pos = await loopFb(`FOR i := 10 TO 1 BY 1 DO\n    x := x + 1;\nEND_FOR;`);
+    expect(reversed(pos)).toHaveLength(1);
+  });
 });

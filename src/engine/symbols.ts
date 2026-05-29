@@ -530,6 +530,18 @@ function collectForLoops(
     (n.type === NODE.INTEGER_LITERAL ||
       n.type === NODE.REAL_LITERAL ||
       n.type === NODE.IDENTIFIER);
+  // The BY step (4th named child, when present) is not always a simple literal:
+  // `-2` is a single signed integer_literal, but `-STEP` parses as a
+  // unary_expression and `(-2)` as a parenthesized_expression. Capture any
+  // non-statement node in that slot so a valid descending loop with a
+  // non-literal negative step isn't mistaken for one with no BY clause (which
+  // defaults to +1 and would be misread as reversed). When there is no BY, this
+  // slot holds the first body statement instead, which is excluded here.
+  const isStepExpr = (n: StNode | undefined): boolean =>
+    !!n &&
+    !STATEMENT_TYPES.has(n.type) &&
+    n.type !== NODE.COMMENT &&
+    n.type !== 'empty_statement';
   for (const fs of descendantsOfType(pouNode, NODE.FOR_STATEMENT)) {
     // FOR <var> := <start> TO <end> [BY <by>] DO ... END_FOR
     // The first child is the loop variable identifier; bounds follow in order.
@@ -547,7 +559,7 @@ function collectForLoops(
       loopVar: loopVarNode.text,
       start: startNode.text,
       end: endNode.text,
-      by: isBoundExpr(byNode) ? byNode.text : undefined,
+      by: isStepExpr(byNode) ? byNode.text : undefined,
     };
     t.forLoops.push(loop);
   }

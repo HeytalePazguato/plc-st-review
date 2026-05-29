@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 
+- **`LOOP_BOUNDS_REVERSED` no longer false-positives on a valid descending loop with a non-literal step.** A literal step (`BY -2`) was already handled, but `BY (-2)` (parenthesized) and `BY -STEP` (negated constant) were dropped, so the check fell back to assuming `+1` and flagged a correct `FOR i := 10 TO 1 BY (-2)` as reversed. The step expression is now captured in all forms, parenthesized/unary steps are resolved, and an unresolvable step is skipped rather than assumed positive.
 - **Assignment targets were misclassified as reads.** Reference-context detection compared AST nodes by object identity, but the tree-sitter binding returns a fresh wrapper on every access, so the comparison never held and every assignment left-hand side was recorded as a read. This made `OUTPUT_VAR_READ_INTERNALLY` fire on write-only outputs (an output that is only ever assigned, never read back). Node comparison is now positional, so a write-only output no longer triggers the check.
 
 ## [0.2.1] - 2026-05-25

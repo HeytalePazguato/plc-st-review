@@ -1,12 +1,24 @@
 import type { Check, Finding, ForLoop, GlobalVar } from '../types.js';
 
 function resolve(text: string, globals: Map<string, GlobalVar>): number | null {
-  const lit = Number.parseFloat(text);
-  if (Number.isFinite(lit) && /^-?[\d.]+$/.test(text.trim())) return lit;
-  const g = globals.get(text.trim());
+  let t = text.trim();
+  // Unwrap parenthesized steps like `(-2)` or `((2))`.
+  while (t.length >= 2 && t.startsWith('(') && t.endsWith(')')) t = t.slice(1, -1).trim();
+  // Signed numeric literal.
+  if (/^[-+]?[\d.]+$/.test(t)) {
+    const lit = Number.parseFloat(t);
+    return Number.isFinite(lit) ? lit : null;
+  }
+  // Unary sign over a resolvable operand, e.g. `-STEP` where STEP is a constant.
+  if (t.startsWith('-') || t.startsWith('+')) {
+    const inner = resolve(t.slice(1), globals);
+    return inner === null ? null : (t.startsWith('-') ? -inner : inner);
+  }
+  // Identifier referring to a CONSTANT global.
+  const g = globals.get(t);
   if (g?.constant && g.initial !== undefined) {
-    const v = Number.parseFloat(g.initial);
-    if (Number.isFinite(v)) return v;
+    const v = Number.parseFloat(g.initial.trim());
+    if (Number.isFinite(v) && /^[-+]?[\d.]+$/.test(g.initial.trim())) return v;
   }
   return null;
 }
@@ -22,8 +34,19 @@ function detect(
 ): Reversal | null {
   const s = resolve(loop.start, globals);
   const e = resolve(loop.end, globals);
-  const b = loop.by !== undefined ? resolve(loop.by, globals) ?? 1 : 1;
   if (s === null || e === null) return null;
+  // No BY clause means the IEC default step of +1. A BY clause that we cannot
+  // resolve to a constant (e.g. a runtime expression) leaves the direction
+  // unknown, so skip rather than assume +1 and risk a false positive on a
+  // valid descending loop.
+  let b: number;
+  if (loop.by === undefined) {
+    b = 1;
+  } else {
+    const rb = resolve(loop.by, globals);
+    if (rb === null) return null;
+    b = rb;
+  }
   if (b > 0 && s > e) {
     return {
       loop,
