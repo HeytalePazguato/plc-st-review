@@ -486,4 +486,79 @@ END_FUNCTION_BLOCK
       review([], [fb]).filter((f) => f.category === 'DIVISION_BY_ZERO'),
     ).toHaveLength(1);
   });
+
+  // M7: positional calls drive the standard FB inputs (TON/TOF/TP take IN as
+  // positional 0; R_TRIG/F_TRIG take CLK as positional 0). The check must not
+  // demand a named `IN := ...` argument when a positional one is present.
+  it('TIMER_NOT_DRIVEN does NOT fire on a positional `T1(bStart, T#5s)` call', async () => {
+    const fb = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    bStart, bRes : BOOL;
+    T1 : TON;
+END_VAR
+T1(bStart, T#5s);
+bRes := T1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    expect(
+      review([], [fb]).filter((f) => f.category === 'TIMER_NOT_DRIVEN'),
+    ).toHaveLength(0);
+  });
+
+  it('TIMER_NOT_DRIVEN still fires when the timer is called with PT only (no IN)', async () => {
+    const fb = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    bRes : BOOL;
+    T1 : TON;
+END_VAR
+T1(PT := T#5s);
+bRes := T1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    expect(
+      review([], [fb]).filter((f) => f.category === 'TIMER_NOT_DRIVEN'),
+    ).toHaveLength(1);
+  });
+
+  it('EDGE_TRIG_REUSED handles positional CLK and case-insensitive named CLK', async () => {
+    const positionalDistinct = await parseSource(
+      `FUNCTION_BLOCK FB_R
+VAR
+    a, b, bRes : BOOL;
+    R1 : R_TRIG;
+END_VAR
+R1(a);
+R1(b);
+bRes := R1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_R.st',
+    );
+    expect(
+      review([], [positionalDistinct]).filter((f) => f.category === 'EDGE_TRIG_REUSED'),
+    ).toHaveLength(1);
+
+    const lowercaseNamed = await parseSource(
+      `FUNCTION_BLOCK FB_R
+VAR
+    a, b, bRes : BOOL;
+    R1 : R_TRIG;
+END_VAR
+R1(clk := a);
+R1(clk := b);
+bRes := R1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_R.st',
+    );
+    expect(
+      review([], [lowercaseNamed]).filter((f) => f.category === 'EDGE_TRIG_REUSED'),
+    ).toHaveLength(1);
+  });
 });

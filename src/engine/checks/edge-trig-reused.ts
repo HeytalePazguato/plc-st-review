@@ -5,10 +5,11 @@ function distinctClkExprs(t: EdgeTrigInstance, symbols: SymbolTable): Set<string
   for (const cs of symbols.callSites) {
     if (cs.file !== t.file) continue;
     if (cs.callee.toLowerCase() !== t.name.toLowerCase()) continue;
-    const clk =
-      cs.namedArgs.get('CLK') ?? cs.namedArgs.get('Clk') ?? cs.namedArgs.get('clk');
+    // namedArgs is case-aware, so a single CLK lookup handles every casing.
+    // R_TRIG/F_TRIG declare CLK as the only positional input, so a positional
+    // call carries it in slot 0.
+    const clk = cs.namedArgs.get('CLK') ?? cs.positionalArgs[0];
     if (clk) out.add(clk.trim());
-    else if (cs.positionalArgs.length > 0) out.add(cs.positionalArgs[0]);
   }
   return out;
 }

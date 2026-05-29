@@ -13,7 +13,11 @@ function usage(t: TimerInstance, symbols: SymbolTable): TimerUsage {
     if (cs.callee.toLowerCase() !== t.name.toLowerCase()) continue;
     if (cs.file !== t.file) continue;
     hasAnyCall = true;
-    if (cs.namedArgs.has('IN')) hasCallWithIn = true;
+    // The IEC standard timers (TON/TOF/TP) declare IN as the first positional
+    // input, so any positional invocation `T1(bStart, T#5s)` drives IN even
+    // without `IN := ...`. Treating positional calls as "IN-driven" avoids a
+    // false positive on the common positional form.
+    if (cs.namedArgs.has('IN') || cs.positionalArgs.length > 0) hasCallWithIn = true;
   }
   let qRead = false;
   for (const ref of symbols.memberAccesses) {
