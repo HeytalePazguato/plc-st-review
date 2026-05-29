@@ -9,10 +9,12 @@
 PROGRAM Conveyor_HMI
 VAR
     fbConveyor          : FB_ConveyorState;
+    fbLine              : FB_LineController;
     sStateLabel         : STRING := '';
 END_VAR
 
 fbConveyor(xEnable := TRUE, rTargetSpeed := 50.0);
+fbLine(xRun := TRUE, iMode := 1, rSetpoint := 50.0, iPulses := 100, xManual := FALSE);
 
 CASE fbConveyor.eState OF
     E_ConveyorState.IDLE:       sStateLabel := 'Idle';
