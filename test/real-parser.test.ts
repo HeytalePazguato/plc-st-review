@@ -261,4 +261,39 @@ END_FUNCTION_BLOCK
       findings.filter((f) => f.category === 'OUTPUT_VAR_READ_INTERNALLY'),
     ).toHaveLength(1);
   });
+
+  it('does NOT flag OUTPUT_VAR_READ_INTERNALLY for a write-only output', async () => {
+    // Regression: refContext used object identity (`child === lhs`) to find
+    // the assignment target, but tree-sitter hands back a fresh wrapper on
+    // every access, so the identity never held and EVERY assignment LHS was
+    // misclassified as a read. A write-only output (assigned, never read on
+    // any RHS) was therefore flagged. refContext now compares node positions.
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_W
+VAR_OUTPUT
+    rOut : REAL;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'FB_W.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_W
+VAR_OUTPUT
+    rOut : REAL;
+END_VAR
+VAR
+    rLocal : REAL;
+END_VAR
+rLocal := 1.0;
+rOut := rLocal;
+END_FUNCTION_BLOCK
+`,
+      'FB_W.st',
+    );
+    const findings = review([before], [after]);
+    expect(
+      findings.filter((f) => f.category === 'OUTPUT_VAR_READ_INTERNALLY'),
+    ).toHaveLength(0);
+  });
 });

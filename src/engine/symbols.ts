@@ -938,12 +938,27 @@ function refContext(node: StNode): VarReference['context'] {
   while (cur) {
     if (cur.type === NODE.ASSIGNMENT_STATEMENT) {
       const lhs = childrenOf(cur)[0];
-      return lhs && child === lhs ? 'write' : 'read';
+      return lhs && sameNode(child, lhs) ? 'write' : 'read';
     }
     child = cur;
     cur = cur.parent ?? null;
   }
   return 'read';
+}
+
+// The tree-sitter binding hands back a fresh wrapper object on every `.parent`
+// / child access, so the node reached by walking UP is never `===` the node
+// reached by indexing DOWN even when they are the same syntax node. Compare by
+// kind and source span instead, which is stable. Without this, an assignment's
+// LHS identifier is misclassified as a read.
+function sameNode(a: StNode, b: StNode): boolean {
+  return (
+    a.type === b.type &&
+    a.startPosition.row === b.startPosition.row &&
+    a.startPosition.column === b.startPosition.column &&
+    a.endPosition.row === b.endPosition.row &&
+    a.endPosition.column === b.endPosition.column
+  );
 }
 
 // `ADR(x)` parses as its own `address_of_expression` node (not a
