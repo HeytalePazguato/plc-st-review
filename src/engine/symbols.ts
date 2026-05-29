@@ -12,6 +12,7 @@ import {
   lineOf,
   VAR_SECTION_NODES,
 } from './grammar.js';
+import { CaseMap } from './case-map.js';
 import type {
   ArrayAccess,
   ArrayDecl,
@@ -54,11 +55,12 @@ const POU_KIND_BY_NODE: Record<string, PouKind> = {
   [NODE.INTERFACE]: 'interface',
 };
 
-export function emptySymbolTable(): SymbolTable {
+export function emptySymbolTable(caseSensitive = false): SymbolTable {
   return {
+    caseSensitive,
     pous: new Map(),
-    globals: new Map(),
-    enums: new Map(),
+    globals: new CaseMap(caseSensitive),
+    enums: new CaseMap(caseSensitive),
     timerInstances: [],
     callSites: [],
     caseStatements: [],
@@ -86,8 +88,8 @@ export function emptySymbolTable(): SymbolTable {
   };
 }
 
-export function buildSymbolTable(files: AstFile[]): SymbolTable {
-  const t = emptySymbolTable();
+export function buildSymbolTable(files: AstFile[], caseSensitive = false): SymbolTable {
+  const t = emptySymbolTable(caseSensitive);
   for (const file of files) extractFile(file, t);
   t.declarations = buildDeclarations(t);
   return t;
@@ -760,7 +762,7 @@ function collectCallSites(file: AstFile, t: SymbolTable): void {
     const argList =
       findChild(inv, NODE.ARGUMENT_LIST) ??
       descendantsOfType(inv, NODE.ARGUMENT_LIST)[0];
-    const namedArgs = new Map<string, string>();
+    const namedArgs = new CaseMap<string>(t.caseSensitive);
     const positional: string[] = [];
     if (argList) {
       for (const child of childrenOf(argList)) {

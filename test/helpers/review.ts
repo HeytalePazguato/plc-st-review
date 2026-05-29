@@ -18,6 +18,7 @@ export function review(
     namingConventions: { ...DEFAULT_CONFIG.namingConventions },
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
     metricsThresholds: DEFAULT_CONFIG.metricsThresholds,
+    caseSensitive: DEFAULT_CONFIG.caseSensitive,
     ...configPatch,
   };
   return runReview({ beforeFiles: before, afterFiles: after, config });

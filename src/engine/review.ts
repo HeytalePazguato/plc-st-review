@@ -23,10 +23,11 @@ export interface ReviewInput {
 
 export function runReview(input: ReviewInput): Finding[] {
   const pairs = pairFiles(input.beforeFiles, input.afterFiles);
-  const before = buildSymbolTable(input.beforeFiles);
-  const after = buildSymbolTable(input.afterFiles);
+  const cs = input.config.caseSensitive;
+  const before = buildSymbolTable(input.beforeFiles, cs);
+  const after = buildSymbolTable(input.afterFiles, cs);
   const project = input.projectFiles
-    ? buildSymbolTable(input.projectFiles)
+    ? buildSymbolTable(input.projectFiles, cs)
     : undefined;
   const ctx: ReviewContext = {
     config: input.config,

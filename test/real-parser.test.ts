@@ -296,4 +296,99 @@ END_FUNCTION_BLOCK
       findings.filter((f) => f.category === 'OUTPUT_VAR_READ_INTERNALLY'),
     ).toHaveLength(0);
   });
+
+  // Case-sensitivity is dialect-dependent: generic IEC / TwinCAT / CODESYS are
+  // case-insensitive (the default), B&R Automation Studio is case-sensitive
+  // (`caseSensitive: true`). The symbol-table identifier maps key through the
+  // shared CaseMap so insertion and lookup always agree.
+
+  const shadowGlobals = `VAR_GLOBAL
+    Level : INT;
+END_VAR
+`;
+  const shadowBefore = `${shadowGlobals}FUNCTION_BLOCK FB_X
+END_FUNCTION_BLOCK
+`;
+  const shadowAfter = `${shadowGlobals}FUNCTION_BLOCK FB_X
+VAR
+    level : INT;
+END_VAR
+END_FUNCTION_BLOCK
+`;
+
+  it('case-insensitive (default): a local shadowing a different-cased global is flagged', async () => {
+    const before = await parseSource(shadowBefore, 'FB_X.st');
+    const after = await parseSource(shadowAfter, 'FB_X.st');
+    const findings = review([before], [after]);
+    expect(
+      findings.filter((f) => f.category === 'VARIABLE_SHADOWING'),
+    ).toHaveLength(1);
+  });
+
+  it('case-sensitive mode: a different-cased local does NOT shadow the global', async () => {
+    const before = await parseSource(shadowBefore, 'FB_X.st');
+    const after = await parseSource(shadowAfter, 'FB_X.st');
+    const findings = review([before], [after], { caseSensitive: true });
+    expect(
+      findings.filter((f) => f.category === 'VARIABLE_SHADOWING'),
+    ).toHaveLength(0);
+  });
+
+  it('case-insensitive (default): a lowercase `pt :=` still resolves for TIMER_PT_ZERO', async () => {
+    // M8: standard FB parameter names are looked up via namedArgs.get('PT').
+    // Before the CaseMap fix, a lowercase `pt :=` was missed.
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    T1 : TON;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    T1 : TON;
+END_VAR
+T1(IN := TRUE, pt := T#0s);
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    const findings = review([before], [after]);
+    expect(
+      findings.filter((f) => f.category === 'TIMER_PT_ZERO'),
+    ).toHaveLength(1);
+  });
+
+  it('IDENTIFIER_CASE_MISMATCH fires by default but is disabled in case-sensitive mode', async () => {
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_M
+VAR
+    iCount : INT;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'FB_M.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_M
+VAR
+    iCount : INT;
+END_VAR
+ICOUNT := iCount + 1;
+END_FUNCTION_BLOCK
+`,
+      'FB_M.st',
+    );
+    const insensitive = review([before], [after]);
+    expect(
+      insensitive.filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH').length,
+    ).toBeGreaterThanOrEqual(1);
+    const sensitive = review([before], [after], { caseSensitive: true });
+    expect(
+      sensitive.filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH'),
+    ).toHaveLength(0);
+  });
 });

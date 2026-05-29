@@ -17,6 +17,10 @@ export const identifierCaseMismatch: Check = {
   category: 'IDENTIFIER_CASE_MISMATCH',
   defaultSeverity: 'warn',
   run(ctx) {
+    // Only meaningful when identifiers are case-insensitive. Under a
+    // case-sensitive dialect (e.g. B&R) a differing case is a different (or
+    // undefined) symbol, not a style mismatch, so this check does not apply.
+    if (ctx.config.caseSensitive) return [];
     const findings: Finding[] = [];
     const decls = declMap(ctx.after);
     const beforeDecls = declMap(ctx.before);

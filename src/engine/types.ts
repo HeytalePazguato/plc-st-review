@@ -263,9 +263,22 @@ export interface ResolvedConfig {
   namingConventions: Partial<Record<NamingDimension, NamingRule>>;
   namingIgnore: string[];   // identifier patterns to skip for NAMING_CONVENTION
   metricsThresholds: MetricsThresholds;
+  /**
+   * Whether identifiers are compared case-sensitively. Dialect-dependent:
+   * generic IEC 61131-3, Beckhoff/TwinCAT and CODESYS are case-insensitive
+   * (the default, `false`); B&R Automation Studio is case-sensitive (`true`).
+   * Drives the symbol-table identifier maps and gates IDENTIFIER_CASE_MISMATCH.
+   */
+  caseSensitive: boolean;
 }
 
 export interface SymbolTable {
+  /**
+   * Whether identifier keys in this table are case-sensitive. Mirrors the
+   * resolved config; carried here so collectors that build per-call-site maps
+   * (e.g. named arguments) pick the same mode as `globals` / `enums`.
+   */
+  caseSensitive: boolean;
   pous: Map<string, Pou>;
   globals: Map<string, GlobalVar>;
   enums: Map<string, EnumDef>;

@@ -6,7 +6,10 @@ function localKey(d: NamedDecl): string {
 
 function shadowsGlobal(d: NamedDecl, t: SymbolTable): boolean {
   if (d.scope === '__global') return false;
-  return t.globals.has(d.name) || t.globals.has(d.name.toLowerCase());
+  // The globals map normalizes its own keys per the configured case mode, so a
+  // single lookup is correct: case-insensitive dialects match `Level`/`level`,
+  // case-sensitive dialects (B&R) require an exact match.
+  return t.globals.has(d.name);
 }
 
 export const variableShadowing: Check = {

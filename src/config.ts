@@ -27,6 +27,7 @@ interface RawMetricThreshold {
 
 interface RawConfig {
   extends?: string | string[];
+  case_sensitive?: boolean;
   disabled_checks?: string[];
   severity_overrides?: Record<string, string>;
   ignore_paths?: string[];
@@ -72,6 +73,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
   namingConventions: {},
   namingIgnore: [],
   metricsThresholds: cloneMetricsThresholds(DEFAULT_METRICS_THRESHOLDS),
+  caseSensitive: false,
 });
 
 function cloneMetricsThresholds(m: MetricsThresholds): MetricsThresholds {
@@ -133,6 +135,7 @@ async function loadRawWithExtends(
 function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
   return {
     extends: override.extends ?? base.extends,
+    case_sensitive: override.case_sensitive ?? base.case_sensitive,
     disabled_checks: union(base.disabled_checks, override.disabled_checks),
     severity_overrides: { ...base.severity_overrides, ...override.severity_overrides },
     ignore_paths: union(base.ignore_paths, override.ignore_paths),
@@ -158,6 +161,7 @@ function union(a: string[] | undefined, b: string[] | undefined): string[] {
 
 export function resolveConfig(raw: RawConfig): ResolvedConfig {
   const cfg = cloneDefault();
+  if (typeof raw.case_sensitive === 'boolean') cfg.caseSensitive = raw.case_sensitive;
   if (raw.disabled_checks) {
     for (const c of raw.disabled_checks) {
       if (isCategory(c)) cfg.disabledChecks.add(c);
@@ -210,6 +214,7 @@ function cloneDefault(): ResolvedConfig {
     namingConventions: { ...DEFAULT_CONFIG.namingConventions },
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
     metricsThresholds: cloneMetricsThresholds(DEFAULT_CONFIG.metricsThresholds),
+    caseSensitive: DEFAULT_CONFIG.caseSensitive,
   };
 }
 
