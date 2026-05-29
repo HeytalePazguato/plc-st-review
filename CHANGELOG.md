@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased] - next: 0.2.2
 
+### Security
+
+- Bumped transitive dependencies to clear `npm audit` advisories: `qs` 6.15.1 -> 6.15.2 (GHSA-q8mj-m7cp-5q26, `qs.stringify` DoS; reaches the shipped CLI via `@gitbeaker/rest`) and `tmp` 0.2.5 -> 0.2.7 (GHSA-ph9p-34f9-6g65, path traversal; build-time only, via `patch-package`). `npm audit` now reports 0 vulnerabilities. Lockfile-only change, no API or behaviour impact.
+
 ### Fixed
 
 - **Assignment targets were misclassified as reads.** Reference-context detection compared AST nodes by object identity, but the tree-sitter binding returns a fresh wrapper on every access, so the comparison never held and every assignment left-hand side was recorded as a read. This made `OUTPUT_VAR_READ_INTERNALLY` fire on write-only outputs (an output that is only ever assigned, never read back). Node comparison is now positional, so a write-only output no longer triggers the check.
