@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Security
 
 - Bumped transitive dependencies to clear `npm audit` advisories: `qs` 6.15.1 -> 6.15.2 (GHSA-q8mj-m7cp-5q26, `qs.stringify` DoS; reaches the shipped CLI via `@gitbeaker/rest`) and `tmp` 0.2.5 -> 0.2.7 (GHSA-ph9p-34f9-6g65, path traversal; build-time only, via `patch-package`). `npm audit` now reports 0 vulnerabilities. Lockfile-only change, no API or behaviour impact.
+- Hardened the release workflows against version-string command injection: `release.yml` now rejects a `VERSION` file that isn't a bare `X.Y.Z`, and `prerelease.yml` applies the same check to the version derived from the `release/*` branch name. Both values are interpolated into later `git tag` / image-tag steps, so a crafted value could otherwise execute in those privileged jobs. CI-only; no impact on the published package.
 
 ### Fixed
 

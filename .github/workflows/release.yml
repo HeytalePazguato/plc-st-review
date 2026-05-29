@@ -39,6 +39,14 @@ jobs:
             echo "VERSION file is empty" >&2
             exit 1
           fi
+          # Reject anything that isn't a bare X.Y.Z. The value is interpolated
+          # into later `run:` steps (git tag, docker tags), so a VERSION
+          # containing shell metacharacters (e.g. $(...) ) could otherwise
+          # execute in this privileged job. `tr` already stripped whitespace.
+          if [[ ! "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "VERSION '$v' is not a bare X.Y.Z version; refusing to tag/publish" >&2
+            exit 1
+          fi
           major="${v%%.*}"
           echo "version=$v"      >> "$GITHUB_OUTPUT"
           echo "tag=v$v"          >> "$GITHUB_OUTPUT"
