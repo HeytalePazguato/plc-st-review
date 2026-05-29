@@ -52,17 +52,6 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
                                   WHILE TRUE loop with no EXIT statement
 ```
 
-## Status
-
-- **Phase 1**: engine, eight checks, CLI, three output formats. Done.
-- **Phase 2**: GitLab MR integration. Done.
-- **Phase 3**: GitHub Action + 10 additional check categories. Done.
-- **Static checks**: 6 single-revision checks for common ST bugs.
-- **FB-instance checks**: 8 more checks for standard IEC 61131-3 function blocks: timer / counter / edge-trig / bistable misuse.
-- **Code-quality + style checks**: 19 more, plus a configurable `NAMING_CONVENTION` check and a config preset-pack mechanism (`extends:`).
-
-Total: **56 check categories** (35 single-revision + 21 diff-based), 181 tests across 63 files, all passing.
-
 ## Quick start
 
 ### CI linter (no PR required)
@@ -121,7 +110,7 @@ Drop this into `.gitlab-ci.yml` (full example at [`examples/gitlab-ci.yml`](exam
 
 ```yaml
 plc-st-review:
-  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :0.0.1 to pin an exact version
+  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :0.2.1 to pin an exact version
   stage: review
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -176,29 +165,32 @@ plc-st-review --metrics src/ --format badge              # shields.io URL
 Running it on the bundled `examples/state-machine/` fixtures prints a ranked report (🟢/🟡/🔴 against the configured thresholds):
 
 ```
-Project: examples/state-machine  (9 POUs, 143 LOC)
+Project: examples/state-machine/  (11 POUs, 240 LOC)
 
-Top 5 by complexity:
-  FB_ConveyorState  complexity:  10  nesting:  2  LOC:    42  🟢
-  Conveyor_HMI      complexity:   6  nesting:  1  LOC:    14  🟢
-  FB_AxisRamp       complexity:   5  nesting:  1  LOC:    27  🟢
-  FB_SpeedCalc      complexity:   2  nesting:  1  LOC:    18  🟢
-  FB_Base           complexity:   1  nesting:  0  LOC:     6  🟢
+Top 10 by complexity:
+  FB_LineController  complexity:  26  nesting:  5  LOC:    86  🔴
+  FB_ConveyorState   complexity:  10  nesting:  2  LOC:    42  🟢
+  Conveyor_HMI       complexity:   6  nesting:  1  LOC:    16  🟢
+  FB_AxisRamp        complexity:   5  nesting:  1  LOC:    27  🟢
+  FB_SpeedCalc       complexity:   2  nesting:  1  LOC:    18  🟢
+  FB_Base            complexity:   1  nesting:  0  LOC:     6  🟢
+  FB_BaseV2          complexity:   1  nesting:  0  LOC:     8  🟢
+  FB_DiagUnit        complexity:   1  nesting:  0  LOC:    10  🟢
+  FB_Legacy          complexity:   1  nesting:  0  LOC:     9  🟢
+  FB_MetricsDemo     complexity:   1  nesting:  0  LOC:     9  🟢
 
 Dead code:
   FB_Legacy    (0 callers)
-  FB_Watchdog  (0 callers)
+  FB_Watchdog    (0 callers)
 
 Summary:
-  Avg complexity: 3.1  Avg nesting: 0.6  Doc coverage: 0%  Dependency depth: 2
-  All POUs within complexity thresholds
+  Avg complexity: 5  Avg nesting: 0.9  Doc coverage: 9.1%  Dependency depth: 3
+  🔴 1 POUs exceed complexity threshold (25)
 ```
 
+`FB_LineController` lands in the red band (complexity 26, past the error threshold of 25), and the dead-code list is short and pointed: two blocks nothing calls. A rendered call graph of the same fixtures is in [`docs/screenshots/metrics-example.svg`](docs/screenshots/metrics-example.svg).
+
 `--format dot` emits the call graph (pipe to Graphviz); `--format json` emits the full per-POU + project report for dashboards or CI gates.
-
-## Live demo
-
-[PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open as the canonical demo, every check below fires at least once on that PR, with the exact inline comments the bot posts. Open it to see the tool in action on real ST.
 
 ## Checks
 
@@ -317,7 +309,10 @@ The `metrics` block is optional; the values shown are the defaults. `COMPLEXITY_
 
 Every change is reduced to an AST diff. The engine:
 
-1. Parses the `before` and `after` versions of every changed `.st` file with the tree-sitter grammar. 2. Builds a **symbol table** per revision: POUs (with parameter signatures), global variables, enums, timer instances, call sites, `CASE` statements. 3. Hands both tables to each registered check. Each check is a self-contained module under `src/engine/checks/`. 4. Renders the resulting findings to terminal / Markdown / JSON.
+1. Parses the `before` and `after` versions of every changed `.st` file with the tree-sitter grammar.
+2. Builds a **symbol table** per revision: POUs (with parameter signatures), global variables, enums, timer instances, call sites, `CASE` statements.
+3. Hands both tables to each registered check. Each check is a self-contained module under `src/engine/checks/`.
+4. Renders the resulting findings to terminal / Markdown / JSON.
 
 No LLM is involved. Findings are deterministic.
 
@@ -330,7 +325,7 @@ No LLM is involved. Findings are deterministic.
 ```sh
 npm run bootstrap          # first-time only; see "Building from source" below
 npm run build              # tsc to dist/
-npm test                   # vitest, ~9s, 181 tests across 63 files
+npm test                   # vitest, ~6s, 182 tests across 63 files
 npm run lint               # tsc --noEmit
 ```
 
@@ -356,7 +351,7 @@ The `patches/tree-sitter+0.25.0.patch` file goes away once upstream tree-sitter 
 
 Likely additions, in rough priority order:
 
-- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. Skipped for 0.0.1 because the native deps (`tree-sitter`, `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle cleanly through `pkg` or `bun --compile` without per-platform asset handling. Revisit if real users without Node ask.
+- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. Not yet shipped because the native deps (`tree-sitter`, `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle cleanly through `pkg` or `bun --compile` without per-platform asset handling. Revisit if real users without Node ask.
 - **Optional LLM-powered explanations**: a `--explain` flag that paraphrases deterministic findings in plain English for less-experienced reviewers. Strictly additive, every explanation is grounded in a deterministic finding; the LLM never surfaces new issues.
 - **Vendor-specific checks**: PLCopen `MC_*` motion patterns, TwinCAT / CODESYS / ABB-specific library FBs. Currently the engine sticks to standard IEC 61131-3 to stay portable across vendors.
 
