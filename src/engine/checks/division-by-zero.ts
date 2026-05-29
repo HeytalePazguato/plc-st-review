@@ -1,13 +1,14 @@
+import { parseStNumber } from '../literals.js';
 import type { Check, DivisionExpr, Finding, GlobalVar } from '../types.js';
 
 function divisorIsZero(d: DivisionExpr, globals: Map<string, GlobalVar>): boolean {
   const t = d.divisorText.trim();
-  const lit = Number.parseFloat(t);
-  if (Number.isFinite(lit)) return lit === 0;
+  const lit = parseStNumber(t);
+  if (lit !== null) return lit === 0;
   const g = globals.get(t);
   if (g?.constant && g.initial !== undefined) {
-    const v = Number.parseFloat(g.initial);
-    if (Number.isFinite(v)) return v === 0;
+    const v = parseStNumber(g.initial);
+    if (v !== null) return v === 0;
   }
   return false;
 }

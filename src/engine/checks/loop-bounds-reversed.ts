@@ -1,14 +1,13 @@
+import { parseStNumber } from '../literals.js';
 import type { Check, Finding, ForLoop, GlobalVar } from '../types.js';
 
 function resolve(text: string, globals: Map<string, GlobalVar>): number | null {
   let t = text.trim();
   // Unwrap parenthesized steps like `(-2)` or `((2))`.
   while (t.length >= 2 && t.startsWith('(') && t.endsWith(')')) t = t.slice(1, -1).trim();
-  // Signed numeric literal.
-  if (/^[-+]?[\d.]+$/.test(t)) {
-    const lit = Number.parseFloat(t);
-    return Number.isFinite(lit) ? lit : null;
-  }
+  // Numeric literal (handles sign, radix `16#FF`, separators `1_000`, typed).
+  const lit = parseStNumber(t);
+  if (lit !== null) return lit;
   // Unary sign over a resolvable operand, e.g. `-STEP` where STEP is a constant.
   if (t.startsWith('-') || t.startsWith('+')) {
     const inner = resolve(t.slice(1), globals);
@@ -16,10 +15,7 @@ function resolve(text: string, globals: Map<string, GlobalVar>): number | null {
   }
   // Identifier referring to a CONSTANT global.
   const g = globals.get(t);
-  if (g?.constant && g.initial !== undefined) {
-    const v = Number.parseFloat(g.initial.trim());
-    if (Number.isFinite(v) && /^[-+]?[\d.]+$/.test(g.initial.trim())) return v;
-  }
+  if (g?.constant && g.initial !== undefined) return parseStNumber(g.initial);
   return null;
 }
 

@@ -13,6 +13,7 @@ import {
   VAR_SECTION_NODES,
 } from './grammar.js';
 import { CaseMap } from './case-map.js';
+import { parseStNumber } from './literals.js';
 import type {
   ArrayAccess,
   ArrayDecl,
@@ -480,11 +481,10 @@ function collectArrayAccesses(
     const arr = kids[0];
     const subscript = kids[1];
     const indexText = subscript.text.trim();
-    let indexValue: number | null = null;
-    if (subscript.type === NODE.INTEGER_LITERAL || subscript.type === NODE.REAL_LITERAL) {
-      const n = Number.parseFloat(indexText);
-      if (Number.isFinite(n)) indexValue = n;
-    }
+    // parseStNumber returns null for non-literal subscripts (variables,
+    // expressions), and correctly decodes radix/underscore/typed literals
+    // (`16#FF`, `1_000`, `INT#10`) that a bare parseFloat would misread.
+    const indexValue = parseStNumber(indexText);
     const access: ArrayAccess = {
       arrayName: arr.text.trim(),
       indexText,

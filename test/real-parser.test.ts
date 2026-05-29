@@ -433,4 +433,57 @@ END_FUNCTION_BLOCK
     const pos = await loopFb(`FOR i := 10 TO 1 BY 1 DO\n    x := x + 1;\nEND_FOR;`);
     expect(reversed(pos)).toHaveLength(1);
   });
+
+  // M6: radix / underscore literals must decode to their real value, not the
+  // truncated `parseFloat` reading (`16#FF`->16, `1_000`->1, `2#1010`->2).
+  it('ARRAY_INDEX_OUT_OF_BOUNDS understands radix and underscore index literals', async () => {
+    const oob = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    arr : ARRAY[0..15] OF INT;
+    x : INT;
+END_VAR
+x := arr[2#10000];
+END_FUNCTION_BLOCK
+`,
+      'FB_A.st',
+    );
+    // 2#10000 = 16, which is out of [0..15]; a parseFloat reading of 2 would miss it.
+    expect(
+      review([], [oob]).filter((f) => f.category === 'ARRAY_INDEX_OUT_OF_BOUNDS'),
+    ).toHaveLength(1);
+
+    const inBounds = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    arr : ARRAY[0..16#FF] OF INT;
+    x : INT;
+END_VAR
+x := arr[16#FF];
+END_FUNCTION_BLOCK
+`,
+      'FB_A.st',
+    );
+    // 16#FF = 255 = upper bound; must NOT be flagged.
+    expect(
+      review([], [inBounds]).filter((f) => f.category === 'ARRAY_INDEX_OUT_OF_BOUNDS'),
+    ).toHaveLength(0);
+  });
+
+  it('DIVISION_BY_ZERO understands a based-literal divisor of zero', async () => {
+    const fb = await parseSource(
+      `FUNCTION_BLOCK FB_D
+VAR
+    i : INT;
+    x : INT;
+END_VAR
+x := i / 16#0;
+END_FUNCTION_BLOCK
+`,
+      'FB_D.st',
+    );
+    expect(
+      review([], [fb]).filter((f) => f.category === 'DIVISION_BY_ZERO'),
+    ).toHaveLength(1);
+  });
 });
