@@ -274,6 +274,8 @@ Single-revision integrity:
 Create `.plc-st-review.yml` at the repo root:
 
 ```yaml
+case_sensitive: false          # identifier casing rules; see "Case sensitivity" below
+
 disabled_checks:
   - COMMENT_ONLY
 
@@ -304,6 +306,19 @@ metrics:                       # bands for the metric-regression checks
 ```
 
 The `metrics` block is optional; the values shown are the defaults. `COMPLEXITY_INCREASED` and `NESTING_INCREASED` read these bands; `LOC_SPIKE` fires on any single-PR growth over 50%. See [`docs/checks-reference.md`](docs/checks-reference.md#metric-thresholds) for the full block (the `lines_of_code`, `comment_ratio`, and `fan_out` keys are accepted now and consumed by the upcoming standalone `--metrics` mode).
+
+### Case sensitivity
+
+Whether two identifiers that differ only in case (`Motor` vs `motor`) are the **same** symbol depends on your toolchain, so `plc-st-review` makes it configurable with one top-level key:
+
+```yaml
+case_sensitive: false   # default
+```
+
+- **`false` (default)** — identifiers are matched case-insensitively. This is what the IEC 61131-3 standard specifies and what **CODESYS** (and CODESYS-derived IDEs) and **Beckhoff TwinCAT** do. With this setting the engine resolves a constant declared `MaxCount` even when it is referenced as `MAXCOUNT`, and `IDENTIFIER_CASE_MISMATCH` reports references whose casing drifts from the declaration.
+- **`true`** — identifiers are matched exactly, byte-for-byte. Set this for **B&R Automation Studio**, which treats `Motor` and `motor` as two distinct variables. In this mode `IDENTIFIER_CASE_MISMATCH` is automatically disabled (a different case is a different symbol, not a style slip), and checks like `VARIABLE_SHADOWING` only fire on an exact-case match.
+
+Pick the value that matches the IDE your code is compiled in; the wrong setting can hide real bugs (too loose) or invent false ones (too strict).
 
 ## How it works
 

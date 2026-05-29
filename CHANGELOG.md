@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased] - next: 0.2.2
 
+### Added
+
+- **Configurable identifier case sensitivity** via a top-level `case_sensitive` key in `.plc-st-review.yml` (default `false`). Identifier case-handling is dialect-dependent: generic IEC 61131-3, Beckhoff/TwinCAT and CODESYS are case-insensitive, while B&R Automation Studio is case-sensitive. The symbol table now routes the `globals`, `enums`, and named-call-argument maps through a single case-aware map so insertion and lookup always agree. This fixes a class of silent false negatives where a constant/global/standard-parameter referenced in a different case than its declaration (e.g. `MAXCOUNT` vs `MaxCount`, `pt :=` vs `PT :=`) failed to resolve. When `case_sensitive: true`, `IDENTIFIER_CASE_MISMATCH` is automatically disabled (a differing case is a different symbol, not a style slip).
+
 ### Security
 
 - Bumped transitive dependencies to clear `npm audit` advisories: `qs` 6.15.1 -> 6.15.2 (GHSA-q8mj-m7cp-5q26, `qs.stringify` DoS; reaches the shipped CLI via `@gitbeaker/rest`) and `tmp` 0.2.5 -> 0.2.7 (GHSA-ph9p-34f9-6g65, path traversal; build-time only, via `patch-package`). `npm audit` now reports 0 vulnerabilities. Lockfile-only change, no API or behaviour impact.
