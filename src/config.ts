@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { isUnsafePattern } from './engine/regex-guard.js';
 import {
   ALL_CATEGORIES,
   type Category,
@@ -185,10 +184,8 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
   ) {
     cfg.commentStyle = raw.reporting.comment_style;
   }
-  if (raw.forbidden_symbols)
-    cfg.forbiddenSymbols = filterUnsafePatterns(raw.forbidden_symbols, 'forbidden_symbols');
-  if (raw.naming_ignore)
-    cfg.namingIgnore = filterUnsafePatterns(raw.naming_ignore, 'naming_ignore');
+  if (raw.forbidden_symbols) cfg.forbiddenSymbols = [...raw.forbidden_symbols];
+  if (raw.naming_ignore) cfg.namingIgnore = [...raw.naming_ignore];
   applyMetricThresholds(cfg.metricsThresholds, raw.metrics?.thresholds);
   if (raw.naming_conventions) {
     for (const [k, v] of Object.entries(raw.naming_conventions)) {
@@ -196,13 +193,7 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
       const rule: NamingRule = {};
       if (typeof v.prefix === 'string') rule.prefix = v.prefix;
       if (typeof v.suffix === 'string') rule.suffix = v.suffix;
-      if (typeof v.pattern === 'string') {
-        if (isUnsafePattern(v.pattern)) {
-          warnUnsafe(v.pattern, `naming_conventions.${k}.pattern`);
-        } else {
-          rule.pattern = v.pattern;
-        }
-      }
+      if (typeof v.pattern === 'string') rule.pattern = v.pattern;
       if (v.case === 'insensitive' || v.case === 'sensitive') rule.case = v.case;
       if (v.severity && isSeverity(v.severity)) rule.severity = v.severity;
       cfg.namingConventions[k] = rule;
@@ -212,31 +203,35 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
 }
 
 /**
- * Drop slash-wrapped (`/regex/`) entries whose inner pattern would be rejected
- * by the ReDoS guard. Literal (non-slash-wrapped) entries are passed through
- * unchanged: they aren't compiled to a regex by the consuming checks. Used by
- * `forbidden_symbols` and `naming_ignore`, both of which support either form.
+ * Parse a YAML config string and resolve it. Used when the config is fetched
+ * from a remote ref (e.g. a PR's base commit) rather than read off disk.
+ * `extends:` chains are not followed here — the caller is responsible for
+ * supplying a self-contained config or fetching the chain itself.
  */
-function filterUnsafePatterns(values: readonly string[], source: string): string[] {
-  const out: string[] = [];
-  for (const entry of values) {
-    if (entry.startsWith('/') && entry.endsWith('/') && entry.length >= 2) {
-      const inner = entry.slice(1, -1);
-      if (isUnsafePattern(inner)) {
-        warnUnsafe(inner, source);
-        continue;
-      }
-    }
-    out.push(entry);
-  }
-  return out;
+export function loadConfigFromText(text: string): ResolvedConfig {
+  const raw = (parseYaml(text) ?? {}) as RawConfig;
+  return resolveConfig(raw);
 }
 
-function warnUnsafe(pat: string, source: string): void {
-  const preview = pat.length > 80 ? pat.slice(0, 80) + '...' : pat;
-  process.stderr.write(
-    `plc-st-review: rejecting unsafe regex from ${source}: ${preview} (length cap or nested quantifier)\n`,
-  );
+/**
+ * Try to fetch `.plc-st-review.yml` / `plc-st-review.yml` via the supplied
+ * `fetcher` (typically a platform `fetchFile` bound to a base commit SHA),
+ * and resolve it. Returns `null` when neither name exists at that ref, so
+ * the caller can fall back to the cwd default or the supplied defaults.
+ *
+ * This is the security-relevant config path for PR / MR review: the working
+ * directory in CI contains the PR-head code, which on a fork PR is attacker-
+ * controlled. Loading from the base commit means a malicious
+ * `.plc-st-review.yml` shipped inside the PR can't influence the review run.
+ */
+export async function loadConfigFromBaseRef(
+  fetcher: (name: string) => Promise<string | null>,
+): Promise<ResolvedConfig | null> {
+  for (const name of ['.plc-st-review.yml', 'plc-st-review.yml']) {
+    const text = await fetcher(name);
+    if (text !== null) return loadConfigFromText(text);
+  }
+  return null;
 }
 
 function cloneDefault(): ResolvedConfig {

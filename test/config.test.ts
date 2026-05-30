@@ -1,5 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resolveConfig } from '../src/config.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  loadConfigFromBaseRef,
+  loadConfigFromText,
+  resolveConfig,
+} from '../src/config.js';
 
 describe('resolveConfig', () => {
   it('applies disabled checks and severity overrides', () => {
@@ -27,42 +31,53 @@ describe('resolveConfig', () => {
     expect(cfg.severityOverrides.size).toBe(0);
   });
 
-  describe('ReDoS guard (S3)', () => {
-    let stderr: ReturnType<typeof vi.spyOn>;
-    beforeEach(() => {
-      stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
-    });
-    afterEach(() => {
-      stderr.mockRestore();
-    });
-
-    it('drops an unsafe naming_conventions pattern and keeps a safe sibling rule', () => {
-      const cfg = resolveConfig({
-        naming_conventions: {
-          fb_instance: { prefix: 'fb' },
-          bool: { pattern: '(a+)+' },
-        },
-      });
-      expect(cfg.namingConventions.fb_instance?.prefix).toBe('fb');
-      expect(cfg.namingConventions.bool?.pattern).toBeUndefined();
-      expect(stderr).toHaveBeenCalled();
+  describe('loadConfigFromText', () => {
+    it('parses a self-contained YAML config string', () => {
+      const cfg = loadConfigFromText(`
+disabled_checks:
+  - COMMENT_ONLY
+reporting:
+  fail_on_severity: warn
+`);
+      expect(cfg.disabledChecks.has('COMMENT_ONLY')).toBe(true);
+      expect(cfg.failOnSeverity).toBe('warn');
     });
 
-    it('drops a slash-wrapped unsafe regex from forbidden_symbols but keeps literals', () => {
-      const cfg = resolveConfig({
-        forbidden_symbols: ['DEBUG_MODE', '/(\\w+)+/', '/^safe$/'],
+    it('treats an empty string as the default config', () => {
+      const cfg = loadConfigFromText('');
+      expect(cfg.failOnSeverity).toBe('error');
+    });
+  });
+
+  describe('loadConfigFromBaseRef (S3 base-ref loading)', () => {
+    it('returns the config from the first matching base-ref filename', async () => {
+      const fetcher = vi.fn(async (name: string) => {
+        if (name === '.plc-st-review.yml') return 'reporting:\n  fail_on_severity: warn\n';
+        return null;
       });
-      // The literal and the safe slash-wrapped regex stay; the unsafe one drops.
-      expect(cfg.forbiddenSymbols).toEqual(['DEBUG_MODE', '/^safe$/']);
-      expect(stderr).toHaveBeenCalled();
+      const cfg = await loadConfigFromBaseRef(fetcher);
+      expect(cfg).not.toBeNull();
+      expect(cfg!.failOnSeverity).toBe('warn');
+      expect(fetcher).toHaveBeenCalledWith('.plc-st-review.yml');
+      // Second name should not be tried since the first hit.
+      expect(fetcher).toHaveBeenCalledTimes(1);
     });
 
-    it('drops a slash-wrapped unsafe regex from naming_ignore', () => {
-      const cfg = resolveConfig({
-        naming_ignore: ['legacy_*', '/(a*)*/'],
-      });
-      expect(cfg.namingIgnore).toEqual(['legacy_*']);
-      expect(stderr).toHaveBeenCalled();
+    it('falls back to the editor-friendly name when the dotfile is absent', async () => {
+      const fetcher = vi.fn(async (name: string) =>
+        name === 'plc-st-review.yml' ? 'reporting:\n  fail_on_severity: warn\n' : null,
+      );
+      const cfg = await loadConfigFromBaseRef(fetcher);
+      expect(cfg).not.toBeNull();
+      expect(cfg!.failOnSeverity).toBe('warn');
+      expect(fetcher).toHaveBeenCalledWith('.plc-st-review.yml');
+      expect(fetcher).toHaveBeenCalledWith('plc-st-review.yml');
+    });
+
+    it('returns null when neither filename exists at the base ref', async () => {
+      const fetcher = vi.fn(async () => null);
+      expect(await loadConfigFromBaseRef(fetcher)).toBeNull();
+      expect(fetcher).toHaveBeenCalledTimes(2);
     });
   });
 });

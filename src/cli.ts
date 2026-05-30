@@ -2,7 +2,7 @@
 import { access, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Command } from 'commander';
-import { loadConfig } from './config.js';
+import { loadConfig, loadConfigFromBaseRef } from './config.js';
 import { runReview, shouldFail } from './engine/review.js';
 import { runMetrics, type PouReport } from './engine/metrics/index.js';
 import { renderJson } from './output/json.js';
@@ -14,11 +14,13 @@ import { renderDot } from './output/dot.js';
 import { renderBadge } from './output/badge.js';
 import { loadLintSnapshot, loadPathPair, loadRefSnapshot } from './platforms/local.js';
 import {
+  createGitbeakerClient,
   loadGitlabMrSnapshot,
   postGitlabReview,
   resolveGitlabOptionsFromEnv,
 } from './platforms/gitlab.js';
 import {
+  createOctokitClient,
   loadGitHubPrSnapshot,
   postGitHubReview,
   resolveGitHubOptionsFromEnv,
@@ -131,7 +133,16 @@ async function main(): Promise<void> {
     fail(`Invalid --severity: ${String(opts.severity)}`);
   }
 
-  const configPath = opts.config ?? (await discoverConfig());
+  // In PR / MR modes, do NOT auto-discover a config in the working directory:
+  // in CI the cwd is the checked-out PR head, which on a fork PR is attacker-
+  // controlled (a malicious `extends:` could otherwise trigger an arbitrary
+  // local file read). The mode handler will fetch the config from the base
+  // commit via the platform API instead. An explicit `--config <path>` always
+  // wins, including in PR modes (that's the maintainer escape hatch).
+  const skipCwdDiscovery = (opts.github || opts.gitlab) && !opts.config;
+  const configPath = skipCwdDiscovery
+    ? null
+    : (opts.config ?? (await discoverConfig()));
   if (configPath && !opts.config) {
     console.error(`plc-st-review: using config ${configPath}`);
   }
@@ -227,7 +238,25 @@ async function runGitHubMode(
   }
   const gh = resolveGitHubOptionsFromEnv({ pullNumber, owner, repo });
 
-  const { before, after, context } = await loadGitHubPrSnapshot(gh);
+  const api = createOctokitClient(gh);
+  const { before, after, context } = await loadGitHubPrSnapshot(gh, api);
+
+  // SECURITY: in CI the working directory holds the PR head, which on a fork
+  // PR is attacker-controlled. Load the review config from the BASE commit so
+  // a malicious `.plc-st-review.yml` shipped in the PR can't influence this
+  // run. An explicit `--config` override still wins.
+  if (!opts.config) {
+    const baseConfig = await loadConfigFromBaseRef((name) =>
+      api.fetchFile(context.baseSha, name),
+    );
+    if (baseConfig) {
+      config = baseConfig;
+      console.error(
+        `plc-st-review: loaded config from base ref (${context.baseSha.slice(0, 8)})`,
+      );
+    }
+  }
+
   maybeHintProjectScope(opts, config);
   const findings = runReview({
     beforeFiles: before,
@@ -267,7 +296,24 @@ async function runGitlabMode(
     host: opts.gitlabUrl,
   });
 
-  const { before, after, context } = await loadGitlabMrSnapshot(gl);
+  const api = createGitbeakerClient(gl);
+  const { before, after, context } = await loadGitlabMrSnapshot(gl, api);
+
+  // SECURITY: same reasoning as the GitHub path — load config from the BASE
+  // commit so a malicious `.plc-st-review.yml` in the MR head can't influence
+  // the review. `--config` still wins when explicitly given.
+  if (!opts.config) {
+    const baseConfig = await loadConfigFromBaseRef((name) =>
+      api.fetchFile(gl.projectId, context.baseSha, name),
+    );
+    if (baseConfig) {
+      config = baseConfig;
+      console.error(
+        `plc-st-review: loaded config from base ref (${context.baseSha.slice(0, 8)})`,
+      );
+    }
+  }
+
   maybeHintProjectScope(opts, config);
   const findings = runReview({
     beforeFiles: before,
