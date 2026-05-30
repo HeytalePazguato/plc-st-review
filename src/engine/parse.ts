@@ -1,6 +1,27 @@
 import { readFile } from 'node:fs/promises';
 import type { AstFile, StNode } from './types.js';
 
+/**
+ * Hard cap on per-file source length, in UTF-16 code units. Real-world ST
+ * files are typically well under this; the cap is a safety net so a single
+ * pathologically large or hostile file can't blow up memory or time in the
+ * tree-sitter native parser. When exceeded, the file is skipped with a
+ * stderr warning and represented in the symbol table by an empty AST so
+ * downstream checks treat it as a no-op rather than crashing.
+ */
+const MAX_SOURCE_LENGTH = 1_000_000;
+
+function emptyRoot(): StNode {
+  return {
+    type: 'source_file',
+    text: '',
+    startPosition: { row: 0, column: 0 },
+    endPosition: { row: 0, column: 0 },
+    children: [],
+    namedChildren: [],
+  };
+}
+
 interface ParserCtor {
   new (): ParserInstance;
 }
@@ -46,6 +67,12 @@ export async function parseSource(
   source: string,
   path: string,
 ): Promise<AstFile> {
+  if (source.length > MAX_SOURCE_LENGTH) {
+    process.stderr.write(
+      `plc-st-review: skipping ${path} (size ${source.length} > cap ${MAX_SOURCE_LENGTH}); treated as empty\n`,
+    );
+    return { path, source: '', root: emptyRoot() };
+  }
   const { Parser, language } = await loadParser();
   const parser = new Parser();
   parser.setLanguage(language);
