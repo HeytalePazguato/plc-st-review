@@ -134,10 +134,16 @@ Three patterns, in increasing complexity:
 
 There is no "right" answer; pick the one that matches how your team already handles shared standards.
 
-## What the engine does NOT ship
+## Shipped presets
 
-- **No vendor-flavored presets** (no Beckhoff / CODESYS / TwinCAT / ABB / Siemens preset). The engine stays portable; conventions live in your repo.
-- **No "recommended" preset.** Every check ships with a default severity, but no preset tells you what to ban or rename. Your team decides.
+Most projects bring their own conventions, so the engine ships **one** opinionated preset:
+
+- **[PLCopen Coding Guidelines](presets/plcopen.md)** — `presets/plcopen.yml`. The closest thing the IEC 61131-3 world has to MISRA-C. Vendor-neutral, standards-body-published. Use it as your baseline if your team doesn't already have one, then layer your own preset on top. See the page for the full PLCopen rule → plc-st-review check mapping and a list of which rules need new checks (gaps) vs. which are out of scope.
+
+## What the engine still does NOT ship
+
+- **No vendor-flavored presets** (no Beckhoff / CODESYS / TwinCAT / ABB / Siemens preset). The engine stays portable; conventions live in your repo or in a standards body's preset like PLCopen.
+- **No team-style "recommended" preset.** PLCopen is a standards-body baseline, not "what the maintainer thinks is reasonable." Your team's specific preferences (prefix letters, ignored rules, etc.) go in your own preset.
 - **No preset versioning or registry.** Presets are plain YAML files in your control; their lifecycle is part of your project, not the tool.
 
 ## Validating a preset

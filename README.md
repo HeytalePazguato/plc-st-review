@@ -343,6 +343,22 @@ plc-st-review --lint "src/**/*.st" --max-file-size 5000000    # raise the cap to
 
 Almost every real ST file is far below the default; raise this only if you have legitimately huge generated FB files. Disable it only if you trust every file in scope (e.g. linting your own first-party code), since the cap is what stops a hostile file from exhausting parser memory.
 
+### PLCopen Coding Guidelines preset
+
+The repo ships one opinionated preset: [`presets/plcopen.yml`](presets/plcopen.yml), tuned to **[PLCopen Coding Guidelines v1.0](https://plcopen.org/guidelines/guidelines)**. Vendor-neutral, standards-body-published — use it as your baseline if your team doesn't already have a style guide:
+
+```yaml
+# .plc-st-review.yml
+extends:
+  - ./presets/plcopen.yml
+
+# Layer your own preferences on top.
+naming_conventions:
+  bool: { prefix: b }   # we use `b`, not PLCopen's `x`
+```
+
+The full rule-by-rule mapping (which PLCopen rules the preset enforces, which would need new checks, which are out of scope) is on the Pages site under [Presets → PLCopen Coding Guidelines](https://heytalepazguato.github.io/plc-st-review/presets/plcopen/).
+
 ## How it works
 
 Every change is reduced to an AST diff. The engine:
