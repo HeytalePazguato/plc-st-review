@@ -604,6 +604,96 @@ END_FUNCTION_BLOCK
     expect(findings[0].summary).toContain('FB_A');
   });
 
+  // H4: ENUM_VALUE_REMOVED must use exact arm matching (with optional
+  // `EnumName.` qualification) and honour the dialect's case sensitivity. The
+  // old substring match wrongly treated `EMERGENCY_STOP` as a reference to a
+  // removed `STOP`, and case-sensitive equality reported a case-only value
+  // rename (`idle` -> `IDLE`) as a removal.
+  it('ENUM_VALUE_REMOVED does not match a removed value as a substring of a surviving one', async () => {
+    const before = await parseSource(
+      `TYPE E_State : (IDLE, STOP, EMERGENCY_STOP); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.EMERGENCY_STOP: x := 1;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'e.st',
+    );
+    const after = await parseSource(
+      `TYPE E_State : (IDLE, EMERGENCY_STOP); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.EMERGENCY_STOP: x := 1;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'e.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'ENUM_VALUE_REMOVED',
+    );
+    // STOP is removed and not referenced anywhere — must be reported as the
+    // "no surviving references" warning, not the "still referenced" error.
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('warn');
+    expect(findings[0].summary).toContain('STOP');
+    expect(findings[0].summary).toContain('no surviving references');
+  });
+
+  it('ENUM_VALUE_REMOVED does not flag a case-only rename under the case-insensitive default', async () => {
+    const before = await parseSource(
+      `TYPE E_State : (idle, RUN); END_TYPE\n`,
+      'cr.st',
+    );
+    const after = await parseSource(
+      `TYPE E_State : (IDLE, RUN); END_TYPE\n`,
+      'cr.st',
+    );
+    expect(
+      review([before], [after]).filter((f) => f.category === 'ENUM_VALUE_REMOVED'),
+    ).toHaveLength(0);
+  });
+
+  it('ENUM_VALUE_REMOVED still fires when a value is genuinely removed and a CASE still references the qualified form', async () => {
+    const before = await parseSource(
+      `TYPE E_State : (IDLE, RUN, RUNNING); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.RUN: x := 1;
+    E_State.RUNNING: x := 2;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'r.st',
+    );
+    const after = await parseSource(
+      `TYPE E_State : (IDLE, RUNNING); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.RUN: x := 1;
+    E_State.RUNNING: x := 2;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'r.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'ENUM_VALUE_REMOVED',
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('error');
+    expect(findings[0].summary).toContain('E_State.RUN');
+  });
+
   it('EDGE_TRIG_REUSED handles positional CLK and case-insensitive named CLK', async () => {
     const positionalDistinct = await parseSource(
       `FUNCTION_BLOCK FB_R
