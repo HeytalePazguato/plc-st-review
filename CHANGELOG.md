@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Security
 
+- **User-supplied regexes in `.plc-st-review.yml` are now ReDoS-validated at config load.** Patterns in `naming_conventions[*].pattern` and slash-wrapped entries in `forbidden_symbols` and `naming_ignore` go through a conservative guard that rejects patterns over a 200-character cap or carrying the classic catastrophic-backtracking shape (a quantifier inside a quantified group, e.g. `(a+)+`, `(\w+)*`, `(?:.*x)+`). Rejected rules are skipped with a one-line warning on stderr instead of being compiled, so a malicious config — including one supplied by a fork PR via the checked-out workspace — can no longer hang the review job.
 - Bumped transitive dependencies to clear `npm audit` advisories: `qs` 6.15.1 -> 6.15.2 (GHSA-q8mj-m7cp-5q26, `qs.stringify` DoS; reaches the shipped CLI via `@gitbeaker/rest`) and `tmp` 0.2.5 -> 0.2.7 (GHSA-ph9p-34f9-6g65, path traversal; build-time only, via `patch-package`). `npm audit` now reports 0 vulnerabilities. Lockfile-only change, no API or behaviour impact.
 - Hardened the release workflows against version-string command injection: `release.yml` now rejects a `VERSION` file that isn't a bare `X.Y.Z`, and `prerelease.yml` applies the same check to the version derived from the `release/*` branch name. Both values are interpolated into later `git tag` / image-tag steps, so a crafted value could otherwise execute in those privileged jobs. CI-only; no impact on the published package.
 
