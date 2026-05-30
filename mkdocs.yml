@@ -126,6 +126,8 @@ nav:
   - Configuration:
       - Tuning severities: tuning-severities.md
       - Preset packs: preset-packs.md
+      - Case sensitivity (dialects): case-sensitivity.md
+      - Parsing limits: parsing-limits.md
       - Writing custom checks: writing-custom-checks.md
   - Metrics:
       - Metrics mode: metrics-mode.md

@@ -8,10 +8,14 @@ A `TON` / `TOF` / `TP` is set with `PT := T#0s`, or a constant that resolves to 
 
 **Settings.** No check-specific config.
 
+**`PT` recognition.** `PT` is read from both standard call-arg style (`T1(PT := T#0s)`) and the B&R-style member assignment (`T1.PT := T#0s;` then `T1();`). The parameter name is matched case-insensitively in the default dialect, so `pt :=` works the same as `PT :=`.
+
 **Trigger.**
 
 ```pascal
 T1(IN := xEnable, PT := T#0s);     (* fires *)
+T1.PT := T#0s; T1();               (* fires (member-assignment idiom) *)
+T1(IN := xEnable, pt := T#0s);     (* fires (case-insensitive default) *)
 ```
 
 **The bot posts.**

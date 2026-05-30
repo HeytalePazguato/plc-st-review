@@ -8,6 +8,8 @@ A new local variable was declared in this PR but isn't referenced anywhere in it
 
 **Settings.** No check-specific config.
 
+**Scope.** References are counted **inside the declaration's scope** (the POU itself and any methods nested in it), **not** file-wide. A new local `idx` in `FB_A` is correctly flagged as unused even when another POU in the same file (e.g. `FB_B`) happens to have its own `idx` and uses it.
+
 **Trigger.**
 
 ```pascal

@@ -8,11 +8,14 @@ A literal index sits outside the array's declared bounds. Dynamic indices (varia
 
 **Settings.** No check-specific config.
 
+**Literal forms understood.** Indices and bounds in any standard ST numeric literal are decoded to their real value before comparison: signed decimals (`-7`), reals (`3.14`), based literals (`16#FF`, `2#1010`, `8#17`), digit-group separators (`1_000`, `16#FF_FF`), and typed prefixes (`INT#42`, `UINT#16#FF`). So `arr[2#10000]` (=16) is correctly flagged against `ARRAY[0..15]`, where an old reading would have mis-decoded `2#10000` as `2` and missed it.
+
 **Trigger.**
 
 ```pascal
 arr : ARRAY [0..9] OF INT;
 arr[15] := 1;                      (* fires *)
+arr[2#10000] := 1;                 (* fires — 2#10000 is 16, out of [0..9] *)
 ```
 
 **The bot posts.**

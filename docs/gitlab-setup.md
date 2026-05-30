@@ -34,6 +34,19 @@ The job needs `api` scope to read the MR diff and post discussions. Two options:
 
 `GITLAB_URL` defaults to `https://gitlab.com`. On self-hosted, the example sets it from `$CI_SERVER_URL` (auto-provided by GitLab Runner), no extra config needed.
 
+## How config is loaded on an MR
+
+In MR mode (`--gitlab`) the engine loads `.plc-st-review.yml` from the **base commit** (the MR's target branch — usually `main`), **not** from the checked-out MR head. That matters for the same reason it does on GitHub: the working directory in CI holds the MR-head code, which on a fork MR is contributor-controlled, so reading config from the head would let a malicious MR change which rules ran. Loading from base keeps a maintainer in control of the config that gates the review.
+
+The engine tries `.plc-st-review.yml` then `plc-st-review.yml` at `context.baseSha` via the GitLab API. If neither exists at base, defaults are used (the cwd is **not** consulted in MR mode). An explicit `--config <path>` argument still wins:
+
+```yaml
+script:
+  - plc-st-review --gitlab --mr "$CI_MERGE_REQUEST_IID" --config .plc-st-review.yml
+```
+
+**Practical consequence:** config changes proposed inside an MR don't take effect on that same MR's review — they apply only after merge. To iterate on the config itself, use `--config` against the new file for that MR, or run the engine locally.
+
 ## What the bot does on re-run
 
 Each comment ships with a hidden marker (`<!-- plc-st-review:v1 kind=finding key=... -->`). On the next run:

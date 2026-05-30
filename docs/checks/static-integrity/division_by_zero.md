@@ -8,10 +8,13 @@ The divisor is a literal `0` or a `VAR_GLOBAL CONSTANT` resolving to zero.
 
 **Settings.** No check-specific config.
 
+**Literal forms understood.** The divisor is decoded across any standard ST numeric literal — `16#0`, `2#0`, `8#0`, `INT#0`, `0`, `0.0`, `1_000`, etc. — so a zero divisor written in hex or binary isn't missed.
+
 **Trigger.**
 
 ```pascal
 rResult := rInput / 0;             (* fires *)
+rResult := rInput / 16#0;          (* fires *)
 rResult := rInput / cZero;         (* fires if cZero resolves to 0 *)
 ```
 

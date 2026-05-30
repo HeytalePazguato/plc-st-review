@@ -2,6 +2,11 @@
 
 Every check `plc-st-review` ships with, what it catches, why it exists, how to configure it, an ST trigger, what the bot posts, and a suggested fix. See [`check-limitations.md`](check-limitations.md) for what each check deliberately *doesn't* catch.
 
+Two project-wide settings shape how **every** check resolves identifiers and which `.st` files it parses:
+
+- [**Case sensitivity**](case-sensitivity.md) — `case_sensitive: true|false` (default `false`). Pick the value that matches your toolchain (CODESYS / TwinCAT → `false`; B&R Automation Studio → `true`). Drives every identifier comparison and gates `IDENTIFIER_CASE_MISMATCH`.
+- [**Parsing limits**](parsing-limits.md) — `parsing.max_file_size_bytes` (default 1 MB) and the `--max-file-size` CLI flag control the per-file source-length cap. `0` disables.
+
 **Live demo:** every check in this document fires at least once on [PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1), where you can see the exact inline comments the bot posts.
 
 ## Common settings (apply to every check)
