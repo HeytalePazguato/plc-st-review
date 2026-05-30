@@ -3,24 +3,17 @@
 # PLCopen Coding Guidelines v1.0 preset for plc-st-review.
 #
 # Targets the language-independent and Structured-Text subset of PLCopen's
-# Coding Guidelines that the engine can express via configuration alone
-# (i.e. enabling existing checks at the right severity and tuning their
-# settings). Rules that would require new checks are listed as **gaps** in
-# docs/presets/plcopen.md; rules whose intent is outside this tool's scope
-# (task-model / scheduling / cycle-time rules, single-PROGRAM-writer rules,
-# subjective "intent" rules) are listed as **out of scope** there.
-#
-# Use it from your project's `.plc-st-review.yml`:
+# Coding Guidelines. This preset enables every PLCopen rule the engine
+# implements today and tunes the existing severity-bearing checks to match
+# what PLCopen calls for. Use it as your baseline:
 #
 #   extends:
 #     - ./presets/plcopen.yml
 #
-# Override anything below in your local file — these are PLCopen defaults,
+# Override anything below in your local config — these are PLCopen defaults,
 # not your team's rules.
 
 # CP9 — Limit the complexity of POU code.
-# PLCopen recommends keeping cyclomatic complexity and nesting low. The
-# numbers below are at the strict end of common practice; tune for your repo.
 metrics:
   thresholds:
     cyclomatic_complexity:
@@ -30,32 +23,57 @@ metrics:
       warn: 4
       error: 6
 
-# Severity bumps for the existing checks PLCopen calls for. PLCopen treats
-# these as recommended ("should") rather than mandatory ("shall"), so most
-# stay at warn; the safety-relevant ones (recursion, duplicate FB-instance
-# call) are raised to error.
+# N6 / CP18 / CP23 — numeric caps. These checks no-op unless a cap is set.
+limits:
+  max_identifier_length: 32      # N6
+  max_globals_used_per_pou: 10   # CP18
+  max_parameters: 8              # CP23
+
 severity_overrides:
+  # C2 — All elements shall be commented.
+  POU_NOT_COMMENTED: info
   # C3 — Avoid nested comments.
   NESTED_COMMENTS: warn
-  # C4 — Comments may not include code (no commented-out code).
+  # C4 — Comments may not include code.
   COMMENTED_OUT_CODE: warn
-  # CP8 — Floating-point comparison shall not be equality/inequality.
+  # L10 — Forbid EXIT / CONTINUE / GOTO.
+  FORBIDDEN_STATEMENT: warn
+  # L12 — FOR loop counter shall not be modified inside the loop.
+  FOR_LOOP_VAR_MODIFIED: warn
+  # L13 — FOR loop counter shall not be read after the loop terminates.
+  FOR_LOOP_VAR_USED_AFTER: info
+  # L17 — Every IF shall have an ELSE clause.
+  IF_WITHOUT_ELSE: warn
+  # N1 / CP1 — Avoid direct (physical) addresses.
+  DIRECT_ADDRESS_USED: warn
+  # N5 — Local names shall not shadow global names.
+  VARIABLE_SHADOWING: warn
+  # N6 — Identifier length cap.
+  IDENTIFIER_TOO_LONG: info
+  # N9 — Different element kinds shall not share a name.
+  NAME_REUSED_DIFFERENT_KIND: warn
+  # CP8 — Floating-point comparison shall not be equality / inequality.
   REAL_EQUALITY: warn
-  # CP13 — POUs shall not call themselves directly. (Indirect recursion is
-  # listed as a gap in the mapping doc — needs a project-scope cycle check.)
+  # CP13 — POUs shall not call themselves (direct + indirect).
   RECURSIVE_CALL: error
+  INDIRECT_RECURSIVE_CALL: error
   # CP14 — POUs shall have a single point of exit.
   MULTIPLE_EXIT_POINTS: warn
+  # CP18 — Limit globals referenced from a single POU.
+  TOO_MANY_GLOBALS_USED: warn
   # CP20 — FB instances should be called only once per scope per cycle.
   FB_INSTANCE_DOUBLE_CALL: error
+  # CP23 — Cap on input/output/in-out count.
+  TOO_MANY_PARAMETERS: warn
   # CP24 — Do not declare variables that are not used.
   UNUSED_VAR_INTRODUCED: warn
   UNUSED_INPUT_VAR: warn
   UNUSED_OUTPUT_VAR: warn
-  # N5 — Local names shall not shadow global names.
-  VARIABLE_SHADOWING: warn
-  # Tighten output-var hygiene (related to CP14 single-exit / output-write
-  # discipline). Reading an output internally usually wants a local var.
+  # E2 — Pointer arithmetic shall not be used.
+  POINTER_ARITHMETIC: warn
+  # E3 — Relational comparisons of pointers shall not be used.
+  POINTER_COMPARED: warn
+  # Adjacent to CP14 output-write discipline.
   OUTPUT_VAR_READ_INTERNALLY: warn
 
 # N2 / N10 — Type prefixes for variables and user-defined types.
@@ -81,16 +99,3 @@ naming_conventions:
   global_var:        { prefix: g,    case: insensitive }
   # N4 — Constants shall be named in UPPERCASE_WITH_UNDERSCORES.
   constant:          { pattern: '^[A-Z][A-Z0-9_]+$' }
-
-# N1 / CP1 — Avoid physical / direct addresses; access by name. The engine's
-# FORBIDDEN_SYMBOL check operates on identifier references, but the grammar
-# represents `%I0.0` / `%Q0.1` as `direct_address` nodes, not identifiers.
-# So this rule is **NOT enforced by this preset** — see the mapping doc
-# (gap: needs a new `DIRECT_ADDRESS_USED` check).
-#
-# L10 — Forbid CONTINUE / EXIT / GOTO. Same situation: these are statement
-# nodes, not identifiers, so FORBIDDEN_SYMBOL can't catch them. Listed as a
-# gap in the mapping doc.
-#
-# forbidden_symbols:
-#   - (intentionally empty — see gaps in docs/presets/plcopen.md)

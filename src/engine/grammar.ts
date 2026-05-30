@@ -48,6 +48,8 @@ export const NODE = {
   RETURN_STATEMENT: 'return_statement',
   EXIT_STATEMENT: 'exit_statement',
   CONTINUE_STATEMENT: 'continue_statement',
+  GOTO_STATEMENT: 'goto_statement',
+  DIRECT_ADDRESS: 'direct_address',
   ASSIGNMENT_STATEMENT: 'assignment_statement',
   INVOCATION_STATEMENT: 'invocation_statement',
   CALL_EXPRESSION: 'call_expression',

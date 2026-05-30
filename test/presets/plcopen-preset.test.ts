@@ -24,10 +24,38 @@ describe('presets/plcopen.yml', () => {
     expect(cfg.metricsThresholds.nestingDepth.error).toBe(6);
   });
 
-  it('applies CP13 / CP20 — recursion and double-call to error', async () => {
+  it('applies CP13 / CP20 — recursion (direct + indirect) and double-call to error', async () => {
     const cfg = await loadConfig(presetPath);
     expect(cfg.severityOverrides.get('RECURSIVE_CALL')).toBe('error');
+    expect(cfg.severityOverrides.get('INDIRECT_RECURSIVE_CALL')).toBe('error');
     expect(cfg.severityOverrides.get('FB_INSTANCE_DOUBLE_CALL')).toBe('error');
+  });
+
+  it('enables the new PLCopen checks at warn (or info)', async () => {
+    const cfg = await loadConfig(presetPath);
+    for (const cat of [
+      'DIRECT_ADDRESS_USED',       // N1 / CP1
+      'IF_WITHOUT_ELSE',           // L17
+      'FORBIDDEN_STATEMENT',       // L10
+      'FOR_LOOP_VAR_MODIFIED',     // L12
+      'NAME_REUSED_DIFFERENT_KIND',// N9
+      'POINTER_ARITHMETIC',        // E2
+      'POINTER_COMPARED',          // E3
+      'TOO_MANY_PARAMETERS',       // CP23
+      'TOO_MANY_GLOBALS_USED',     // CP18
+    ] as const) {
+      expect(cfg.severityOverrides.get(cat), cat).toBe('warn');
+    }
+    expect(cfg.severityOverrides.get('POU_NOT_COMMENTED')).toBe('info');
+    expect(cfg.severityOverrides.get('IDENTIFIER_TOO_LONG')).toBe('info');
+    expect(cfg.severityOverrides.get('FOR_LOOP_VAR_USED_AFTER')).toBe('info');
+  });
+
+  it('sets the numeric caps for N6 / CP18 / CP23', async () => {
+    const cfg = await loadConfig(presetPath);
+    expect(cfg.limits.maxIdentifierLength).toBe(32);
+    expect(cfg.limits.maxGlobalsUsedPerPou).toBe(10);
+    expect(cfg.limits.maxParameters).toBe(8);
   });
 
   it('applies C3 / C4 / CP8 / CP14 / CP24 / N5 — warn-level rules', async () => {

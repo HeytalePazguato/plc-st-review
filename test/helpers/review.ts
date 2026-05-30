@@ -20,6 +20,7 @@ export function review(
     metricsThresholds: DEFAULT_CONFIG.metricsThresholds,
     caseSensitive: DEFAULT_CONFIG.caseSensitive,
     maxFileSize: DEFAULT_CONFIG.maxFileSize,
+    limits: { ...DEFAULT_CONFIG.limits },
     ...configPatch,
   };
   return runReview({ beforeFiles: before, afterFiles: after, config });

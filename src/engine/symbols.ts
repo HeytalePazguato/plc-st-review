@@ -62,6 +62,11 @@ export function emptySymbolTable(caseSensitive = false): SymbolTable {
     pous: new Map(),
     globals: new CaseMap(caseSensitive),
     enums: new CaseMap(caseSensitive),
+    directAddresses: [],
+    ifStatements: [],
+    restrictedStatements: [],
+    pointerVars: [],
+    binaryExpressions: [],
     timerInstances: [],
     callSites: [],
     caseStatements: [],
@@ -213,6 +218,10 @@ function extractFile(file: AstFile, t: SymbolTable): void {
   collectFileScopedStatements(file, t);
   collectAddressOfExprs(file, t);
   collectComments(file, t);
+  collectDirectAddresses(file, t);
+  collectIfStatements(file, t);
+  collectRestrictedStatements(file, t);
+  collectBinaryExpressions(file, t);
   // pragmas inside POUs
   for (const p of descendantsOfType(root, NODE.PRAGMA)) {
     if (childrenOf(root).includes(p)) continue; // already collected at top level
@@ -352,6 +361,15 @@ function collectPou(
           file: file.path,
           line: lineOf(decl),
           typeText: typeText,
+        });
+      }
+      // POINTER-typed locals — used by POINTER_ARITHMETIC / POINTER_COMPARED.
+      if (declName && typeNode?.type === NODE.POINTER_TYPE) {
+        t.pointerVars.push({
+          name: declName,
+          scope: qualified,
+          file: file.path,
+          line: lineOf(decl),
         });
       }
       if (declName && TIMER_TYPE_NAMES.has(typeText)) {
@@ -1089,5 +1107,85 @@ function collectComments(file: AstFile, t: SymbolTable): void {
       scope: pouContainingLine(t, file.path, line),
     };
     t.comments.push(c);
+  }
+}
+
+// PLCopen N1 / CP1 — every `%I0.0` / `%Q1.2` etc. parses as `direct_address`.
+function collectDirectAddresses(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.DIRECT_ADDRESS)) {
+    const line = lineOf(node);
+    t.directAddresses.push({
+      text: node.text.trim(),
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    });
+  }
+}
+
+// PLCopen L17 — an IF without a final ELSE clause. ELSIF doesn't count.
+function collectIfStatements(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.IF_STATEMENT)) {
+    const line = lineOf(node);
+    const hasElse = childrenOf(node).some((c) => c.type === NODE.ELSE_CLAUSE);
+    t.ifStatements.push({
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+      hasElse,
+    });
+  }
+}
+
+// PLCopen L10 — flag EXIT / CONTINUE / GOTO use sites. RETURN is also
+// collected (already used by MULTIPLE_EXIT_POINTS via `returnPoints`, but
+// kept here too for a unified "restricted statement" view if needed later).
+function collectRestrictedStatements(file: AstFile, t: SymbolTable): void {
+  const kinds: Array<{ node: string; kind: 'EXIT' | 'CONTINUE' | 'GOTO' | 'RETURN' }> = [
+    { node: NODE.EXIT_STATEMENT, kind: 'EXIT' },
+    { node: NODE.CONTINUE_STATEMENT, kind: 'CONTINUE' },
+    { node: NODE.GOTO_STATEMENT, kind: 'GOTO' },
+  ];
+  for (const { node: type, kind } of kinds) {
+    for (const n of descendantsOfType(file.root, type)) {
+      const line = lineOf(n);
+      t.restrictedStatements.push({
+        kind,
+        file: file.path,
+        line,
+        scope: pouContainingLine(t, file.path, line),
+      });
+    }
+  }
+}
+
+// PLCopen E2 / E3 — binary expressions, used to spot arithmetic /
+// comparisons whose operand is a POINTER-typed local.
+function collectBinaryExpressions(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.BINARY_EXPRESSION)) {
+    const kids = childrenOf(node);
+    if (kids.length < 2) continue;
+    // The operator is one of the child *tokens* (non-named in tree-sitter),
+    // not a named child. Look across all raw children for a non-named one.
+    let op = '';
+    for (const raw of allChildrenOf(node)) {
+      if (kids.includes(raw)) continue; // named operand
+      const t2 = raw.type;
+      if (t2.length <= 3 && /[-+*/=<>&|]/.test(t2)) {
+        op = t2;
+        break;
+      }
+    }
+    const leftText = kids[0].text.trim();
+    const rightText = kids[kids.length - 1].text.trim();
+    const line = lineOf(node);
+    t.binaryExpressions.push({
+      op,
+      leftText,
+      rightText,
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    });
   }
 }

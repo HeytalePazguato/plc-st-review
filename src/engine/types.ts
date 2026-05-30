@@ -62,7 +62,21 @@ export type Category =
   | 'COMPLEXITY_INCREASED'
   | 'NESTING_INCREASED'
   | 'LOC_SPIKE'
-  | 'DEAD_POU_INTRODUCED';
+  | 'DEAD_POU_INTRODUCED'
+  // PLCopen Coding Guidelines (single-revision unless noted).
+  | 'DIRECT_ADDRESS_USED'           // N1 / CP1
+  | 'IDENTIFIER_TOO_LONG'           // N6
+  | 'NAME_REUSED_DIFFERENT_KIND'    // N9
+  | 'POU_NOT_COMMENTED'             // C2
+  | 'FORBIDDEN_STATEMENT'           // L10  (EXIT / CONTINUE / GOTO)
+  | 'FOR_LOOP_VAR_MODIFIED'         // L12
+  | 'FOR_LOOP_VAR_USED_AFTER'       // L13
+  | 'IF_WITHOUT_ELSE'               // L17
+  | 'TOO_MANY_GLOBALS_USED'         // CP18
+  | 'TOO_MANY_PARAMETERS'           // CP23
+  | 'INDIRECT_RECURSIVE_CALL'       // CP13 indirect
+  | 'POINTER_ARITHMETIC'            // E2
+  | 'POINTER_COMPARED';             // E3
 
 /**
  * Categories that only make sense when comparing two revisions of the
@@ -156,6 +170,19 @@ export const ALL_CATEGORIES: Category[] = [
   'NESTING_INCREASED',
   'LOC_SPIKE',
   'DEAD_POU_INTRODUCED',
+  'DIRECT_ADDRESS_USED',
+  'IDENTIFIER_TOO_LONG',
+  'NAME_REUSED_DIFFERENT_KIND',
+  'POU_NOT_COMMENTED',
+  'FORBIDDEN_STATEMENT',
+  'FOR_LOOP_VAR_MODIFIED',
+  'FOR_LOOP_VAR_USED_AFTER',
+  'IF_WITHOUT_ELSE',
+  'TOO_MANY_GLOBALS_USED',
+  'TOO_MANY_PARAMETERS',
+  'INDIRECT_RECURSIVE_CALL',
+  'POINTER_ARITHMETIC',
+  'POINTER_COMPARED',
 ];
 
 export interface Position {
@@ -277,6 +304,16 @@ export interface ResolvedConfig {
    * Default: 1_000_000 (1 MB).
    */
   maxFileSize: number;
+  /**
+   * Numeric caps consumed by the size-/count-checking PLCopen rules
+   * (N6, CP18, CP23). Each is `null` when not configured — the
+   * corresponding check then does nothing.
+   */
+  limits: {
+    maxIdentifierLength: number | null;   // N6
+    maxGlobalsUsedPerPou: number | null;  // CP18
+    maxParameters: number | null;         // CP23
+  };
 }
 
 export interface SymbolTable {
@@ -313,6 +350,51 @@ export interface SymbolTable {
   returnPoints: ReturnPoint[];
   declarations: NamedDecl[];
   addressOfExprs: AddressOfExpr[];
+  // PLCopen support collections.
+  directAddresses: DirectAddress[];
+  ifStatements: IfStatement[];
+  restrictedStatements: RestrictedStatement[];
+  pointerVars: PointerVar[];
+  binaryExpressions: BinaryExpression[];
+}
+
+export interface DirectAddress {
+  text: string;       // e.g. "%I0.0", "%QW100"
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface IfStatement {
+  file: string;
+  line: number;
+  scope: string;
+  hasElse: boolean;
+}
+
+export interface RestrictedStatement {
+  kind: 'EXIT' | 'CONTINUE' | 'GOTO' | 'RETURN';
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface PointerVar {
+  name: string;
+  scope: string;
+  file: string;
+  line: number;
+}
+
+export interface BinaryExpression {
+  /** Operator token text — e.g. `+`, `-`, `=`, `<>`, `<`, `>`. */
+  op: string;
+  /** Operand text on either side, trimmed and lowercased. */
+  leftText: string;
+  rightText: string;
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export interface AddressOfExpr {

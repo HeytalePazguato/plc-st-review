@@ -45,6 +45,11 @@ interface RawConfig {
   parsing?: {
     max_file_size_bytes?: number;
   };
+  limits?: {
+    max_identifier_length?: number | null;
+    max_globals_used_per_pou?: number | null;
+    max_parameters?: number | null;
+  };
 }
 
 const NAMING_DIMENSIONS: NamingDimension[] = [
@@ -78,6 +83,11 @@ export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
   metricsThresholds: cloneMetricsThresholds(DEFAULT_METRICS_THRESHOLDS),
   caseSensitive: false,
   maxFileSize: 1_000_000,
+  limits: {
+    maxIdentifierLength: null,
+    maxGlobalsUsedPerPou: null,
+    maxParameters: null,
+  },
 });
 
 function cloneMetricsThresholds(m: MetricsThresholds): MetricsThresholds {
@@ -156,6 +166,7 @@ function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
       },
     },
     parsing: { ...base.parsing, ...override.parsing },
+    limits: { ...base.limits, ...override.limits },
   };
 }
 
@@ -197,6 +208,17 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
     // floored so the comparison stays consistent.
     const n = Math.floor(raw.parsing.max_file_size_bytes);
     cfg.maxFileSize = n < 0 ? 0 : n;
+  }
+  // Limits — each is null when unset (the corresponding check then no-ops),
+  // a positive integer when configured. Non-positive values disable the
+  // individual cap so users can opt back out via a preset overlay.
+  const lim = raw.limits;
+  if (lim) {
+    const pos = (n: unknown): number | null =>
+      typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+    if ('max_identifier_length' in lim) cfg.limits.maxIdentifierLength = pos(lim.max_identifier_length);
+    if ('max_globals_used_per_pou' in lim) cfg.limits.maxGlobalsUsedPerPou = pos(lim.max_globals_used_per_pou);
+    if ('max_parameters' in lim) cfg.limits.maxParameters = pos(lim.max_parameters);
   }
   if (raw.naming_conventions) {
     for (const [k, v] of Object.entries(raw.naming_conventions)) {
@@ -259,6 +281,7 @@ function cloneDefault(): ResolvedConfig {
     metricsThresholds: cloneMetricsThresholds(DEFAULT_CONFIG.metricsThresholds),
     caseSensitive: DEFAULT_CONFIG.caseSensitive,
     maxFileSize: DEFAULT_CONFIG.maxFileSize,
+    limits: { ...DEFAULT_CONFIG.limits },
   };
 }
 
