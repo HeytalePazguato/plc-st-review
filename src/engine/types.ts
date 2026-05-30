@@ -336,7 +336,11 @@ export interface Pou {
   qualifiedName: string;
   parent?: string;
   file: string;
+  /** 1-based start line of the POU's declaration keyword (e.g. `FUNCTION_BLOCK`). */
   line: number;
+  /** 1-based end line of the POU's `END_*` keyword. Used to attribute a source
+   *  line to its enclosing scope. */
+  endLine: number;
   inputs: Parameter[];
   outputs: Parameter[];
   inOuts: Parameter[];

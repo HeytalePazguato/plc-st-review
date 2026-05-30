@@ -21,11 +21,17 @@ function node(type: string, opts: NodeOpts = {}): MutableNode {
   const line = opts.line ?? nextLine();
   const text = opts.text ?? '';
   const children = opts.children ?? [];
+  // endPosition.row must cover every descendant so that POU containment checks
+  // (e.g. pouContainingLine) include body statements that sit on later rows.
+  let endRow = line - 1;
+  for (const c of children) {
+    if (c.endPosition && c.endPosition.row > endRow) endRow = c.endPosition.row;
+  }
   const n: MutableNode = {
     type,
     text,
     startPosition: { row: line - 1, column: 0 },
-    endPosition: { row: line - 1, column: text.length },
+    endPosition: { row: endRow, column: text.length },
     children,
   };
   return n;

@@ -526,6 +526,84 @@ END_FUNCTION_BLOCK
     ).toHaveLength(1);
   });
 
+  // H3/M10/M11: scope-aware reference resolution. With two POUs in one file
+  // each declaring the same name in different case, a reference in either POU
+  // must resolve to its own POU's declaration — not to whichever was declared
+  // first globally. And the unused-var check must count uses inside the POU
+  // (and any nested method), not file-wide.
+  it('IDENTIFIER_CASE_MISMATCH does NOT cross POU boundaries for same-name decls', async () => {
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    count : INT;
+END_VAR
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK FB_B
+VAR
+    Count : INT;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    count : INT;
+END_VAR
+count := 1;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK FB_B
+VAR
+    Count : INT;
+END_VAR
+Count := 2;
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    expect(
+      review([before], [after]).filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH'),
+    ).toHaveLength(0);
+  });
+
+  it('UNUSED_VAR_INTRODUCED scopes ref counting per POU, not file-wide', async () => {
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_A
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_B
+VAR
+    idx : INT;
+END_VAR
+idx := idx + 1;
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    idx : INT;
+END_VAR
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_B
+VAR
+    idx : INT;
+END_VAR
+idx := idx + 1;
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'UNUSED_VAR_INTRODUCED',
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toContain('FB_A');
+  });
+
   it('EDGE_TRIG_REUSED handles positional CLK and case-insensitive named CLK', async () => {
     const positionalDistinct = await parseSource(
       `FUNCTION_BLOCK FB_R

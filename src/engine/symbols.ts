@@ -294,6 +294,7 @@ function collectPou(
     qualifiedName: qualified,
     file: file.path,
     line: lineOf(node),
+    endLine: node.endPosition.row + 1,
     inputs,
     outputs,
     inOuts,
@@ -327,6 +328,7 @@ function collectPou(
         parent: qualified,
         file: file.path,
         line: lineOf(child),
+        endLine: child.endPosition.row + 1,
         inputs: methodInputs,
         outputs: methodOutputs,
         inOuts: methodInOuts,
@@ -805,22 +807,28 @@ function collectCallSites(file: AstFile, t: SymbolTable): void {
 }
 
 /**
- * Best-effort lookup of the POU that contains a given (file, line) pair.
- * POUs in a file are listed in declaration order; we pick the latest one
- * whose start line is at or before the target line. Returns '<file>' as a
- * fallback for code outside any POU (rare in real ST).
+ * Lookup of the POU whose source range contains a given (file, line) pair.
+ * Requires the line to lie within `[p.line, p.endLine]`, so lines above the
+ * first POU, between POUs, or after the last POU are attributed to '<file>'.
+ * When two POUs nest (a method inside an FB), the latest start wins — that's
+ * the most specific (innermost) scope.
+ *
+ * Files containing exactly one top-level POU fall back to attributing any
+ * otherwise-uncontained line to it. That covers synthetic fixtures (single-
+ * line POU spans) without weakening the multi-POU case where the strict
+ * containment check is the whole point of this function.
  */
 function pouContainingLine(t: SymbolTable, file: string, line: number): string {
   let best: Pou | null = null;
-  const filePous: Pou[] = [];
+  const topLevel: Pou[] = [];
   for (const p of t.pous.values()) {
     if (p.file !== file) continue;
-    filePous.push(p);
-    if (line < p.line) continue;
+    if (!p.parent) topLevel.push(p);
+    if (line < p.line || line > p.endLine) continue;
     if (!best || p.line > best.line) best = p;
   }
   if (best) return best.qualifiedName;
-  if (filePous.length === 1) return filePous[0].qualifiedName;
+  if (topLevel.length === 1) return topLevel[0].qualifiedName;
   return '<file>';
 }
 
