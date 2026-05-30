@@ -19,6 +19,7 @@ export function review(
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
     metricsThresholds: DEFAULT_CONFIG.metricsThresholds,
     caseSensitive: DEFAULT_CONFIG.caseSensitive,
+    maxFileSize: DEFAULT_CONFIG.maxFileSize,
     ...configPatch,
   };
   return runReview({ beforeFiles: before, afterFiles: after, config });

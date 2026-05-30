@@ -31,6 +31,28 @@ describe('resolveConfig', () => {
     expect(cfg.severityOverrides.size).toBe(0);
   });
 
+  describe('parsing.max_file_size_bytes (S6)', () => {
+    it('overrides the default cap with a numeric value', () => {
+      const cfg = resolveConfig({ parsing: { max_file_size_bytes: 5_000_000 } });
+      expect(cfg.maxFileSize).toBe(5_000_000);
+    });
+
+    it('treats 0 as "disabled" (cap inactive)', () => {
+      const cfg = resolveConfig({ parsing: { max_file_size_bytes: 0 } });
+      expect(cfg.maxFileSize).toBe(0);
+    });
+
+    it('clamps negative values to 0', () => {
+      const cfg = resolveConfig({ parsing: { max_file_size_bytes: -10 } });
+      expect(cfg.maxFileSize).toBe(0);
+    });
+
+    it('falls back to the 1 MB default when the key is absent', () => {
+      const cfg = resolveConfig({});
+      expect(cfg.maxFileSize).toBe(1_000_000);
+    });
+  });
+
   describe('loadConfigFromText', () => {
     it('parses a self-contained YAML config string', () => {
       const cfg = loadConfigFromText(`

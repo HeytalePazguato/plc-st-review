@@ -3,6 +3,7 @@ import { access, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { loadConfig, loadConfigFromBaseRef } from './config.js';
+import { setMaxSourceLength } from './engine/parse.js';
 import { runReview, shouldFail } from './engine/review.js';
 import { runMetrics, type PouReport } from './engine/metrics/index.js';
 import { renderJson } from './output/json.js';
@@ -51,6 +52,7 @@ interface CliOptions {
   config?: string;
   outFile?: string;
   noColor?: boolean;
+  maxFileSize?: string;
   metrics?: string[];
   sort?: string;
   top?: string;
@@ -109,6 +111,10 @@ async function main(): Promise<void> {
     .option('--out-file <path>', 'write output to file instead of stdout')
     .option('--no-color', 'disable ANSI color')
     .option(
+      '--max-file-size <bytes>',
+      'skip .st files larger than <bytes>; 0 disables (default 1000000 / 1 MB; overrides parsing.max_file_size_bytes from config)',
+    )
+    .option(
       '--metrics <patterns...>',
       'metrics mode: compute complexity / nesting / LOC / call-graph metrics ' +
         'for the given files / globs (e.g. `src/**/*.st`). Does not run review checks.',
@@ -147,6 +153,16 @@ async function main(): Promise<void> {
     console.error(`plc-st-review: using config ${configPath}`);
   }
   const config = await loadConfig(configPath);
+
+  // CLI --max-file-size overrides the config value; config provides the
+  // default. 0 (or negative / non-numeric) disables the cap entirely.
+  if (opts.maxFileSize !== undefined) {
+    const n = Number.parseInt(opts.maxFileSize, 10);
+    if (Number.isNaN(n)) fail(`Invalid --max-file-size: ${String(opts.maxFileSize)}`);
+    setMaxSourceLength(n);
+  } else {
+    setMaxSourceLength(config.maxFileSize);
+  }
 
   if (opts.metrics && opts.metrics.length > 0) {
     await runMetricsMode(opts, config);

@@ -149,6 +149,8 @@ Output formats: `terminal` (ANSI when stdout is a TTY), `markdown`, `json`.
 
 The CLI exits non-zero when at least one finding meets or exceeds the `reporting.fail_on_severity` threshold (default `error`).
 
+`--max-file-size <bytes>` overrides the per-file source-length cap (see [Source-size cap](#source-size-cap) below). Useful when you have legitimately huge generated FB files; pass `0` to disable the cap entirely. Defaults to the config's `parsing.max_file_size_bytes` (1 MB).
+
 ### Metrics
 
 `--metrics` is a standalone mode that measures a whole codebase instead of reviewing a diff: cyclomatic complexity, nesting depth, LOC, call-graph fan-in/out, dead code, dependency depth, and more. It does not run the review checks. Full reference: [docs/metrics-mode.md](docs/metrics-mode.md).
@@ -303,6 +305,9 @@ metrics:                       # bands for the metric-regression checks
     nesting_depth:
       warn: 5
       error: 8
+
+parsing:
+  max_file_size_bytes: 1000000  # per-file size cap; see "Source-size cap" below
 ```
 
 The `metrics` block is optional; the values shown are the defaults. `COMPLEXITY_INCREASED` and `NESTING_INCREASED` read these bands; `LOC_SPIKE` fires on any single-PR growth over 50%. See [`docs/checks-reference.md`](docs/checks-reference.md#metric-thresholds) for the full block (the `lines_of_code`, `comment_ratio`, and `fan_out` keys are accepted now and consumed by the upcoming standalone `--metrics` mode).
@@ -319,6 +324,24 @@ case_sensitive: false   # default
 - **`true`** — identifiers are matched exactly, byte-for-byte. Set this for **B&R Automation Studio**, which treats `Motor` and `motor` as two distinct variables. In this mode `IDENTIFIER_CASE_MISMATCH` is automatically disabled (a different case is a different symbol, not a style slip), and checks like `VARIABLE_SHADOWING` only fire on an exact-case match.
 
 Pick the value that matches the IDE your code is compiled in; the wrong setting can hide real bugs (too loose) or invent false ones (too strict).
+
+### Source-size cap
+
+Each `.st` file is parsed by a native tree-sitter binding. To keep a single pathological or hostile file from blowing up memory in the parser, the engine enforces a per-file source-length cap. Files over the cap are **skipped** with a one-line stderr warning naming the path and treated as empty by every check.
+
+```yaml
+parsing:
+  max_file_size_bytes: 1000000   # default: 1 MB
+```
+
+Set `0` to disable the cap entirely (every file is parsed regardless of size). A `--max-file-size <bytes>` CLI flag overrides whatever is in the config for the current run, so you can do:
+
+```sh
+plc-st-review --lint "src/**/*.st" --max-file-size 0          # parse everything, no cap
+plc-st-review --lint "src/**/*.st" --max-file-size 5000000    # raise the cap to 5 MB for this run
+```
+
+Almost every real ST file is far below the default; raise this only if you have legitimately huge generated FB files. Disable it only if you trust every file in scope (e.g. linting your own first-party code), since the cap is what stops a hostile file from exhausting parser memory.
 
 ## How it works
 

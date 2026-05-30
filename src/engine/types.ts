@@ -270,6 +270,13 @@ export interface ResolvedConfig {
    * Drives the symbol-table identifier maps and gates IDENTIFIER_CASE_MISMATCH.
    */
   caseSensitive: boolean;
+  /**
+   * Per-file source-length cap, in UTF-16 code units. Files larger than this
+   * are skipped by `parseSource` with a stderr warning, so a single huge or
+   * hostile file can't blow up the native parser. `0` disables the cap.
+   * Default: 1_000_000 (1 MB).
+   */
+  maxFileSize: number;
 }
 
 export interface SymbolTable {

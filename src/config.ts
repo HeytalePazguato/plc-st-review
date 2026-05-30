@@ -42,6 +42,9 @@ interface RawConfig {
   metrics?: {
     thresholds?: Record<string, RawMetricThreshold>;
   };
+  parsing?: {
+    max_file_size_bytes?: number;
+  };
 }
 
 const NAMING_DIMENSIONS: NamingDimension[] = [
@@ -74,6 +77,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
   namingIgnore: [],
   metricsThresholds: cloneMetricsThresholds(DEFAULT_METRICS_THRESHOLDS),
   caseSensitive: false,
+  maxFileSize: 1_000_000,
 });
 
 function cloneMetricsThresholds(m: MetricsThresholds): MetricsThresholds {
@@ -151,6 +155,7 @@ function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
         ...override.metrics?.thresholds,
       },
     },
+    parsing: { ...base.parsing, ...override.parsing },
   };
 }
 
@@ -187,6 +192,12 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
   if (raw.forbidden_symbols) cfg.forbiddenSymbols = [...raw.forbidden_symbols];
   if (raw.naming_ignore) cfg.namingIgnore = [...raw.naming_ignore];
   applyMetricThresholds(cfg.metricsThresholds, raw.metrics?.thresholds);
+  if (typeof raw.parsing?.max_file_size_bytes === 'number') {
+    // Negative values are coerced to 0 (disabled); fractional values are
+    // floored so the comparison stays consistent.
+    const n = Math.floor(raw.parsing.max_file_size_bytes);
+    cfg.maxFileSize = n < 0 ? 0 : n;
+  }
   if (raw.naming_conventions) {
     for (const [k, v] of Object.entries(raw.naming_conventions)) {
       if (!isNamingDimension(k) || !v) continue;
@@ -247,6 +258,7 @@ function cloneDefault(): ResolvedConfig {
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
     metricsThresholds: cloneMetricsThresholds(DEFAULT_CONFIG.metricsThresholds),
     caseSensitive: DEFAULT_CONFIG.caseSensitive,
+    maxFileSize: DEFAULT_CONFIG.maxFileSize,
   };
 }
 
