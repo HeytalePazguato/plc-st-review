@@ -125,6 +125,24 @@ These are stylistic / hygiene checks. Most ship at `info` severity and stay off 
 - [NESTED_COMMENTS](checks/code-quality/nested_comments.md)
 - [NAMING_CONVENTION](checks/code-quality/naming_convention.md)
 
+## PLCopen-aligned checks
+
+These categories map to specific rules in the [PLCopen Coding Guidelines](presets/plcopen.md). Enable them all at once via `extends: ./presets/plcopen.yml`, or pick the ones you care about with `severity_overrides:` / `disabled_checks:`.
+
+- [DIRECT_ADDRESS_USED](checks/plcopen/direct_address_used.md) (N1 / CP1)
+- [IF_WITHOUT_ELSE](checks/plcopen/if_without_else.md) (L17)
+- [FORBIDDEN_STATEMENT](checks/plcopen/forbidden_statement.md) (L10)
+- [FOR_LOOP_VAR_MODIFIED](checks/plcopen/for_loop_var_modified.md) (L12)
+- [FOR_LOOP_VAR_USED_AFTER](checks/plcopen/for_loop_var_used_after.md) (L13)
+- [IDENTIFIER_TOO_LONG](checks/plcopen/identifier_too_long.md) (N6)
+- [NAME_REUSED_DIFFERENT_KIND](checks/plcopen/name_reused_different_kind.md) (N9)
+- [POU_NOT_COMMENTED](checks/plcopen/pou_not_commented.md) (C2)
+- [TOO_MANY_PARAMETERS](checks/plcopen/too_many_parameters.md) (CP23)
+- [TOO_MANY_GLOBALS_USED](checks/plcopen/too_many_globals_used.md) (CP18)
+- [INDIRECT_RECURSIVE_CALL](checks/plcopen/indirect_recursive_call.md) (CP13 indirect)
+- [POINTER_ARITHMETIC](checks/plcopen/pointer_arithmetic.md) (E2)
+- [POINTER_COMPARED](checks/plcopen/pointer_compared.md) (E3)
+
 ## Using a check in your PR
 
 `plc-st-review` runs automatically once you've set up the GitLab or GitHub integration (see [`gitlab-setup.md`](gitlab-setup.md) / [`github-setup.md`](github-setup.md)). Every check above lands as either an inline comment on the relevant `.st` line or as part of the summary issue / discussion comment when the affected line falls outside the PR's diff hunks.
