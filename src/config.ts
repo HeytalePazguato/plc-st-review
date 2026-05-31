@@ -50,6 +50,7 @@ interface RawConfig {
     max_globals_used_per_pou?: number | null;
     max_parameters?: number | null;
   };
+  identifier_charset?: string | null;
 }
 
 const NAMING_DIMENSIONS: NamingDimension[] = [
@@ -88,6 +89,7 @@ export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
     maxGlobalsUsedPerPou: null,
     maxParameters: null,
   },
+  identifierCharsetPattern: null,
 });
 
 function cloneMetricsThresholds(m: MetricsThresholds): MetricsThresholds {
@@ -167,6 +169,7 @@ function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
     },
     parsing: { ...base.parsing, ...override.parsing },
     limits: { ...base.limits, ...override.limits },
+    identifier_charset: override.identifier_charset ?? base.identifier_charset,
   };
 }
 
@@ -219,6 +222,9 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
     if ('max_identifier_length' in lim) cfg.limits.maxIdentifierLength = pos(lim.max_identifier_length);
     if ('max_globals_used_per_pou' in lim) cfg.limits.maxGlobalsUsedPerPou = pos(lim.max_globals_used_per_pou);
     if ('max_parameters' in lim) cfg.limits.maxParameters = pos(lim.max_parameters);
+  }
+  if (typeof raw.identifier_charset === 'string' && raw.identifier_charset !== '') {
+    cfg.identifierCharsetPattern = raw.identifier_charset;
   }
   if (raw.naming_conventions) {
     for (const [k, v] of Object.entries(raw.naming_conventions)) {
@@ -282,6 +288,7 @@ function cloneDefault(): ResolvedConfig {
     caseSensitive: DEFAULT_CONFIG.caseSensitive,
     maxFileSize: DEFAULT_CONFIG.maxFileSize,
     limits: { ...DEFAULT_CONFIG.limits },
+    identifierCharsetPattern: DEFAULT_CONFIG.identifierCharsetPattern,
   };
 }
 

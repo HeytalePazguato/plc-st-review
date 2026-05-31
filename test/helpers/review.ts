@@ -6,6 +6,7 @@ export function review(
   before: AstFile[],
   after: AstFile[],
   configPatch: Partial<ResolvedConfig> = {},
+  projectFiles?: AstFile[],
 ): Finding[] {
   const config: ResolvedConfig = {
     disabledChecks: new Set(DEFAULT_CONFIG.disabledChecks),
@@ -21,7 +22,8 @@ export function review(
     caseSensitive: DEFAULT_CONFIG.caseSensitive,
     maxFileSize: DEFAULT_CONFIG.maxFileSize,
     limits: { ...DEFAULT_CONFIG.limits },
+    identifierCharsetPattern: DEFAULT_CONFIG.identifierCharsetPattern,
     ...configPatch,
   };
-  return runReview({ beforeFiles: before, afterFiles: after, config });
+  return runReview({ beforeFiles: before, afterFiles: after, config, projectFiles });
 }

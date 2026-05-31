@@ -29,6 +29,11 @@ limits:
   max_globals_used_per_pou: 10   # CP18
   max_parameters: 8              # CP23
 
+# N8 — Acceptable identifier character set. Defaults to ASCII letters /
+# digits / underscore with a letter or underscore lead — the IEC 61131-3
+# standard's identifier grammar. Override locally to allow / forbid extras.
+identifier_charset: '^[A-Za-z_][A-Za-z0-9_]*$'
+
 severity_overrides:
   # C2 — All elements shall be commented.
   POU_NOT_COMMENTED: info
@@ -75,6 +80,18 @@ severity_overrides:
   POINTER_COMPARED: warn
   # Adjacent to CP14 output-write discipline.
   OUTPUT_VAR_READ_INTERNALLY: warn
+  # CP3 — All variables shall be initialised before being used.
+  UNINITIALIZED_VAR_USED: warn
+  # CP6 — Avoid VAR_EXTERNAL inside function-like POU bodies.
+  EXTERNAL_VAR_IN_FUNCTION: warn
+  # CP25 — Data-type conversions shall be explicit.
+  IMPLICIT_TYPE_CONVERSION: info
+  # CP26 — A global variable shall be written by at most one PROGRAM.
+  MULTI_WRITER_GLOBAL: error
+  # CP28 — TIME equality / inequality shall not be used.
+  TIME_EQUALITY: warn
+  # N8 — Identifier charset is defined and enforced.
+  IDENTIFIER_CHARSET: info
 
 # N2 / N10 — Type prefixes for variables and user-defined types.
 #

@@ -76,7 +76,14 @@ export type Category =
   | 'TOO_MANY_PARAMETERS'           // CP23
   | 'INDIRECT_RECURSIVE_CALL'       // CP13 indirect
   | 'POINTER_ARITHMETIC'            // E2
-  | 'POINTER_COMPARED';             // E3
+  | 'POINTER_COMPARED'              // E3
+  // PLCopen gap-rules implemented after the iec-checker comparison.
+  | 'UNINITIALIZED_VAR_USED'        // CP3
+  | 'EXTERNAL_VAR_IN_FUNCTION'      // CP6
+  | 'IMPLICIT_TYPE_CONVERSION'      // CP25
+  | 'MULTI_WRITER_GLOBAL'           // CP26
+  | 'TIME_EQUALITY'                 // CP28
+  | 'IDENTIFIER_CHARSET';           // N8
 
 /**
  * Categories that only make sense when comparing two revisions of the
@@ -183,6 +190,12 @@ export const ALL_CATEGORIES: Category[] = [
   'INDIRECT_RECURSIVE_CALL',
   'POINTER_ARITHMETIC',
   'POINTER_COMPARED',
+  'UNINITIALIZED_VAR_USED',
+  'EXTERNAL_VAR_IN_FUNCTION',
+  'IMPLICIT_TYPE_CONVERSION',
+  'MULTI_WRITER_GLOBAL',
+  'TIME_EQUALITY',
+  'IDENTIFIER_CHARSET',
 ];
 
 export interface Position {
@@ -314,6 +327,13 @@ export interface ResolvedConfig {
     maxGlobalsUsedPerPou: number | null;  // CP18
     maxParameters: number | null;         // CP23
   };
+  /**
+   * Regex any declared identifier must fully match — drives PLCopen N8.
+   * `null` (default) disables the check. Set to e.g.
+   * `'^[A-Za-z_][A-Za-z0-9_]*$'` to restrict identifiers to ASCII letters,
+   * digits, and underscore.
+   */
+  identifierCharsetPattern: string | null;
 }
 
 export interface SymbolTable {
@@ -571,6 +591,7 @@ export type DeclKind =
   | 'var_output'
   | 'var_in_out'
   | 'var_temp'
+  | 'var_external'
   | 'constant'
   | 'fb_instance'
   | 'timer_instance'
@@ -626,6 +647,15 @@ export interface LocalVar {
   file: string;
   line: number;
   typeText: string;
+  /**
+   * The grammar node type of the enclosing var-block (`var_block`,
+   * `var_temp`, `var_external`, etc.). Lets checks distinguish VAR_EXTERNAL
+   * locals from regular VAR locals without losing the rest of the existing
+   * "everything in pouLocals" model.
+   */
+  section?: string;
+  /** Initial-value text from the declaration (e.g. `:= 0`), if any. */
+  initial?: string;
 }
 
 export interface MemberAccess {

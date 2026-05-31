@@ -49,6 +49,7 @@ Legend:
 | **N4** | Constants in `UPPER_CASE` | **mapped** | `NAMING_CONVENTION` (`constant.pattern = ^[A-Z][A-Z0-9_]+$`) |
 | **N5** | Local names shall not shadow global names | **mapped** | `VARIABLE_SHADOWING` (→ warn) |
 | **N6** | Define an acceptable name length | **mapped** | `IDENTIFIER_TOO_LONG` (cap via `limits.max_identifier_length`, default 32) |
+| **N8** | Define an acceptable character set | **mapped** | `IDENTIFIER_CHARSET` (regex via `identifier_charset`; preset sets the IEC 61131-3 default) |
 | **N9** | Different element kinds shall not share a name | **mapped** | `NAME_REUSED_DIFFERENT_KIND` |
 | **N10** | Naming rules for user-defined types | **mapped** | `NAMING_CONVENTION` (`enum_type`, `structure_type`, …) |
 
@@ -77,9 +78,11 @@ Legend:
 |---|---|---|---|
 | **CP1** | Access to a member shall be by name | **mapped** | `DIRECT_ADDRESS_USED` (same shape as N1) |
 | **CP2** | All code shall be used in the application | **mapped** | `DEAD_POU_INTRODUCED` (needs `--project-scope` to see callers outside the diff) |
+| **CP3** | All variables shall be initialised before being used | **mapped** | `UNINITIALIZED_VAR_USED` (source-position heuristic; doesn't model control flow) |
+| **CP6** | Avoid `VAR_EXTERNAL` inside function-like POUs | **mapped** | `EXTERNAL_VAR_IN_FUNCTION` |
 | **CP8** | Floating-point compare shall not be `=` / `<>` | **mapped** | `REAL_EQUALITY` (→ warn) |
 | **CP9** | Limit POU code complexity | **mapped** | `metrics.thresholds` (cyclomatic 10/20, nesting 4/6) |
-| **CP10** | Avoid multiple writes from multiple tasks | out of scope | No task-model awareness in the engine. |
+| **CP10** | Avoid multiple writes from multiple tasks | out of scope | No task-model awareness in the engine (CP26 covers the related PROGRAM-level case). |
 | **CP12** | Physical outputs shall be written once per cycle | out of scope | No cycle-time semantics. |
 | **CP13** | POUs shall not call themselves (direct + indirect) | **mapped** | `RECURSIVE_CALL` (direct) + `INDIRECT_RECURSIVE_CALL` (cycles in the call graph), both → error |
 | **CP14** | POUs shall have a single point of exit | **mapped** | `MULTIPLE_EXIT_POINTS` (→ warn) |
@@ -91,8 +94,9 @@ Legend:
 | **CP22** | Select appropriate data type | out of scope | Subjective; depends on application semantics. |
 | **CP23** | Max number of input/output/in-out variables | **mapped** | `TOO_MANY_PARAMETERS` (cap via `limits.max_parameters`, default 8) |
 | **CP24** | Do not declare variables that are not used | **mapped** | `UNUSED_VAR_INTRODUCED`, `UNUSED_INPUT_VAR`, `UNUSED_OUTPUT_VAR` (all → warn) |
-| **CP25** | Data type conversions shall be explicit | out of scope | Needs type inference across the symbol table; out of v0.x scope. |
-| **CP26** | A global variable may be written by only one PROGRAM | out of scope | Cross-program semantics — no PROGRAM-ownership model. |
+| **CP25** | Data type conversions shall be explicit | **mapped** | `IMPLICIT_TYPE_CONVERSION` (catches INT-family vs REAL-family mix in arithmetic; full type inference is still out of scope) |
+| **CP26** | A global variable may be written by only one PROGRAM | **mapped** | `MULTI_WRITER_GLOBAL` (project-scoped — needs `--project-scope`) |
+| **CP28** | TIME equality / inequality shall not be used | **mapped** | `TIME_EQUALITY` |
 
 ### Vendor extensions (E)
 
@@ -105,21 +109,26 @@ Legend:
 
 | Bucket | Count |
 |---|---|
-| **mapped** (enforced by the preset) | 24 |
+| **mapped** (enforced by the preset) | 30 |
 | **mapped (partial)** | 1 (CP17) |
-| **out of scope** (intent / task model / cycle / type inference) | 8 |
+| **out of scope** (intent / task model / cycle-time semantics) | 5 |
 
-Every rule in the **mapped** bucket runs out of the box when you `extends:` this preset; no extra wiring required. The **out of scope** rules are either inherently semantic (CP21/CP22), need a runtime model the engine doesn't have (CP10/CP12/CP16/CP26), or need full type inference (CP25) — none are blocking for everyday PLCopen-style review.
+Every rule in the **mapped** bucket runs out of the box when you `extends:` this preset; no extra wiring required. The remaining **out of scope** rules are inherently semantic (CP21 lifetime intent, CP22 type selection) or need a runtime model the engine doesn't have (CP10 task-level concurrency, CP12 cycle-time semantics, CP16 task→POU calls) — they need a different tool or a human reviewer.
+
+The preset closes every PLCopen rule that `iec-checker` ships, plus the engine's full diff-aware / inline-PR-review / FB-instance / metrics surface on top.
 
 ## Configurability
 
-The numeric caps are tunable in your own config (or via another preset layered on top):
+The numeric caps and identifier-charset regex are tunable in your own config (or via another preset layered on top):
 
 ```yaml
 limits:
   max_identifier_length: 64       # PLCopen N6 — bump this if you have long descriptive names
   max_globals_used_per_pou: 20    # PLCopen CP18
   max_parameters: 12              # PLCopen CP23
+
+# PLCopen N8 — broaden the regex if your team allows extra characters.
+identifier_charset: '^[A-Za-z_][A-Za-z0-9_]*$'
 ```
 
 Set any limit to `0` (or omit the key) to disable that individual check.

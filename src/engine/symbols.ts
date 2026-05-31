@@ -182,6 +182,10 @@ function buildDeclarations(t: SymbolTable): NamedDecl[] {
 }
 
 function inferLocalKind(l: LocalVar, t: SymbolTable): NamedDecl['kind'] {
+  // VAR_EXTERNAL gets its own kind so PLCopen CP6 can spot externals declared
+  // inside FUNCTION / FUNCTION_BLOCK / METHOD bodies (PLCopen forbids it). VAR
+  // and VAR_TEMP keep falling into `var_local` since CP6 doesn't apply to them.
+  if (l.section === NODE.VAR_EXTERNAL) return 'var_external';
   const tt = l.typeText.trim().toUpperCase();
   if (TIMER_TYPE_NAMES.has(tt)) return 'timer_instance';
   if (COUNTER_TYPE_NAMES.has(tt)) return 'counter_instance';
@@ -361,6 +365,8 @@ function collectPou(
           file: file.path,
           line: lineOf(decl),
           typeText: typeText,
+          section: varBlock.type,
+          initial: pickInitial(decl),
         });
       }
       // POINTER-typed locals — used by POINTER_ARITHMETIC / POINTER_COMPARED.

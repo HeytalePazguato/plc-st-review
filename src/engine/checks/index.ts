@@ -68,6 +68,12 @@ import { forLoopVarUsedAfter } from './for-loop-var-used-after.js';
 import { pointerArithmetic } from './pointer-arithmetic.js';
 import { pointerCompared } from './pointer-compared.js';
 import { indirectRecursiveCall } from './indirect-recursive-call.js';
+import { externalVarInFunction } from './external-var-in-function.js';
+import { timeEquality } from './time-equality.js';
+import { identifierCharset } from './identifier-charset.js';
+import { uninitializedVarUsed } from './uninitialized-var-used.js';
+import { implicitTypeConversion } from './implicit-type-conversion.js';
+import { multiWriterGlobal } from './multi-writer-global.js';
 
 export function allChecks(): Check[] {
   return [
@@ -141,6 +147,13 @@ export function allChecks(): Check[] {
     pointerArithmetic,
     pointerCompared,
     indirectRecursiveCall,
+    // PLCopen gap rules surfaced by the iec-checker comparison.
+    externalVarInFunction,
+    timeEquality,
+    identifierCharset,
+    uninitializedVarUsed,
+    implicitTypeConversion,
+    multiWriterGlobal,
   ];
 }
 

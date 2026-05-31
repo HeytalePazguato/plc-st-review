@@ -29,7 +29,7 @@ FB instance T3 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **68 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (The 69th, `DEAD_POU_INTRODUCED`, is opt-in, a whole-repo parse is too slow for every PR, so it's label-triggered; see [Project scope](project-scope.md).)
+The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **73 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (Two categories — `DEAD_POU_INTRODUCED` and `MULTI_WRITER_GLOBAL` — are opt-in: they need a whole-repo parse, which is too slow for every PR, so they're label-triggered; see [Project scope](project-scope.md).)
 
 ## Why this matters
 
@@ -43,11 +43,11 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 
 ## Three ways to use it
 
-- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 48 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, PLCopen-aligned rules, more). No PR workflow required.
-- **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 17 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
+- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 54 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, PLCopen-aligned rules, uninitialised-var use, TIME equality, implicit type conversions, more). No PR workflow required.
+- **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 21 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
 - **Team-style enforcer**: drop a `.plc-st-review.yml` listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`; both modes pick it up automatically.
 
-## The 69 check categories
+## The 75 check categories
 
 | Category | What fires it |
 |---|---|

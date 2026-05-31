@@ -91,6 +91,9 @@ These run on the *after* tree alone and surface bugs that compile but mis-behave
 - [FOR_LOOP_VAR_USED_AFTER](checks/plcopen/for_loop_var_used_after.md)
 - [POINTER_ARITHMETIC](checks/plcopen/pointer_arithmetic.md)
 - [POINTER_COMPARED](checks/plcopen/pointer_compared.md)
+- [UNINITIALIZED_VAR_USED](checks/plcopen/uninitialized_var_used.md)
+- [TIME_EQUALITY](checks/plcopen/time_equality.md)
+- [MULTI_WRITER_GLOBAL](checks/plcopen/multi_writer_global.md) — project-scoped (needs `--project-scope`).
 
 ## FB-instance checks
 
@@ -135,8 +138,11 @@ These are stylistic / hygiene checks. Most ship at `info` severity and stay off 
 - [NAME_REUSED_DIFFERENT_KIND](checks/plcopen/name_reused_different_kind.md)
 - [INDIRECT_RECURSIVE_CALL](checks/plcopen/indirect_recursive_call.md)
 - [IDENTIFIER_TOO_LONG](checks/plcopen/identifier_too_long.md)
+- [IDENTIFIER_CHARSET](checks/plcopen/identifier_charset.md)
 - [TOO_MANY_PARAMETERS](checks/plcopen/too_many_parameters.md)
 - [TOO_MANY_GLOBALS_USED](checks/plcopen/too_many_globals_used.md)
+- [EXTERNAL_VAR_IN_FUNCTION](checks/plcopen/external_var_in_function.md)
+- [IMPLICIT_TYPE_CONVERSION](checks/plcopen/implicit_type_conversion.md)
 
 Several of the above also appear in the [PLCopen Coding Guidelines](presets/plcopen.md); the PLCopen preset bumps their severities and turns on the limit-gated ones. They're not PLCopen-exclusive though — they're general checks the engine ships standalone.
 
