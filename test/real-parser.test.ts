@@ -470,6 +470,44 @@ END_FUNCTION_BLOCK
     ).toHaveLength(0);
   });
 
+  it('VARIABLE_SHADOWING fires when a local FB instance shadows a global of the same name', async () => {
+    // A common bug: VAR_GLOBAL has an FB instance (e.g. a shared pump
+    // controller). Some POU declares a local instance with the same name —
+    // every reference inside that POU silently picks the local, leaving the
+    // global instance unread.
+    const before = await parseSource(
+      `VAR_GLOBAL
+    myPump : FB_Pump;
+END_VAR
+FUNCTION_BLOCK FB_Pump
+END_FUNCTION_BLOCK
+PROGRAM Main
+END_PROGRAM
+`,
+      'shadow.st',
+    );
+    const after = await parseSource(
+      `VAR_GLOBAL
+    myPump : FB_Pump;
+END_VAR
+FUNCTION_BLOCK FB_Pump
+END_FUNCTION_BLOCK
+PROGRAM Main
+VAR
+    myPump : FB_Pump;
+END_VAR
+END_PROGRAM
+`,
+      'shadow.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'VARIABLE_SHADOWING',
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toContain('myPump');
+    expect(findings[0].summary).toContain('shadows a global');
+  });
+
   it('DIVISION_BY_ZERO understands a based-literal divisor of zero', async () => {
     const fb = await parseSource(
       `FUNCTION_BLOCK FB_D
