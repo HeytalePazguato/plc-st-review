@@ -17,7 +17,7 @@ bResult := %I0.0;                 (* fires *)
 **The bot posts.**
 
 ```
-🟧 warn  DIRECT_ADDRESS_USED
+🟦 info  DIRECT_ADDRESS_USED
 Direct address %I0.0 used (PLCopen N1 / CP1)
 ```
 

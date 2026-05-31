@@ -6,14 +6,14 @@ function key(s: RestrictedStatement): string {
 
 export const forbiddenStatement: Check = {
   category: 'FORBIDDEN_STATEMENT',
-  defaultSeverity: 'warn',
+  defaultSeverity: 'info',
   run(ctx) {
     const findings: Finding[] = [];
     const before = new Set(ctx.before.restrictedStatements.map(key));
     for (const s of ctx.after.restrictedStatements) {
       if (before.has(key(s))) continue;
       findings.push({
-        severity: 'warn',
+        severity: 'info',
         category: 'FORBIDDEN_STATEMENT',
         file: s.file,
         line: s.line,

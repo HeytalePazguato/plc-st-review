@@ -94,6 +94,10 @@ nav:
           - DIVISION_BY_ZERO: checks/static-integrity/division_by_zero.md
           - INFINITE_LOOP: checks/static-integrity/infinite_loop.md
           - LOOP_BOUNDS_REVERSED: checks/static-integrity/loop_bounds_reversed.md
+          - FOR_LOOP_VAR_MODIFIED: checks/plcopen/for_loop_var_modified.md
+          - FOR_LOOP_VAR_USED_AFTER: checks/plcopen/for_loop_var_used_after.md
+          - POINTER_ARITHMETIC: checks/plcopen/pointer_arithmetic.md
+          - POINTER_COMPARED: checks/plcopen/pointer_compared.md
       - FB-instance:
           - COUNTER_PV_ZERO: checks/fb-instance/counter_pv_zero.md
           - TIMER_PT_ZERO: checks/fb-instance/timer_pt_zero.md
@@ -123,20 +127,15 @@ nav:
           - OUTPUT_VAR_READ_INTERNALLY: checks/code-quality/output_var_read_internally.md
           - NESTED_COMMENTS: checks/code-quality/nested_comments.md
           - NAMING_CONVENTION: checks/code-quality/naming_convention.md
-      - PLCopen-aligned:
           - DIRECT_ADDRESS_USED: checks/plcopen/direct_address_used.md
           - IF_WITHOUT_ELSE: checks/plcopen/if_without_else.md
           - FORBIDDEN_STATEMENT: checks/plcopen/forbidden_statement.md
-          - FOR_LOOP_VAR_MODIFIED: checks/plcopen/for_loop_var_modified.md
-          - FOR_LOOP_VAR_USED_AFTER: checks/plcopen/for_loop_var_used_after.md
-          - IDENTIFIER_TOO_LONG: checks/plcopen/identifier_too_long.md
-          - NAME_REUSED_DIFFERENT_KIND: checks/plcopen/name_reused_different_kind.md
           - POU_NOT_COMMENTED: checks/plcopen/pou_not_commented.md
+          - NAME_REUSED_DIFFERENT_KIND: checks/plcopen/name_reused_different_kind.md
+          - INDIRECT_RECURSIVE_CALL: checks/plcopen/indirect_recursive_call.md
+          - IDENTIFIER_TOO_LONG: checks/plcopen/identifier_too_long.md
           - TOO_MANY_PARAMETERS: checks/plcopen/too_many_parameters.md
           - TOO_MANY_GLOBALS_USED: checks/plcopen/too_many_globals_used.md
-          - INDIRECT_RECURSIVE_CALL: checks/plcopen/indirect_recursive_call.md
-          - POINTER_ARITHMETIC: checks/plcopen/pointer_arithmetic.md
-          - POINTER_COMPARED: checks/plcopen/pointer_compared.md
   - Configuration:
       - Tuning severities: tuning-severities.md
       - Preset packs: preset-packs.md

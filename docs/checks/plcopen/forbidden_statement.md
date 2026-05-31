@@ -1,9 +1,8 @@
 # FORBIDDEN_STATEMENT
 
-**Severity:** `warn`.
-**PLCopen:** L10 — forbid `EXIT`, `CONTINUE`, and `GOTO`.
+**Severity:** `info` by default; `warn` under the PLCopen preset.
 
-`EXIT`, `CONTINUE`, and `GOTO` jump out of structured-control flow. PLCopen's argument: they make loops and conditional blocks hard to reason about and are almost always a sign that the surrounding structure should be reshaped (e.g. into a `WHILE` with a clear exit condition).
+`EXIT`, `CONTINUE`, and `GOTO` jump out of structured-control flow. The argument against them (also captured in PLCopen rule **L10**): they make loops and conditional blocks hard to reason about and are almost always a sign that the surrounding structure should be reshaped (e.g. into a `WHILE` with a clear exit condition). This is contested — many shops happily use `EXIT` for early loop termination — so the default severity is `info`. Bump in your config if your team agrees with the strict view, or mute if not.
 
 **Settings.** No check-specific config.
 
@@ -20,7 +19,7 @@ END_WHILE;
 **The bot posts.**
 
 ```
-🟧 warn  FORBIDDEN_STATEMENT
+🟦 info  FORBIDDEN_STATEMENT
 EXIT statement used (PLCopen L10)
 ```
 

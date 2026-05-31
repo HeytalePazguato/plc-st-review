@@ -6,14 +6,14 @@ function key(d: DirectAddress): string {
 
 export const directAddressUsed: Check = {
   category: 'DIRECT_ADDRESS_USED',
-  defaultSeverity: 'warn',
+  defaultSeverity: 'info',
   run(ctx) {
     const findings: Finding[] = [];
     const before = new Set(ctx.before.directAddresses.map(key));
     for (const d of ctx.after.directAddresses) {
       if (before.has(key(d))) continue;
       findings.push({
-        severity: 'warn',
+        severity: 'info',
         category: 'DIRECT_ADDRESS_USED',
         file: d.file,
         line: d.line,

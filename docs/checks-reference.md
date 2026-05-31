@@ -87,6 +87,10 @@ These run on the *after* tree alone and surface bugs that compile but mis-behave
 - [DIVISION_BY_ZERO](checks/static-integrity/division_by_zero.md)
 - [INFINITE_LOOP](checks/static-integrity/infinite_loop.md)
 - [LOOP_BOUNDS_REVERSED](checks/static-integrity/loop_bounds_reversed.md)
+- [FOR_LOOP_VAR_MODIFIED](checks/plcopen/for_loop_var_modified.md)
+- [FOR_LOOP_VAR_USED_AFTER](checks/plcopen/for_loop_var_used_after.md)
+- [POINTER_ARITHMETIC](checks/plcopen/pointer_arithmetic.md)
+- [POINTER_COMPARED](checks/plcopen/pointer_compared.md)
 
 ## FB-instance checks
 
@@ -124,24 +128,17 @@ These are stylistic / hygiene checks. Most ship at `info` severity and stay off 
 - [OUTPUT_VAR_READ_INTERNALLY](checks/code-quality/output_var_read_internally.md)
 - [NESTED_COMMENTS](checks/code-quality/nested_comments.md)
 - [NAMING_CONVENTION](checks/code-quality/naming_convention.md)
+- [DIRECT_ADDRESS_USED](checks/plcopen/direct_address_used.md)
+- [IF_WITHOUT_ELSE](checks/plcopen/if_without_else.md)
+- [FORBIDDEN_STATEMENT](checks/plcopen/forbidden_statement.md)
+- [POU_NOT_COMMENTED](checks/plcopen/pou_not_commented.md)
+- [NAME_REUSED_DIFFERENT_KIND](checks/plcopen/name_reused_different_kind.md)
+- [INDIRECT_RECURSIVE_CALL](checks/plcopen/indirect_recursive_call.md)
+- [IDENTIFIER_TOO_LONG](checks/plcopen/identifier_too_long.md)
+- [TOO_MANY_PARAMETERS](checks/plcopen/too_many_parameters.md)
+- [TOO_MANY_GLOBALS_USED](checks/plcopen/too_many_globals_used.md)
 
-## PLCopen-aligned checks
-
-These categories map to specific rules in the [PLCopen Coding Guidelines](presets/plcopen.md). Enable them all at once via `extends: ./presets/plcopen.yml`, or pick the ones you care about with `severity_overrides:` / `disabled_checks:`.
-
-- [DIRECT_ADDRESS_USED](checks/plcopen/direct_address_used.md) (N1 / CP1)
-- [IF_WITHOUT_ELSE](checks/plcopen/if_without_else.md) (L17)
-- [FORBIDDEN_STATEMENT](checks/plcopen/forbidden_statement.md) (L10)
-- [FOR_LOOP_VAR_MODIFIED](checks/plcopen/for_loop_var_modified.md) (L12)
-- [FOR_LOOP_VAR_USED_AFTER](checks/plcopen/for_loop_var_used_after.md) (L13)
-- [IDENTIFIER_TOO_LONG](checks/plcopen/identifier_too_long.md) (N6)
-- [NAME_REUSED_DIFFERENT_KIND](checks/plcopen/name_reused_different_kind.md) (N9)
-- [POU_NOT_COMMENTED](checks/plcopen/pou_not_commented.md) (C2)
-- [TOO_MANY_PARAMETERS](checks/plcopen/too_many_parameters.md) (CP23)
-- [TOO_MANY_GLOBALS_USED](checks/plcopen/too_many_globals_used.md) (CP18)
-- [INDIRECT_RECURSIVE_CALL](checks/plcopen/indirect_recursive_call.md) (CP13 indirect)
-- [POINTER_ARITHMETIC](checks/plcopen/pointer_arithmetic.md) (E2)
-- [POINTER_COMPARED](checks/plcopen/pointer_compared.md) (E3)
+Several of the above also appear in the [PLCopen Coding Guidelines](presets/plcopen.md); the PLCopen preset bumps their severities and turns on the limit-gated ones. They're not PLCopen-exclusive though — they're general checks the engine ships standalone.
 
 ## Using a check in your PR
 

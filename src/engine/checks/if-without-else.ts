@@ -6,7 +6,7 @@ function key(s: IfStatement): string {
 
 export const ifWithoutElse: Check = {
   category: 'IF_WITHOUT_ELSE',
-  defaultSeverity: 'warn',
+  defaultSeverity: 'info',
   run(ctx) {
     const findings: Finding[] = [];
     const before = new Set(
@@ -16,7 +16,7 @@ export const ifWithoutElse: Check = {
       if (s.hasElse) continue;
       if (before.has(key(s))) continue;
       findings.push({
-        severity: 'warn',
+        severity: 'info',
         category: 'IF_WITHOUT_ELSE',
         file: s.file,
         line: s.line,
