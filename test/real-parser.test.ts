@@ -362,6 +362,82 @@ END_FUNCTION_BLOCK
     ).toHaveLength(1);
   });
 
+  it('case-insensitive (default): FB-typed local declared with off-case type resolves', async () => {
+    // Before extending `CaseMap` to `pous`, `inferLocalKind` (and the
+    // FB_INSTANCE_* checks) looked up the type-text against a raw `Map`, so a
+    // local typed `fb_helper` never matched the FB declared as `FB_Helper` in
+    // case-insensitive dialects — silently classified as `var_local`, which
+    // defangs FB_INSTANCE_NEVER_CALLED.
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_Helper
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_Outer
+VAR
+    fbInst : fb_helper;
+END_VAR
+fbInst.Q;
+END_FUNCTION_BLOCK
+`,
+      'fbs.st',
+    );
+    const table = buildSymbolTable([ast]);
+    // The type-text lookup now resolves through CaseMap.
+    expect(table.pous.get('fb_helper')?.kind).toBe('function_block');
+    // And the local is classified as an FB instance, not a plain `var_local`.
+    const local = table.declarations.find((d) => d.name === 'fbInst');
+    expect(local?.kind).toBe('fb_instance');
+    // FB_INSTANCE_NEVER_CALLED therefore sees the instance and fires.
+    const findings = review([], [ast]);
+    expect(
+      findings.filter((f) => f.category === 'FB_INSTANCE_NEVER_CALLED').length,
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it('case-sensitive mode: an FB-typed local with off-case type does NOT resolve', async () => {
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_Helper
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_Outer
+VAR
+    fbInst : fb_helper;
+END_VAR
+fbInst.Q;
+END_FUNCTION_BLOCK
+`,
+      'fbs.st',
+    );
+    const table = buildSymbolTable([ast], true);
+    expect(table.pous.get('fb_helper')).toBeUndefined();
+    const local = table.declarations.find((d) => d.name === 'fbInst');
+    expect(local?.kind).toBe('var_local');
+  });
+
+  it('cross-file globals with the same name are both retained (H1)', async () => {
+    // Before this fix, the second file's decl overwrote the first in `globals`
+    // and `buildDeclarations` only saw one, blinding NAME_REUSED_DIFFERENT_KIND
+    // to cross-file collisions. The fix keeps every decl in `globalDecls` and
+    // routes `buildDeclarations` / metric aggregation through it.
+    const fileA = await parseSource(
+      `VAR_GLOBAL
+    gShared : INT;
+END_VAR
+`,
+      'a.st',
+    );
+    const fileB = await parseSource(
+      `VAR_GLOBAL
+    gShared : REAL;
+END_VAR
+`,
+      'b.st',
+    );
+    const table = buildSymbolTable([fileA, fileB]);
+    expect(table.globalDecls).toHaveLength(2);
+    expect(table.globalDecls.map((g) => g.file).sort()).toEqual(['a.st', 'b.st']);
+    const decls = table.declarations.filter((d) => d.name === 'gShared');
+    expect(decls).toHaveLength(2);
+  });
+
   it('IDENTIFIER_CASE_MISMATCH fires by default but is disabled in case-sensitive mode', async () => {
     const before = await parseSource(
       `FUNCTION_BLOCK FB_M

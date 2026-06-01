@@ -59,8 +59,9 @@ const POU_KIND_BY_NODE: Record<string, PouKind> = {
 export function emptySymbolTable(caseSensitive = false): SymbolTable {
   return {
     caseSensitive,
-    pous: new Map(),
+    pous: new CaseMap(caseSensitive),
     globals: new CaseMap(caseSensitive),
+    globalDecls: [],
     enums: new CaseMap(caseSensitive),
     directAddresses: [],
     ifStatements: [],
@@ -76,7 +77,7 @@ export function emptySymbolTable(caseSensitive = false): SymbolTable {
     forLoops: [],
     pragmas: [],
     unreachable: [],
-    pouLocals: new Map(),
+    pouLocals: new CaseMap(caseSensitive),
     memberAccesses: [],
     whileLoops: [],
     arrayAccesses: [],
@@ -157,8 +158,11 @@ function buildDeclarations(t: SymbolTable): NamedDecl[] {
       });
     }
   }
-  // Globals (constants and non-constants).
-  for (const g of t.globals.values()) {
+  // Globals (constants and non-constants). Iterate `globalDecls`, not
+  // `globals.values()`, so a name declared in two files surfaces both sites —
+  // NAME_REUSED_DIFFERENT_KIND can then spot the collision instead of being
+  // blinded by the last-write-wins `globals` index.
+  for (const g of t.globalDecls) {
     out.push({
       name: g.name,
       kind: g.constant ? 'constant' : 'var_global',
@@ -753,6 +757,10 @@ function collectGlobals(file: AstFile, block: StNode, t: SymbolTable): void {
         constant,
         retain,
       };
+      // `globalDecls` holds every site (H1: cross-file same-name globals are a
+      // real bug we must not silently lose); `globals` keeps the last-write-
+      // wins by-name index that existing `has`/`get` callers depend on.
+      t.globalDecls.push(g);
       t.globals.set(name, g);
     }
   }

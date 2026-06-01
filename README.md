@@ -370,6 +370,19 @@ Every change is reduced to an AST diff. The engine:
 
 No LLM is involved. Findings are deterministic.
 
+## Deterministic by design — no LLM in the loop
+
+Every finding is produced by a check module under [`src/engine/checks/`](src/engine/checks) that operates on the tree-sitter AST and the symbol table. Each module is a pure function of `(before AST, after AST, config)` → `findings[]`. Same inputs, same outputs, byte for byte. No temperature, no sampling, no model version drift.
+
+That choice buys four properties an LLM-based reviewer can't match:
+
+- **Reproducible** — a finding that fires today fires tomorrow on the same input. CI reruns match. Two engineers see the same comments. Findings stay citable in code review and postmortems six months later.
+- **Auditable** — every finding maps to one named check with source code you can read. For regulated industries (medical, automotive, energy, pharma) this auditability is the difference between "evidence we can show an inspector" and "a black box we trust."
+- **Air-gappable** — the shipped Docker image bundles everything the analyzer needs. Mirrored to an internal registry, it runs on offline runners with **zero outbound traffic** — no model-host endpoints, no API tokens, no SaaS dependency.
+- **Your code never leaves the network** — parsing and analysis run in-process in the CI job. Nothing is sent to a third party. There's no "we promise we don't train on your code" disclaimer to evaluate; the architecture makes it impossible.
+
+PLC source typically encodes safety logic, vendor part numbers, calibration constants, customer-specific behavior, and timing assumptions that the customer never agreed to have anywhere but the runner that built it. On that kind of code, deterministic wins by default. See [Deterministic (no LLM)](https://heytalepazguato.github.io/plc-st-review/deterministic/) for the longer write-up.
+
 ## Development
 
 > Contributors only. End users don't need this section: the GitHub

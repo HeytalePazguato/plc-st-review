@@ -60,6 +60,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Deterministic (no LLM): deterministic.md
   - Checks:
       - Overview: checks-reference.md
       - Limitations: check-limitations.md

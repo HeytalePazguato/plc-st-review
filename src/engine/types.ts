@@ -1,3 +1,5 @@
+import type { CaseMap } from './case-map.js';
+
 export type Severity = 'info' | 'warn' | 'error';
 
 export const SEVERITY_RANK: Record<Severity, number> = {
@@ -340,12 +342,30 @@ export interface SymbolTable {
   /**
    * Whether identifier keys in this table are case-sensitive. Mirrors the
    * resolved config; carried here so collectors that build per-call-site maps
-   * (e.g. named arguments) pick the same mode as `globals` / `enums`.
+   * (e.g. named arguments) pick the same mode as `pous` / `pouLocals` /
+   * `globals` / `enums`.
    */
   caseSensitive: boolean;
-  pous: Map<string, Pou>;
-  globals: Map<string, GlobalVar>;
-  enums: Map<string, EnumDef>;
+  /**
+   * POU table, keyed by qualified name (`Namespace.FB_X.Method1` etc.). Backed
+   * by `CaseMap` so a lookup by `fb_x` resolves the decl `FB_X` in case-
+   * insensitive dialects (TwinCAT / CODESYS / generic IEC) and stays strict in
+   * case-sensitive ones (B&R). Otherwise an FB-typed local declared as
+   * `: fb_x` and looked up as `FB_X` (or vice versa) would silently fail to
+   * resolve, defanging FB-instance checks.
+   */
+  pous: CaseMap<Pou>;
+  globals: CaseMap<GlobalVar>;
+  /**
+   * Every global declaration as it was seen, in source order, across every
+   * parsed file. `globals` deduplicates by name (last-write-wins) so its size
+   * counts unique names; `globalDecls` is the source of truth when a name is
+   * declared in more than one file (H1) — used by `buildDeclarations` (so
+   * NAME_REUSED_DIFFERENT_KIND sees every site) and by the project metrics
+   * (`totalGlobals`, orphan-type token scan).
+   */
+  globalDecls: GlobalVar[];
+  enums: CaseMap<EnumDef>;
   timerInstances: TimerInstance[];
   callSites: CallSite[];
   caseStatements: CaseSite[];
@@ -355,7 +375,13 @@ export interface SymbolTable {
   forLoops: ForLoop[];
   pragmas: Pragma[];
   unreachable: UnreachableStmt[];
-  pouLocals: Map<string, LocalVar[]>; // by POU qualified name
+  /**
+   * Per-POU local catalogue, keyed by the POU's qualified name. Backed by
+   * `CaseMap` for symmetry with `pous` — a check that grabs the locals for a
+   * scope spelled in one casing finds them even if a different code path
+   * stored them under another.
+   */
+  pouLocals: CaseMap<LocalVar[]>;
   memberAccesses: MemberAccess[];
   whileLoops: WhileLoop[];
   arrayAccesses: ArrayAccess[];
