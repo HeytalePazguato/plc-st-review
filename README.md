@@ -211,8 +211,6 @@ Each row links to a per-check section in [docs/checks-reference.md](docs/checks-
 | `CONSTANT_VALUE_CHANGED` | `info` (`warn` for safety-prefixed names) | A `VAR_GLOBAL CONSTANT`'s initial value changed. Prefixes like `SAFETY_`, `INTERLOCK_`, `SIL_` elevate severity. |
 | `COMMENT_ONLY` | `info` | The AST is structurally identical between revisions; only comments/whitespace changed. |
 | `ARRAY_BOUNDS_CHANGED` | `error` (shrink) / `warn` (grow) | An array declaration's `[lower..upper]` bounds changed. |
-| `STATE_UNHANDLED` | `info` | A `CASE` on an enum has no `ELSE` and doesn't cover every enum value, regardless of whether the enum changed. |
-| `UNREACHABLE_CODE` | `warn` | A new statement was added after `RETURN`/`EXIT`/`CONTINUE` in the same block. |
 | `LOOP_BOUNDS_CHANGED` | `info`/`warn` by ratio | A `FOR` loop's bounds changed; severity rises when the iteration count moves ≥10×. |
 | `POU_DELETED` | `error` (with callers) / `warn` | A POU was deleted; severity depends on whether call sites in the new revision still reference it. |
 | `POU_RENAMED` | `info` | Heuristic: a POU was deleted and another with an identical signature was added; suggests a rename. |
@@ -252,6 +250,30 @@ Code-quality + style:
 | `OUTPUT_VAR_READ_INTERNALLY` | `info` | `VAR_OUTPUT` read inside the POU; usually a sign you wanted a local. |
 | `NESTED_COMMENTS` | `info` | Block comment contains another block comment. |
 | `NAMING_CONVENTION` | `warn` (config-driven) | Declaration name doesn't match the configured prefix / suffix / regex. See [docs/preset-packs.md](docs/preset-packs.md). |
+| `DIRECT_ADDRESS_USED` | `info` | `%I0.0` / `%QW100`-style direct I/O address (PLCopen N1 / CP1). |
+| `IF_WITHOUT_ELSE` | `info` | `IF` / `ELSIF` chain with no terminal `ELSE` (PLCopen L17). |
+| `FORBIDDEN_STATEMENT` | `info` | `GOTO` / `EXIT` / `CONTINUE` use site (PLCopen L10). |
+| `POU_NOT_COMMENTED` | `warn` | POU declaration with no leading comment (PLCopen C2). |
+| `NAME_REUSED_DIFFERENT_KIND` | `warn` | Same name reused across declaration kinds, e.g. a global and an enum value (PLCopen N9). |
+| `INDIRECT_RECURSIVE_CALL` | `error` | Call-graph cycle through two or more POUs (PLCopen CP13 indirect). |
+| `IDENTIFIER_TOO_LONG` | `warn` | Identifier longer than `limits.max_identifier_length` (PLCopen N6). |
+| `IDENTIFIER_CHARSET` | `warn` | Identifier outside the `identifier_charset` regex (PLCopen N8). |
+| `TOO_MANY_PARAMETERS` | `warn` | POU parameter count above `limits.max_parameters` (PLCopen CP23). |
+| `TOO_MANY_GLOBALS_USED` | `warn` | POU touches more than `limits.max_globals_used_per_pou` globals (PLCopen CP18). |
+| `EXTERNAL_VAR_IN_FUNCTION` | `warn` | `VAR_EXTERNAL` inside `FUNCTION` / `FUNCTION_BLOCK` / `METHOD` (PLCopen CP6). |
+| `IMPLICIT_TYPE_CONVERSION` | `warn` | INT-family mixed with REAL-family in arithmetic (PLCopen CP25). |
+
+Security (IEC 62443 industrial-cybersecurity checks):
+
+| Category | Default severity | Trigger |
+|---|---|---|
+| `HARDCODED_CREDENTIALS` | `error` | Secret-named variable with a literal STRING initialiser (62443-4-2 CR 1.5). |
+| `HARDCODED_NETWORK_ENDPOINT` | `warn` | STRING literal that's an IPv4 dotted-quad or `http(s)`/`tcp`/`opc.tcp`/`mqtt(s)`/`modbus`/`ssh` URL (62443-4-1 SI-1). |
+| `UNVALIDATED_INPUT_USE` | `info` | `VAR_INPUT` used as array subscript or divisor with no in-POU relational guard (62443-4-2 CR 3.5). |
+| `DEBUG_PRAGMA_IN_PRODUCTION` | `warn` | `{attribute 'monitoring'}` / `'debug'` / `'force_init'` pragma in a non-test path (62443-4-1 SI-2). |
+| `PERSISTENT_PLAINTEXT_SECRET` | `error` | `VAR_GLOBAL PERSISTENT` / `RETAIN` of a secret-named variable (62443-4-2 CR 4.1). |
+
+See the [IEC 62443 mapping page](https://heytalepazguato.github.io/plc-st-review/standards/iec-62443/) for the per-clause cross-reference and suggested severity policy by Security Level. The companion [MISRA-C](https://heytalepazguato.github.io/plc-st-review/standards/misra-c/) and [IEC 61508](https://heytalepazguato.github.io/plc-st-review/standards/iec-61508/) mapping pages cover the rest of the standards-credibility surface.
 
 Single-revision integrity:
 
@@ -263,6 +285,15 @@ Single-revision integrity:
 | `DIVISION_BY_ZERO` | `error` | The divisor is a literal `0`, or a `VAR_GLOBAL CONSTANT` resolving to 0. |
 | `INFINITE_LOOP` | `error` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside the body. |
 | `LOOP_BOUNDS_REVERSED` | `error` | `FOR` loop bounds and step point opposite directions, per spec body never runs, on overflow-wrapping runtimes it runs ~unlimited times. |
+| `STATE_UNHANDLED` | `info` | A `CASE` on an enum has no `ELSE` and doesn't cover every enum value, regardless of whether the enum changed. |
+| `UNREACHABLE_CODE` | `warn` | A statement sits after `RETURN` / `EXIT` / `CONTINUE` in the same block. |
+| `FOR_LOOP_VAR_MODIFIED` | `warn` | Loop counter mutated inside the `FOR` body (PLCopen L12). |
+| `FOR_LOOP_VAR_USED_AFTER` | `info` | Loop counter read after `END_FOR` — the post-loop value is implementation-defined (PLCopen L13). |
+| `POINTER_ARITHMETIC` | `warn` | `+` / `-` / `*` / `/` applied to a `POINTER`-typed local (PLCopen E2). |
+| `POINTER_COMPARED` | `warn` | `<` / `>` / `<=` / `>=` applied to a `POINTER`-typed local (PLCopen E3). |
+| `UNINITIALIZED_VAR_USED` | `warn` | Local variable read before any assignment to it (PLCopen CP3). |
+| `TIME_EQUALITY` | `warn` | `=` / `<>` between `TIME` operands; brittle on tick-based runtimes (PLCopen CP28). |
+| `MULTI_WRITER_GLOBAL` | `error` | A global variable is written by more than one `PROGRAM`. Needs [`--project-scope`](docs/project-scope.md) (PLCopen CP26). |
 | `COUNTER_PV_ZERO` | `error` | `CTU`/`CTD`/`CTUD` initialized with `PV := 0`: Q always TRUE or counter useless. |
 | `TIMER_PT_ZERO` | `error` | `TON`/`TOF`/`TP` set with `PT := T#0s`: fires immediately or never. |
 | `TIMER_NOT_DRIVEN` | `warn` | A timer's `Q`/`ET` is read but no call site sets `IN`. |
@@ -308,6 +339,14 @@ metrics:                       # bands for the metric-regression checks
 
 parsing:
   max_file_size_bytes: 1000000  # per-file size cap; see "Source-size cap" below
+
+limits:                        # numeric caps for the size-/count-checking PLCopen rules
+  max_identifier_length: 32    # PLCopen N6 — drives IDENTIFIER_TOO_LONG (null = off)
+  max_globals_used_per_pou: 10 # PLCopen CP18 — drives TOO_MANY_GLOBALS_USED (null = off)
+  max_parameters: 8            # PLCopen CP23 — drives TOO_MANY_PARAMETERS (null = off)
+
+identifier_charset: null       # PLCopen N8 — regex every identifier must match; null = off
+                               # e.g. '^[A-Za-z_][A-Za-z0-9_]*$' restricts to ASCII + underscore
 ```
 
 The `metrics` block is optional; the values shown are the defaults. `COMPLEXITY_INCREASED` and `NESTING_INCREASED` read these bands; `LOC_SPIKE` fires on any single-PR growth over 50%. See [`docs/checks-reference.md`](docs/checks-reference.md#metric-thresholds) for the full block (the `lines_of_code`, `comment_ratio`, and `fan_out` keys are accepted now and consumed by the upcoming standalone `--metrics` mode).
@@ -392,7 +431,7 @@ PLC source typically encodes safety logic, vendor part numbers, calibration cons
 ```sh
 npm run bootstrap          # first-time only; see "Building from source" below
 npm run build              # tsc to dist/
-npm test                   # vitest, ~6s, 182 tests across 63 files
+npm test                   # vitest, ~7s, 270 tests across 70 files
 npm run lint               # tsc --noEmit
 ```
 

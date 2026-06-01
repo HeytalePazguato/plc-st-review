@@ -45,6 +45,11 @@ naming_conventions:
 | `naming_conventions` | Map merge, later wins on each dimension |
 | `naming_ignore` | Union |
 | `reporting.*` | Map merge |
+| `case_sensitive` | Override (last writer wins) — dialect choice; see [Case sensitivity](case-sensitivity.md) |
+| `parsing.max_file_size_bytes` | Override (last writer wins) — per-file size cap; see [Parsing limits](parsing-limits.md) |
+| `limits.*` | Map merge, later wins on each key (`max_identifier_length`, `max_globals_used_per_pou`, `max_parameters`) |
+| `identifier_charset` | Override (last writer wins) — PLCopen N8 regex; `null` (default) disables `IDENTIFIER_CHARSET` |
+| `metrics.thresholds.*` | Map merge per metric (`cyclomatic_complexity`, `nesting_depth`, …) |
 
 ## A worked example
 

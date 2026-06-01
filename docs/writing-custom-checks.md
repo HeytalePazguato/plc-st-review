@@ -41,6 +41,12 @@ The check function receives a `ReviewContext`:
 
 Most checks just diff the two symbol tables. For checks that need raw ASTs (`COMMENT_ONLY`, `UNREACHABLE_CODE`), use `ctx.pairs` directly.
 
+A few `SymbolTable` semantics worth knowing before you write a check:
+
+- **`globals` / `enums` / `pous` / `pouLocals` are case-aware.** They're backed by a `CaseMap` whose `set` / `get` / `has` normalize the key based on the resolved `config.caseSensitive` setting (default insensitive). You don't need to lowercase keys yourself; just pass identifiers verbatim. Iteration (`.values()`, `for…of`) yields the original-cased keys the author wrote.
+- **`globalDecls: GlobalVar[]`** is the source of truth when you need *every* global declaration (e.g. detecting two files declaring the same global). `globals.get(name)` returns the last-write-wins entry by name and is fine for "is this name a global?" predicates; `globalDecls` is what you want when you need to count, group, or anchor a finding to a specific declaration site.
+- **Scopes are qualified names.** `cs.scope`, `p.qualifiedName`, `pouContainingLine(...)`'s return — all of them use the full `Namespace.FB_X.Method1` form (or `__global` / `<file>` for top-level / unattributed). Don't compare with bare names; either pass the qualified name through or use the [`scopeChain`](https://github.com/HeytalePazguato/plc-st-review/blob/main/src/engine/scope.ts) helper to walk outward.
+
 ## When NOT to write a new check
 
 If your idea is a variation of an existing check, prefer extending the existing check (and giving it a config knob) over creating a new category. Each new category is one more concept the user has to learn, disable, or tune.
