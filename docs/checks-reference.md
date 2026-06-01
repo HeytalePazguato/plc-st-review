@@ -146,6 +146,18 @@ These are stylistic / hygiene checks. Most ship at `info` severity and stay off 
 
 Several of the above also appear in the [PLCopen Coding Guidelines](presets/plcopen.md); the PLCopen preset bumps their severities and turns on the limit-gated ones. They're not PLCopen-exclusive though — they're general checks the engine ships standalone.
 
+## Security (IEC 62443) checks
+
+These five checks target [IEC 62443](standards/iec-62443.md) industrial-cybersecurity concerns that are statically inferable from ST source — hard-coded credentials, hard-coded network endpoints, unguarded use of `VAR_INPUT` in privileged operations, debug pragmas left in production, and persistent storage of secret-named variables.
+
+- [HARDCODED_CREDENTIALS](checks/security/hardcoded_credentials.md) — secret-named variable with a literal STRING initialiser.
+- [HARDCODED_NETWORK_ENDPOINT](checks/security/hardcoded_network_endpoint.md) — STRING global / local whose literal value is an IPv4 address or a `tcp://` / `opc.tcp://` / `mqtt(s)` / `modbus` / `http(s)` URL.
+- [UNVALIDATED_INPUT_USE](checks/security/unvalidated_input_use.md) — `VAR_INPUT` used as an array subscript or divisor with no in-POU relational guard.
+- [DEBUG_PRAGMA_IN_PRODUCTION](checks/security/debug_pragma_in_production.md) — debug / monitoring / force-init attribute pragmas in non-test source paths.
+- [PERSISTENT_PLAINTEXT_SECRET](checks/security/persistent_plaintext_secret.md) — `VAR_GLOBAL PERSISTENT` / `RETAIN` of a secret-named variable.
+
+See the [IEC 62443 mapping page](standards/iec-62443.md) for the per-clause cross-reference and suggested severity policy by Security Level.
+
 ## Using a check in your PR
 
 `plc-st-review` runs automatically once you've set up the GitLab or GitHub integration (see [`gitlab-setup.md`](gitlab-setup.md) / [`github-setup.md`](github-setup.md)). Every check above lands as either an inline comment on the relevant `.st` line or as part of the summary issue / discussion comment when the affected line falls outside the PR's diff hunks.

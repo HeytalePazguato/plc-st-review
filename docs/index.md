@@ -29,7 +29,7 @@ FB instance T3 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **73 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (Two categories — `DEAD_POU_INTRODUCED` and `MULTI_WRITER_GLOBAL` — are opt-in: they need a whole-repo parse, which is too slow for every PR, so they're label-triggered; see [Project scope](project-scope.md).)
+The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **78 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (Two categories — `DEAD_POU_INTRODUCED` and `MULTI_WRITER_GLOBAL` — are opt-in: they need a whole-repo parse, which is too slow for every PR, so they're label-triggered; see [Project scope](project-scope.md).)
 
 ## Why this matters
 
@@ -43,11 +43,11 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 
 ## Three ways to use it
 
-- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 54 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, PLCopen-aligned rules, uninitialised-var use, TIME equality, implicit type conversions, more). No PR workflow required.
+- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 59 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, PLCopen-aligned rules, uninitialised-var use, TIME equality, implicit type conversions, IEC 62443 cybersecurity checks, more). No PR workflow required.
 - **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 21 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
 - **Team-style enforcer**: drop a `.plc-st-review.yml` listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`; both modes pick it up automatically.
 
-## The 75 check categories
+## The 80 check categories
 
 | Category | What fires it |
 |---|---|
@@ -109,6 +109,12 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 | `OUTPUT_VAR_READ_INTERNALLY` | `VAR_OUTPUT` read inside the same POU |
 | `NESTED_COMMENTS` | `(* outer (* nested *) *)` |
 | `NAMING_CONVENTION` | team-configured prefix / suffix / pattern violation |
+| **Security / IEC 62443 (5)** | |
+| `HARDCODED_CREDENTIALS` | secret-named var with a literal STRING initialiser |
+| `HARDCODED_NETWORK_ENDPOINT` | STRING literal that's an IPv4 / `opc.tcp://` / `mqtt://` / `modbus://` URL |
+| `UNVALIDATED_INPUT_USE` | `VAR_INPUT` used as array index / divisor with no in-POU guard |
+| `DEBUG_PRAGMA_IN_PRODUCTION` | `{attribute 'monitoring'}` / `'debug'` / `'force_init'` in non-test path |
+| `PERSISTENT_PLAINTEXT_SECRET` | `VAR_GLOBAL PERSISTENT/RETAIN` of a secret-named variable |
 
 The [Checks reference](checks-reference.md) has a dedicated page per category, with an ST code example and a suggested fix.
 

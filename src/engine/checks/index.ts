@@ -74,6 +74,11 @@ import { identifierCharset } from './identifier-charset.js';
 import { uninitializedVarUsed } from './uninitialized-var-used.js';
 import { implicitTypeConversion } from './implicit-type-conversion.js';
 import { multiWriterGlobal } from './multi-writer-global.js';
+import { hardcodedCredentials } from './hardcoded-credentials.js';
+import { hardcodedNetworkEndpoint } from './hardcoded-network-endpoint.js';
+import { unvalidatedInputUse } from './unvalidated-input-use.js';
+import { debugPragmaInProduction } from './debug-pragma-in-production.js';
+import { persistentPlaintextSecret } from './persistent-plaintext-secret.js';
 
 export function allChecks(): Check[] {
   return [
@@ -154,6 +159,12 @@ export function allChecks(): Check[] {
     uninitializedVarUsed,
     implicitTypeConversion,
     multiWriterGlobal,
+    // IEC 62443 industrial-cybersecurity checks.
+    hardcodedCredentials,
+    hardcodedNetworkEndpoint,
+    unvalidatedInputUse,
+    debugPragmaInProduction,
+    persistentPlaintextSecret,
   ];
 }
 

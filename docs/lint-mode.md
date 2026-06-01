@@ -4,7 +4,7 @@
 
 ## What it runs
 
-Lint mode runs the **54 single-revision check categories**: the ones that fire on a single file without comparing it to anything. The 21 diff-based categories are auto-disabled because they have no "before" state to compare against:
+Lint mode runs the **59 single-revision check categories**: the ones that fire on a single file without comparing it to anything. The 21 diff-based categories are auto-disabled because they have no "before" state to compare against:
 
 | Category | Reason auto-disabled in lint mode |
 |---|---|

@@ -143,6 +143,12 @@ nav:
           - TOO_MANY_GLOBALS_USED: checks/code-quality/too_many_globals_used.md
           - EXTERNAL_VAR_IN_FUNCTION: checks/code-quality/external_var_in_function.md
           - IMPLICIT_TYPE_CONVERSION: checks/code-quality/implicit_type_conversion.md
+      - Security (IEC 62443):
+          - HARDCODED_CREDENTIALS: checks/security/hardcoded_credentials.md
+          - HARDCODED_NETWORK_ENDPOINT: checks/security/hardcoded_network_endpoint.md
+          - UNVALIDATED_INPUT_USE: checks/security/unvalidated_input_use.md
+          - DEBUG_PRAGMA_IN_PRODUCTION: checks/security/debug_pragma_in_production.md
+          - PERSISTENT_PLAINTEXT_SECRET: checks/security/persistent_plaintext_secret.md
   - Configuration:
       - Tuning severities: tuning-severities.md
       - Preset packs: preset-packs.md
@@ -154,6 +160,7 @@ nav:
   - Standards mapping:
       - MISRA-C: standards/misra-c.md
       - IEC 61508 (positioning): standards/iec-61508.md
+      - IEC 62443 (industrial cybersecurity): standards/iec-62443.md
   - Metrics:
       - Metrics mode: metrics-mode.md
       - Project scope: project-scope.md

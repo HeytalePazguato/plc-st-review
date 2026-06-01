@@ -85,7 +85,13 @@ export type Category =
   | 'IMPLICIT_TYPE_CONVERSION'      // CP25
   | 'MULTI_WRITER_GLOBAL'           // CP26
   | 'TIME_EQUALITY'                 // CP28
-  | 'IDENTIFIER_CHARSET';           // N8
+  | 'IDENTIFIER_CHARSET'            // N8
+  // IEC 62443 industrial-cybersecurity checks (single-revision).
+  | 'HARDCODED_CREDENTIALS'         // 62443-4-1 SI-1 / 62443-4-2 CR 1.5
+  | 'HARDCODED_NETWORK_ENDPOINT'    // 62443-4-1 SI-1 / 62443-4-2 CR 5.x
+  | 'UNVALIDATED_INPUT_USE'         // 62443-4-2 CR 3.5
+  | 'DEBUG_PRAGMA_IN_PRODUCTION'    // 62443-4-1 SI-2 / SVV
+  | 'PERSISTENT_PLAINTEXT_SECRET';  // 62443-4-2 CR 4.1
 
 /**
  * Categories that only make sense when comparing two revisions of the
@@ -198,6 +204,11 @@ export const ALL_CATEGORIES: Category[] = [
   'MULTI_WRITER_GLOBAL',
   'TIME_EQUALITY',
   'IDENTIFIER_CHARSET',
+  'HARDCODED_CREDENTIALS',
+  'HARDCODED_NETWORK_ENDPOINT',
+  'UNVALIDATED_INPUT_USE',
+  'DEBUG_PRAGMA_IN_PRODUCTION',
+  'PERSISTENT_PLAINTEXT_SECRET',
 ];
 
 export interface Position {
