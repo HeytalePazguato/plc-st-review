@@ -46,7 +46,7 @@ export function runMetrics(
   const perPou: PouReport[] = [];
   for (const p of table.pous.values()) {
     if (!TOP_LEVEL.has(p.kind)) continue;
-    const ast = astByName.get(p.name);
+    const ast = astByName.get(p.qualifiedName);
     if (!ast) continue;
     const variableCount =
       (table.pouLocals.get(p.qualifiedName)?.length ?? 0) +
@@ -61,7 +61,7 @@ export function runMetrics(
       inputCount: p.inputs.length,
       outputCount: p.outputs.length,
       variableCount,
-      methodCount: countMethods(table, p.name),
+      methodCount: countMethods(table, p.qualifiedName),
       fanIn,
       fanOut,
       thresholdStatus: statusFor(ast, fanOut, thresholds),

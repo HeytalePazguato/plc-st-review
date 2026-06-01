@@ -412,6 +412,41 @@ END_FUNCTION_BLOCK
     expect(local?.kind).toBe('var_local');
   });
 
+  it('UNREACHABLE_CODE flags every dead statement after RETURN, not just the first (L12)', async () => {
+    // Before this fix, `terminator` was reset after the first dead statement,
+    // so `RETURN; a; b; c;` only flagged `a`.
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_Dead
+VAR
+    a : INT;
+    b : INT;
+    c : INT;
+END_VAR
+RETURN;
+END_FUNCTION_BLOCK
+`,
+      'FB_Dead.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_Dead
+VAR
+    a : INT;
+    b : INT;
+    c : INT;
+END_VAR
+RETURN;
+a := 1;
+b := 2;
+c := 3;
+END_FUNCTION_BLOCK
+`,
+      'FB_Dead.st',
+    );
+    const findings = review([before], [after]);
+    const u = findings.filter((f) => f.category === 'UNREACHABLE_CODE');
+    expect(u).toHaveLength(3);
+  });
+
   it('cross-file globals with the same name are both retained (H1)', async () => {
     // Before this fix, the second file's decl overwrote the first in `globals`
     // and `buildDeclarations` only saw one, blinding NAME_REUSED_DIFFERENT_KIND

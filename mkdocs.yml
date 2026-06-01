@@ -151,6 +151,9 @@ nav:
       - Writing custom checks: writing-custom-checks.md
   - Presets:
       - PLCopen Coding Guidelines: presets/plcopen.md
+  - Standards mapping:
+      - MISRA-C: standards/misra-c.md
+      - IEC 61508 (positioning): standards/iec-61508.md
   - Metrics:
       - Metrics mode: metrics-mode.md
       - Project scope: project-scope.md

@@ -41,7 +41,7 @@ These fire on bugs that exist in the new code, regardless of whether the PR intr
 |---|---|---|
 | `ENUM_VALUE_UNUSED` | Enum value declared but never referenced anywhere, dead state | Values referenced only through reflection / generated code |
 | `ENUM_MEMBER_UNKNOWN` | `E_State.IDEL` typo when the enum's actual member is `IDLE` | Typos in non-enum member-access (e.g. struct fields), comparisons against integer literals, dynamic strings |
-| `ARRAY_INDEX_OUT_OF_BOUNDS` | `arr[15]` when the array's bounds are `[0..9]` | Variable indices (`arr[i]`), indices computed by expression, accesses through a pointer to the array |
+| `ARRAY_INDEX_OUT_OF_BOUNDS` | `arr[15]` when the array's bounds are `[0..9]` | Variable indices (`arr[i]`), indices computed by expression, accesses through a pointer to the array, and **second-and-later subscripts of multi-dimensional arrays** (`arr[3, 99]` against `ARRAY [0..9, 0..5]` — only the first subscript is checked) |
 | `DIVISION_BY_ZERO` | `x / 0` literal, or `x / cZero` when `cZero` is a `VAR_GLOBAL CONSTANT` resolving to 0 | Divisors computed at runtime, `x / (a - b)` where `a` and `b` happen to be equal |
 | `INFINITE_LOOP` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside | `WHILE x DO ...` where `x` is never updated inside the body (would need def-use analysis) |
 | `LOOP_BOUNDS_REVERSED` | `FOR i := 10 TO 5 BY 1` (positive step with start > end); `FOR i := 1 TO 10 BY -1` (negative step with start < end). Per spec the body never runs; on runtimes that wrap integer overflow it runs hundreds of times | Loops whose start, end, or step are non-constant expressions |
@@ -55,7 +55,7 @@ These fire on bugs that exist in the new code, regardless of whether the PR intr
 | `BISTABLE_DOMINANCE_MISMATCH` | `SR` named like a reset-dominant latch, or `RS` named like a set-dominant one. Heuristic, name-pattern based | Shops with non-conventional naming will see false positives. Disable if not useful |
 | `EMPTY_STATEMENT` | Lone `;` | Empty statements inside synthesized macro / pragma expansions if you use them |
 | `UNUSED_RETURN_VALUE` | Bare-statement call of a `FUNCTION` POU with a declared return type | Discarded returns from external library functions whose signatures we don't see, calls via pointer-to-function |
-| `ARRAY_SINGLE_ELEMENT` | `ARRAY [n..n] OF T` where bounds are literals | Bounds expressed as named constants that happen to evaluate equal (we'd need constant resolution per dimension) |
+| `ARRAY_SINGLE_ELEMENT` | `ARRAY [n..n] OF T` where bounds are literals | Bounds expressed as named constants that happen to evaluate equal (we'd need constant resolution per dimension); multi-dim arrays where only one dimension is `[n..n]` (only the first dimension is examined) |
 | `VARIABLE_SHADOWING` | Local declaration with the same name as a `VAR_GLOBAL` | Shadowing across nested scopes, methods inside an FB hiding the FB's locals, we only check local-vs-global |
 | `UNQUALIFIED_ENUM_CONSTANT` | Bare identifier reference uniquely matching one enum's member | Member names shared by multiple enums (ambiguous), members already accessed via `member_access_expression` |
 | `IDENTIFIER_CASE_MISMATCH` | Reference uses different case than the declared identifier | Library-provided identifiers whose canonical case we don't see |

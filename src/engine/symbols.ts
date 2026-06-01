@@ -621,6 +621,11 @@ function collectUnreachable(
   t: SymbolTable,
 ): void {
   // Walk every node that holds an ordered list of statements as direct children.
+  // Once we see a terminator (RETURN / EXIT / CONTINUE) in a block, every
+  // subsequent statement in that same block is dead until the block ends —
+  // L12: `RETURN; a; b; c;` should flag a, b, AND c, not just a. The terminator
+  // sticks for the remainder of the loop over the current block's kids;
+  // descending into a child node resets the picture for that child's own kids.
   const stack: StNode[] = [pouNode];
   while (stack.length) {
     const n = stack.pop()!;
@@ -641,7 +646,8 @@ function collectUnreachable(
           reason,
         };
         t.unreachable.push(u);
-        terminator = null; // only flag the immediate next statement
+        // terminator stays set: every following statement in this block is
+        // also unreachable; only descending into a fresh block resets it.
       }
       if (TERMINATOR_TYPES.has(child.type)) terminator = child;
       stack.push(child);

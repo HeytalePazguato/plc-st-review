@@ -49,15 +49,40 @@ const TOP_LEVEL_POU_NODES = new Set<string>([
   NODE.FUNCTION_BLOCK,
 ]);
 
-/** Compute per-POU metrics for one parsed file, keyed by POU name. */
+/**
+ * Compute per-POU metrics for one parsed file, keyed by **qualified** POU
+ * name (`Namespace.FB_X`, or just `FB_X` outside a namespace). Keying by bare
+ * name silently dropped one of two same-named POUs in different namespaces in
+ * the same file (L15); keying by qualified name matches what `symbols.pous`
+ * already does and lets the namespaced FBs both surface in `--metrics`.
+ */
 export function computeFileMetrics(file: AstFile): Map<string, PouMetrics> {
   const out = new Map<string, PouMetrics>();
   for (const pou of descendantsOfAnyType(file.root, TOP_LEVEL_POU_NODES)) {
     const name = findIdentifierText(pou);
     if (!name) continue;
-    out.set(name, metricsForPou(pou, name, file));
+    const qualified = qualifiedPouName(pou, name);
+    out.set(qualified, metricsForPou(pou, qualified, file));
   }
   return out;
+}
+
+/**
+ * Build the qualified name for a POU node by walking up its parent chain
+ * collecting any enclosing `namespace` nodes (innermost first). `FB_X` inside
+ * `NAMESPACE NS1` becomes `NS1.FB_X`; nested namespaces yield `Outer.Inner.FB_X`.
+ */
+function qualifiedPouName(pou: StNode, name: string): string {
+  const segments: string[] = [];
+  let cur: StNode | null | undefined = pou.parent ?? null;
+  while (cur) {
+    if (cur.type === NODE.NAMESPACE) {
+      const nsName = findIdentifierText(cur);
+      if (nsName) segments.unshift(nsName);
+    }
+    cur = cur.parent ?? null;
+  }
+  return segments.length ? `${segments.join('.')}.${name}` : name;
 }
 
 export interface PouMetricDelta {

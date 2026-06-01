@@ -52,6 +52,23 @@ END_FUNCTION_BLOCK
     expect(c).toBe(4);
   });
 
+  it('adds 1 per `&` (synonym for AND) and per XOR (L13)', async () => {
+    // L13: the grammar emits `&` and `XOR` as their own token types. Before
+    // this fix, the complexity counter only knew about AND / OR, so booleans
+    // written with `&` or `XOR` under-counted their decision points.
+    const c = await complexityOf(
+      'FB_BoolExt',
+      `FUNCTION_BLOCK FB_BoolExt
+VAR_INPUT a : BOOL; b : BOOL; c : BOOL; d : BOOL; END_VAR
+VAR y : BOOL; END_VAR
+IF a & b XOR c THEN y := TRUE; END_IF;
+END_FUNCTION_BLOCK
+`,
+    );
+    // base 1 + IF 1 + & 1 + XOR 1 = 4
+    expect(c).toBe(4);
+  });
+
   it('adds 1 per CASE arm but not the CASE itself or its ELSE', async () => {
     const c = await complexityOf(
       'FB_Case',
@@ -70,6 +87,38 @@ END_FUNCTION_BLOCK
     );
     // base 1 + 3 case arms = 4
     expect(c).toBe(4);
+  });
+
+  it('two same-named POUs in different namespaces are both retained (L15)', async () => {
+    // Before this fix, both `NSa.FB_X` and `NSb.FB_X` were keyed by bare
+    // `FB_X` in `computeFileMetrics`, so one silently overwrote the other and
+    // only one set of metrics surfaced in `--metrics`.
+    const { parseSource } = await import('../../src/engine/parse.js');
+    const { computeFileMetrics } = await import(
+      '../../src/engine/metrics/pou-metrics.js'
+    );
+    const ast = await parseSource(
+      `NAMESPACE NSa
+FUNCTION_BLOCK FB_X
+VAR_INPUT x : INT; END_VAR
+IF x = 0 THEN RETURN; END_IF;
+END_FUNCTION_BLOCK
+END_NAMESPACE
+NAMESPACE NSb
+FUNCTION_BLOCK FB_X
+VAR_INPUT y : INT; END_VAR
+IF y = 0 THEN RETURN; END_IF;
+END_FUNCTION_BLOCK
+END_NAMESPACE
+`,
+      'ns.st',
+    );
+    const m = computeFileMetrics(ast);
+    expect([...m.keys()].sort()).toEqual(['NSa.FB_X', 'NSb.FB_X']);
+    const a = m.get('NSa.FB_X');
+    const b = m.get('NSb.FB_X');
+    expect(a?.name).toBe('NSa.FB_X');
+    expect(b?.name).toBe('NSb.FB_X');
   });
 
   it('adds 1 per loop (FOR, WHILE, REPEAT)', async () => {
