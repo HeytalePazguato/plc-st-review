@@ -1,0 +1,39 @@
+# Baseline config for this repository's own .st reviews.
+#
+# This repo ships `examples/state-machine/` as fixture content for the live
+# demo PR (#1). The config below applies whenever any .st file in this repo
+# is touched in a PR — so the demo's bot run uses the same PLCopen baseline
+# the README recommends to users, plus a small repo-specific overlay.
+#
+# Real downstream projects ship their own `.plc-st-review.yml`; this one
+# exists because the engine is base-ref-loaded for PR/MR security
+# (see docs/github-setup.md), and without a config at the base the demo
+# would run with defaults only and miss the limit-gated PLCopen rules.
+extends:
+  - ./presets/plcopen.yml
+
+# A small Hungarian-style ruleset on top of PLCopen. The clean fixtures
+# (FB_ConveyorState, E_ConveyorState, Globals, Conveyor_HMI) already follow
+# it; the deliberately-bug-riddled FB_Diagnostics / FB_Insecure fixtures
+# introduce non-conforming names that fire as new findings on the demo PR.
+naming_conventions:
+  function_block: { prefix: FB_ }
+  enum_type:      { prefix: E_ }
+  function:       { prefix: fn }   # fires on `Compute`
+  fb_instance:    { prefix: fb }   # fires on T1, T2, T3, C1, rTrig1, eStopLatch
+  bool:           { prefix: x }
+  real:           { prefix: r }
+  int:            { prefix: i }
+  global_var:     { prefix: g }
+
+# Identifiers nobody is allowed to reference. Usually deprecated globals
+# or banned vendor-library names. FB_Diagnostics references gDeprecatedSpeed,
+# which fires FORBIDDEN_SYMBOL on the demo PR.
+forbidden_symbols:
+  - gDeprecatedSpeed
+
+# Override the PLCopen preset's identifier_charset with a strictly stricter
+# regex: require a leading letter or single underscore, then allow letters
+# digits and single underscores, with NO consecutive underscores. Fires
+# IDENTIFIER_CHARSET on `iCount__double_underscore` in the demo fixtures.
+identifier_charset: '^(?!.*__)[A-Za-z_][A-Za-z0-9_]*$'

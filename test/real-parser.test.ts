@@ -412,6 +412,142 @@ END_FUNCTION_BLOCK
     expect(local?.kind).toBe('var_local');
   });
 
+  it('UNQUALIFIED_ENUM_CONSTANT does NOT fire on enum members at their declaration line', async () => {
+    // Regression for a bug where enum value identifiers inside
+    // `TYPE E_X : (FOO, BAR, ...);` got `scope === '<file>'` from
+    // `pouContainingLine` (no POU contains a TYPE block). The check only
+    // skipped `__global` scope, so the bare enum members at their own
+    // declaration line were wrongly flagged "consider writing it as E_X.FOO".
+    const ast = await parseSource(
+      `TYPE E_Color :
+    (RED, GREEN, BLUE);
+END_TYPE
+FUNCTION_BLOCK FB_U
+VAR
+    eCol : E_Color;
+END_VAR
+eCol := E_Color.RED;
+END_FUNCTION_BLOCK
+`,
+      'colors.st',
+    );
+    const findings = review([], [ast]);
+    const hits = findings.filter((f) => f.category === 'UNQUALIFIED_ENUM_CONSTANT');
+    // RED on line 2 of the TYPE decl must not fire. Only bare uses inside
+    // POU bodies should be flagged — there are none in this fixture.
+    expect(hits).toHaveLength(0);
+  });
+
+  it('COMMENTED_OUT_CODE does NOT fire on prose comments that happen to mention ST keywords', async () => {
+    // Regression for a bug where the heuristic matched bare keywords (IF /
+    // FOR / CASE / WHILE / VAR / PROGRAM), false-positiving on documentation
+    // text like "use this in a CASE statement" or "If you forget to handle".
+    // The tightened pattern requires actual ST shape (`:=`, `END_X`,
+    // `RETURN;`, full control-flow forms), not bare keywords.
+    const ast = await parseSource(
+      `(*
+ * FB_Header — describes how this FB is used.
+ *
+ * If a caller forgets to handle ERROR_RECOVERY in their CASE, the engine
+ * surfaces STATE_UNHANDLED. The FOR loops inside iterate over slots.
+ *)
+FUNCTION_BLOCK FB_Header
+VAR
+    iCounter : INT;
+END_VAR
+iCounter := 0;
+END_FUNCTION_BLOCK
+`,
+      'header.st',
+    );
+    const findings = review([], [ast]);
+    // The header comment mentions IF / CASE / FOR / VAR but in prose, not in
+    // ST shape. No COMMENTED_OUT_CODE finding should fire on it.
+    expect(
+      findings.filter((f) => f.category === 'COMMENTED_OUT_CODE'),
+    ).toHaveLength(0);
+  });
+
+  it('FOR_LOOP_VAR_USED_AFTER uses the loop actual END_FOR line, not a 200-line window', async () => {
+    // Regression for a bug where the check used a fixed 200-line "body
+    // window" because the loop end line wasn't tracked. A ref >200 lines
+    // below the FOR header but STILL inside the loop body was wrongly
+    // flagged as post-loop. The collector now records the loop's end line
+    // (via the AST node's endPosition), so any ref <= endLine is inside the
+    // body and not flagged.
+    //
+    // Synthetic 250-line FOR body, with a final `iLoop := ...` near the end
+    // of the body (well past the old 200-line window) but BEFORE END_FOR.
+    const bodyLines = Array.from({ length: 240 }, () => '    iSum := iSum + 1;').join('\n');
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_LongLoop
+VAR
+    iLoop : INT;
+    iSum  : INT;
+END_VAR
+FOR iLoop := 1 TO 10 BY 1 DO
+${bodyLines}
+    iLoop := iLoop + 0;
+END_FOR;
+END_FUNCTION_BLOCK
+`,
+      'FB_LongLoop.st',
+    );
+    const findings = review([], [ast]);
+    // The `iLoop := iLoop + 0;` ref is inside the loop body (line ~247),
+    // well past the old 200-line cutoff but BEFORE END_FOR. It must not
+    // be flagged as post-loop.
+    expect(
+      findings.filter((f) => f.category === 'FOR_LOOP_VAR_USED_AFTER'),
+    ).toHaveLength(0);
+  });
+
+  it('VAR_INPUT parameters are NOT also catalogued as locals', async () => {
+    // Regression for a bug where every VAR_INPUT/VAR_OUTPUT/VAR_IN_OUT decl
+    // was double-pushed into pouLocals (the collector loop walked every
+    // var-section block but didn't restrict the locals push to local-storage
+    // blocks). Cascade was: every parameter name appeared with both
+    // `var_input` and `var_local` kinds, spuriously firing
+    // NAME_REUSED_DIFFERENT_KIND, and parameter reads looked like
+    // uninitialised-local reads, spuriously firing UNINITIALIZED_VAR_USED.
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_P
+VAR_INPUT
+    xEnable : BOOL;
+END_VAR
+VAR_OUTPUT
+    rOut : REAL;
+END_VAR
+VAR
+    iCounter : INT;
+END_VAR
+IF xEnable THEN
+    iCounter := iCounter + 1;
+END_IF;
+rOut := 0.0;
+END_FUNCTION_BLOCK
+`,
+      'FB_P.st',
+    );
+    const table = buildSymbolTable([ast]);
+    const localsOf = table.pouLocals.get('FB_P') ?? [];
+    expect(localsOf.map((l) => l.name).sort()).toEqual(['iCounter']);
+    // VAR_INPUT and VAR_OUTPUT names still surface via Pou.inputs/outputs.
+    const pou = table.pous.get('FB_P')!;
+    expect(pou.inputs.map((p) => p.name)).toEqual(['xEnable']);
+    expect(pou.outputs.map((p) => p.name)).toEqual(['rOut']);
+    // Each name appears in exactly one NamedDecl kind.
+    const xEnableDecls = table.declarations.filter((d) => d.name === 'xEnable');
+    expect(xEnableDecls.map((d) => d.kind).sort()).toEqual(['var_input']);
+    const rOutDecls = table.declarations.filter((d) => d.name === 'rOut');
+    expect(rOutDecls.map((d) => d.kind).sort()).toEqual(['var_output']);
+    // And NAME_REUSED_DIFFERENT_KIND does not fire on a clean POU like this.
+    const findings = review([], [ast]);
+    expect(
+      findings.filter((f) => f.category === 'NAME_REUSED_DIFFERENT_KIND'),
+    ).toHaveLength(0);
+  });
+
   it('UNREACHABLE_CODE flags every dead statement after RETURN, not just the first (L12)', async () => {
     // Before this fix, `terminator` was reset after the first dead statement,
     // so `RETURN; a; b; c;` only flagged `a`.

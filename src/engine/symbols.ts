@@ -48,6 +48,15 @@ const COUNTER_TYPE_NAMES = new Set<string>(['CTU', 'CTD', 'CTUD']);
 const EDGE_TRIG_TYPE_NAMES = new Set<string>(['R_TRIG', 'F_TRIG']);
 const BISTABLE_TYPE_NAMES = new Set<string>(['SR', 'RS']);
 
+// Var-block subset that holds true POU-local storage (vs. parameter passing
+// or file-level globals). `pouLocals` is keyed off this so a parameter named
+// `xCount` doesn't also surface as a local.
+const LOCAL_STORAGE_SECTION_NODES = new Set<string>([
+  NODE.VAR_BLOCK,
+  NODE.VAR_TEMP,
+  NODE.VAR_EXTERNAL,
+]);
+
 const POU_KIND_BY_NODE: Record<string, PouKind> = {
   [NODE.PROGRAM]: 'program',
   [NODE.FUNCTION]: 'function',
@@ -362,7 +371,17 @@ function collectPou(
       const declName = findIdentifierText(decl);
       const typeNode = pickTypeNode(decl);
       const typeText = typeNode?.text?.trim().toUpperCase() ?? '';
-      if (declName) {
+      // Push into `locals` only when the enclosing block is a *local-storage*
+      // section. VAR_INPUT / VAR_OUTPUT / VAR_IN_OUT are parameters (already
+      // collected into Pou.inputs / outputs / inOuts via extractParameters)
+      // and VAR_GLOBAL is a file-level thing; without this filter every
+      // parameter name was double-counted as a local, which spuriously fired
+      // NAME_REUSED_DIFFERENT_KIND (the same name in `var_input` + `var_local`
+      // kinds) and UNINITIALIZED_VAR_USED (every VAR_INPUT looked like an
+      // uninitialised local). Timer / counter / edge-trig / bistable /
+      // pointer / array detection below still walks every section so a TON
+      // declared as a parameter, while unusual, doesn't go unindexed.
+      if (declName && LOCAL_STORAGE_SECTION_NODES.has(varBlock.type)) {
         locals.push({
           name: declName,
           scope: qualified,
@@ -586,6 +605,7 @@ function collectForLoops(
       scope,
       file: file.path,
       line: lineOf(fs),
+      endLine: fs.endPosition.row + 1,
       loopVar: loopVarNode.text,
       start: startNode.text,
       end: endNode.text,
@@ -1043,6 +1063,14 @@ function collectVarReferences(file: AstFile, t: SymbolTable): void {
   for (const ref of descendantsOfType(file.root, NODE.IDENTIFIER)) {
     const refText = ref.text;
     if (!refText) continue;
+    // Skip identifiers that are decl-sites themselves, not uses:
+    //   - an enum-value declaration like `(RED, GREEN, BLUE)` — the names
+    //     RED/GREEN/BLUE are members being declared, not references to
+    //     anything that exists yet. Treating them as references made
+    //     UNQUALIFIED_ENUM_CONSTANT flag the values at their own declaration
+    //     line ("consider writing RED as E_Color.RED" inside the very TYPE
+    //     block that defines E_Color).
+    if (ref.parent?.type === NODE.ENUMERATOR) continue;
     const line = lineOf(ref);
     const v: VarReference = {
       name: refText,
