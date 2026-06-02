@@ -1,3 +1,4 @@
+import { parseStNumber } from '../literals.js';
 import type { Check, Finding, ForLoop, GlobalVar } from '../types.js';
 
 interface IterCount {
@@ -11,13 +12,10 @@ interface IterCount {
  * complex expression, unknown identifier).
  */
 function resolveBound(text: string, globals: Map<string, GlobalVar>): number | null {
-  const lit = Number.parseFloat(text);
-  if (Number.isFinite(lit) && /^-?[\d.]+$/.test(text.trim())) return lit;
+  const lit = parseStNumber(text);
+  if (lit !== null) return lit;
   const g = globals.get(text.trim());
-  if (g?.constant && g.initial !== undefined) {
-    const v = Number.parseFloat(g.initial);
-    if (Number.isFinite(v)) return v;
-  }
+  if (g?.constant && g.initial !== undefined) return parseStNumber(g.initial);
   return null;
 }
 

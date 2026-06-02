@@ -55,6 +55,30 @@ import { unusedOutputVar } from './unused-output-var.js';
 import { unusedReturnValue } from './unused-return-value.js';
 import { unusedVarIntroduced } from './unused-var-introduced.js';
 import { variableShadowing } from './variable-shadowing.js';
+import { directAddressUsed } from './direct-address-used.js';
+import { ifWithoutElse } from './if-without-else.js';
+import { forbiddenStatement } from './forbidden-statement.js';
+import { identifierTooLong } from './identifier-too-long.js';
+import { nameReusedDifferentKind } from './name-reused-different-kind.js';
+import { pouNotCommented } from './pou-not-commented.js';
+import { tooManyParameters } from './too-many-parameters.js';
+import { tooManyGlobalsUsed } from './too-many-globals-used.js';
+import { forLoopVarModified } from './for-loop-var-modified.js';
+import { forLoopVarUsedAfter } from './for-loop-var-used-after.js';
+import { pointerArithmetic } from './pointer-arithmetic.js';
+import { pointerCompared } from './pointer-compared.js';
+import { indirectRecursiveCall } from './indirect-recursive-call.js';
+import { externalVarInFunction } from './external-var-in-function.js';
+import { timeEquality } from './time-equality.js';
+import { identifierCharset } from './identifier-charset.js';
+import { uninitializedVarUsed } from './uninitialized-var-used.js';
+import { implicitTypeConversion } from './implicit-type-conversion.js';
+import { multiWriterGlobal } from './multi-writer-global.js';
+import { hardcodedCredentials } from './hardcoded-credentials.js';
+import { hardcodedNetworkEndpoint } from './hardcoded-network-endpoint.js';
+import { unvalidatedInputUse } from './unvalidated-input-use.js';
+import { debugPragmaInProduction } from './debug-pragma-in-production.js';
+import { persistentPlaintextSecret } from './persistent-plaintext-secret.js';
 
 export function allChecks(): Check[] {
   return [
@@ -114,6 +138,33 @@ export function allChecks(): Check[] {
     nestingIncreased,
     locSpike,
     deadPouIntroduced,
+    // PLCopen Coding Guidelines checks.
+    directAddressUsed,
+    ifWithoutElse,
+    forbiddenStatement,
+    identifierTooLong,
+    nameReusedDifferentKind,
+    pouNotCommented,
+    tooManyParameters,
+    tooManyGlobalsUsed,
+    forLoopVarModified,
+    forLoopVarUsedAfter,
+    pointerArithmetic,
+    pointerCompared,
+    indirectRecursiveCall,
+    // PLCopen gap rules surfaced by the iec-checker comparison.
+    externalVarInFunction,
+    timeEquality,
+    identifierCharset,
+    uninitializedVarUsed,
+    implicitTypeConversion,
+    multiWriterGlobal,
+    // IEC 62443 industrial-cybersecurity checks.
+    hardcodedCredentials,
+    hardcodedNetworkEndpoint,
+    unvalidatedInputUse,
+    debugPragmaInProduction,
+    persistentPlaintextSecret,
   ];
 }
 

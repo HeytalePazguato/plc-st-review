@@ -47,7 +47,7 @@ export function aggregateMetrics(
     totalPous,
     totalLoc,
     totalTypes: declaredTypes.length,
-    totalGlobals: table.globals.size,
+    totalGlobals: table.globalDecls.length,
     avgComplexity,
     avgNesting,
     deadPous: graph.deadPous,
@@ -86,7 +86,7 @@ function findOrphanTypes(table: SymbolTable, declaredNames: string[]): string[] 
     if (p.extends) used.add(p.extends.toLowerCase());
     for (const impl of p.implements) used.add(impl.toLowerCase());
   }
-  for (const g of table.globals.values()) addTokens(g.typeText);
+  for (const g of table.globalDecls) addTokens(g.typeText);
   for (const locals of table.pouLocals.values()) {
     for (const l of locals) addTokens(l.typeText);
   }

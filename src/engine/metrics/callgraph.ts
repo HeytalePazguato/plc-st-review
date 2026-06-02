@@ -108,7 +108,7 @@ function resolveCallee(
     const t = byLower.get(local.typeText.toLowerCase());
     if (t) return t;
   }
-  for (const g of table.globals.values()) {
+  for (const g of table.globalDecls) {
     if (g.name.toLowerCase() === firstSeg) {
       const t = byLower.get(g.typeText.toLowerCase());
       if (t) return t;

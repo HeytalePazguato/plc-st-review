@@ -96,6 +96,13 @@ jobs:
         run: |
           set -euo pipefail
           base="${REF#refs/heads/release/}"
+          # `base` comes from the branch name and is interpolated into a later
+          # `git tag` step, so constrain it to a bare X.Y.Z to keep a crafted
+          # branch name (e.g. release/1.0.0$(...)) from executing here.
+          if [[ ! "$base" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "release branch version '$base' is not a bare X.Y.Z; refusing to tag" >&2
+            exit 1
+          fi
           msg=$(git log -1 --pretty=%B)
           if echo "$msg" | grep -qE '\[rc\]'; then
             stage=rc

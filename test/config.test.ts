@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { resolveConfig } from '../src/config.js';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  loadConfigFromBaseRef,
+  loadConfigFromText,
+  resolveConfig,
+} from '../src/config.js';
 
 describe('resolveConfig', () => {
   it('applies disabled checks and severity overrides', () => {
@@ -25,5 +29,77 @@ describe('resolveConfig', () => {
     });
     expect(cfg.disabledChecks.size).toBe(0);
     expect(cfg.severityOverrides.size).toBe(0);
+  });
+
+  describe('parsing.max_file_size_bytes (S6)', () => {
+    it('overrides the default cap with a numeric value', () => {
+      const cfg = resolveConfig({ parsing: { max_file_size_bytes: 5_000_000 } });
+      expect(cfg.maxFileSize).toBe(5_000_000);
+    });
+
+    it('treats 0 as "disabled" (cap inactive)', () => {
+      const cfg = resolveConfig({ parsing: { max_file_size_bytes: 0 } });
+      expect(cfg.maxFileSize).toBe(0);
+    });
+
+    it('clamps negative values to 0', () => {
+      const cfg = resolveConfig({ parsing: { max_file_size_bytes: -10 } });
+      expect(cfg.maxFileSize).toBe(0);
+    });
+
+    it('falls back to the 1 MB default when the key is absent', () => {
+      const cfg = resolveConfig({});
+      expect(cfg.maxFileSize).toBe(1_000_000);
+    });
+  });
+
+  describe('loadConfigFromText', () => {
+    it('parses a self-contained YAML config string', () => {
+      const cfg = loadConfigFromText(`
+disabled_checks:
+  - COMMENT_ONLY
+reporting:
+  fail_on_severity: warn
+`);
+      expect(cfg.disabledChecks.has('COMMENT_ONLY')).toBe(true);
+      expect(cfg.failOnSeverity).toBe('warn');
+    });
+
+    it('treats an empty string as the default config', () => {
+      const cfg = loadConfigFromText('');
+      expect(cfg.failOnSeverity).toBe('error');
+    });
+  });
+
+  describe('loadConfigFromBaseRef (S3 base-ref loading)', () => {
+    it('returns the config from the first matching base-ref filename', async () => {
+      const fetcher = vi.fn(async (name: string) => {
+        if (name === '.plc-st-review.yml') return 'reporting:\n  fail_on_severity: warn\n';
+        return null;
+      });
+      const cfg = await loadConfigFromBaseRef(fetcher);
+      expect(cfg).not.toBeNull();
+      expect(cfg!.failOnSeverity).toBe('warn');
+      expect(fetcher).toHaveBeenCalledWith('.plc-st-review.yml');
+      // Second name should not be tried since the first hit.
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls back to the editor-friendly name when the dotfile is absent', async () => {
+      const fetcher = vi.fn(async (name: string) =>
+        name === 'plc-st-review.yml' ? 'reporting:\n  fail_on_severity: warn\n' : null,
+      );
+      const cfg = await loadConfigFromBaseRef(fetcher);
+      expect(cfg).not.toBeNull();
+      expect(cfg!.failOnSeverity).toBe('warn');
+      expect(fetcher).toHaveBeenCalledWith('.plc-st-review.yml');
+      expect(fetcher).toHaveBeenCalledWith('plc-st-review.yml');
+    });
+
+    it('returns null when neither filename exists at the base ref', async () => {
+      const fetcher = vi.fn(async () => null);
+      expect(await loadConfigFromBaseRef(fetcher)).toBeNull();
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
   });
 });

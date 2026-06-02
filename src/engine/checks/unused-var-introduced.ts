@@ -1,4 +1,43 @@
-import type { Check, Finding, LocalVar } from '../types.js';
+import { scopeChain } from '../scope.js';
+import type { Check, Finding, SymbolTable } from '../types.js';
+
+/**
+ * Count references whose lexical scope chain includes `targetScope` — i.e.
+ * references inside the same POU or any method nested in it. Stops scanning
+ * once the count reaches `cap` so the caller can short-circuit on "used".
+ */
+function countRefsInScope(
+  name: string,
+  file: string,
+  targetScope: string,
+  t: SymbolTable,
+  cap: number,
+): number {
+  const lower = name.toLowerCase();
+  const reachable = new Map<string, boolean>(); // ref.scope -> whether targetScope is in its chain
+  const inChain = (refScope: string): boolean => {
+    const cached = reachable.get(refScope);
+    if (cached !== undefined) return cached;
+    let hit = false;
+    for (const s of scopeChain(refScope, t)) {
+      if (s === targetScope) {
+        hit = true;
+        break;
+      }
+    }
+    reachable.set(refScope, hit);
+    return hit;
+  };
+  let count = 0;
+  for (const ref of t.varReferences) {
+    if (ref.file !== file) continue;
+    if (ref.name.toLowerCase() !== lower) continue;
+    if (!inChain(ref.scope)) continue;
+    count++;
+    if (count >= cap) return count;
+  }
+  return count;
+}
 
 export const unusedVarIntroduced: Check = {
   category: 'UNUSED_VAR_INTRODUCED',
@@ -11,17 +50,10 @@ export const unusedVarIntroduced: Check = {
       );
       const newLocals = locals.filter((l) => !beforeLocals.has(l.name.toLowerCase()));
       if (newLocals.length === 0) continue;
-      // Build a quick lookup of references in this scope's file.
-      const fileRefs = new Map<string, number>(); // name -> count
-      for (const ref of ctx.after.varReferences) {
-        if (ref.file !== (newLocals[0] as LocalVar).file) continue;
-        const k = ref.name.toLowerCase();
-        fileRefs.set(k, (fileRefs.get(k) ?? 0) + 1);
-      }
       for (const v of newLocals) {
-        // Each declaration itself contributes one identifier ref. Treat anything
-        // less than 2 as unused.
-        const count = fileRefs.get(v.name.toLowerCase()) ?? 0;
+        // The declaration itself contributes one identifier ref, so 2+ uses in
+        // the declaration's scope (or any nested method) means it's used.
+        const count = countRefsInScope(v.name, v.file, scope, ctx.after, 2);
         if (count >= 2) continue;
         findings.push({
           severity: 'info',

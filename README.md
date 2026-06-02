@@ -1,12 +1,12 @@
 # plc-st-review
 
-[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest) [![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE) [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json) [![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/) [![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review) [![Checks](https://img.shields.io/badge/checks-56%20categories-orange)](docs/checks-reference.md)
+[![Version](https://img.shields.io/github/v/release/HeytalePazguato/plc-st-review?label=version&color=blue)](https://github.com/HeytalePazguato/plc-st-review/releases/latest) [![CI](https://img.shields.io/github/actions/workflow/status/HeytalePazguato/plc-st-review/ci.yml?branch=develop&label=CI&logo=github)](https://github.com/HeytalePazguato/plc-st-review/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/HeytalePazguato/plc-st-review)](LICENSE) [![Node](https://img.shields.io/badge/node-%E2%89%A520-brightgreen?logo=nodedotjs&logoColor=white)](package.json) [![Docs](https://img.shields.io/badge/docs-mkdocs--material-526CFE?logo=materialformkdocs&logoColor=white)](https://heytalepazguato.github.io/plc-st-review/) [![Container](https://img.shields.io/badge/ghcr.io-plc--st--review-2496ED?logo=docker&logoColor=white)](https://github.com/HeytalePazguato/plc-st-review/pkgs/container/plc-st-review) [![Checks](https://img.shields.io/badge/checks-80%20categories-orange)](docs/checks-reference.md)
 
 A **semantic linter, code reviewer, and team-style enforcer** for IEC 61131-3 Structured Text, built for CI on PLC codebases that can't be compiled outside the vendor IDE. Parses `.st` files with the [tree-sitter-iec61131-3-st](https://github.com/HeytalePazguato/tree-sitter-iec61131-3-st) grammar and reports semantic problems, not textual diffs.
 
-`plc-st-review` runs in **three modes**, each backed by the same 56-check engine:
+`plc-st-review` runs in **three modes**, each backed by the same 80-check engine:
 
-- **Static linter** (`--lint src/**/*.st`), run on every push. 35 single-revision checks for ST bugs: division by zero, out-of-range array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads, unused vars, naming-convention drift, `forbidden_symbols`, and more.
+- **Static linter** (`--lint src/**/*.st`), run on every push. 59 single-revision checks for ST bugs: division by zero, out-of-range array indices, infinite loops, TON/CTU/R_TRIG misuse, output reads, unused vars, naming-convention drift, `forbidden_symbols`, the full PLCopen-aligned set (forbidden statements, IF without ELSE, direct-address use, pointer arithmetic, parameter/global caps, …), an IEC 62443 cybersecurity set (hard-coded credentials / endpoints, unvalidated input, debug pragmas, persistent plaintext secrets), and more.
 - **PR / MR reviewer** (GitHub Action or GitLab CI job), posts inline review comments on lines that triggered findings. Adds 21 diff-based checks that compare the PR against its base: signature drift, outdated call sites, enum removals, timer-value changes, EXTENDS swaps, pragmas, `SAFETY_*` constant changes, and metric regressions (complexity, nesting, LOC growth). With [`--project-scope`](docs/project-scope.md) it also flags newly added POUs that nothing in the repo calls.
 - **Team-style enforcer**: drop a `.plc-st-review.yml` in the repo root listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`. Both modes pick it up automatically.
 
@@ -20,7 +20,7 @@ Catches the bugs reviewers miss on visual scan:
 
 ## See it in action
 
-**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises the **55 always-on check categories**, the ones that run on every PR: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. The 56th category, `DEAD_POU_INTRODUCED`, is **opt-in**: it needs a whole-repo parse, which is too slow to run on every PR, so it's off by default and triggered on demand with a label (see [project scope](docs/project-scope.md)). The PR is intentionally kept open as a fixture; conversation is locked.
+**Live demo:** [**PR #1, every check the tool ships with, posted on a real PR**](https://github.com/HeytalePazguato/plc-st-review/pull/1) 👈 open this for the full bot output. The PR exercises the **78 always-on check categories**, the ones that run on every PR: each shows up as an inline review comment on the changed line that triggered it, and findings on lines outside the PR's diff hunks (e.g. `POU_DELETED`, or a check whose anchor line wasn't itself edited) collect in a single summary comment at the bottom. Two categories — `DEAD_POU_INTRODUCED` and `MULTI_WRITER_GLOBAL` — are **opt-in**: they need a whole-repo parse, which is too slow to run on every PR, so they're off by default and triggered on demand (see [project scope](docs/project-scope.md)). The PR is intentionally kept open as a fixture; conversation is locked.
 
 A single finding looks like this in the GitHub UI:
 
@@ -52,17 +52,6 @@ FB_Diagnostics.st:60    🟥 error  INFINITE_LOOP
                                   WHILE TRUE loop with no EXIT statement
 ```
 
-## Status
-
-- **Phase 1**: engine, eight checks, CLI, three output formats. Done.
-- **Phase 2**: GitLab MR integration. Done.
-- **Phase 3**: GitHub Action + 10 additional check categories. Done.
-- **Static checks**: 6 single-revision checks for common ST bugs.
-- **FB-instance checks**: 8 more checks for standard IEC 61131-3 function blocks: timer / counter / edge-trig / bistable misuse.
-- **Code-quality + style checks**: 19 more, plus a configurable `NAMING_CONVENTION` check and a config preset-pack mechanism (`extends:`).
-
-Total: **56 check categories** (35 single-revision + 21 diff-based), 181 tests across 63 files, all passing.
-
 ## Quick start
 
 ### CI linter (no PR required)
@@ -89,7 +78,7 @@ jobs:
       - run: npx plc-st-review --lint "src/**/*.st"
 ```
 
-`--lint` accepts file paths, directories, or globs (`*`, `**`, mixed). It parses each `.st` file in isolation and runs the **35 single-revision checks**: the 21 diff-based ones are auto-disabled because there's no "before" state. Exit code is non-zero when any finding meets `reporting.fail_on_severity` (default `error`), so the job fails the pipeline on real bugs.
+`--lint` accepts file paths, directories, or globs (`*`, `**`, mixed). It parses each `.st` file in isolation and runs the **59 single-revision checks**: the 21 diff-based ones are auto-disabled because there's no "before" state. Exit code is non-zero when any finding meets `reporting.fail_on_severity` (default `error`), so the job fails the pipeline on real bugs.
 
 ### GitHub pull request
 
@@ -121,7 +110,7 @@ Drop this into `.gitlab-ci.yml` (full example at [`examples/gitlab-ci.yml`](exam
 
 ```yaml
 plc-st-review:
-  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :0.0.1 to pin an exact version
+  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :1.0.0 to pin an exact version
   stage: review
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
@@ -160,6 +149,8 @@ Output formats: `terminal` (ANSI when stdout is a TTY), `markdown`, `json`.
 
 The CLI exits non-zero when at least one finding meets or exceeds the `reporting.fail_on_severity` threshold (default `error`).
 
+`--max-file-size <bytes>` overrides the per-file source-length cap (see [Source-size cap](#source-size-cap) below). Useful when you have legitimately huge generated FB files; pass `0` to disable the cap entirely. Defaults to the config's `parsing.max_file_size_bytes` (1 MB).
+
 ### Metrics
 
 `--metrics` is a standalone mode that measures a whole codebase instead of reviewing a diff: cyclomatic complexity, nesting depth, LOC, call-graph fan-in/out, dead code, dependency depth, and more. It does not run the review checks. Full reference: [docs/metrics-mode.md](docs/metrics-mode.md).
@@ -176,29 +167,32 @@ plc-st-review --metrics src/ --format badge              # shields.io URL
 Running it on the bundled `examples/state-machine/` fixtures prints a ranked report (🟢/🟡/🔴 against the configured thresholds):
 
 ```
-Project: examples/state-machine  (9 POUs, 143 LOC)
+Project: examples/state-machine/  (11 POUs, 240 LOC)
 
-Top 5 by complexity:
-  FB_ConveyorState  complexity:  10  nesting:  2  LOC:    42  🟢
-  Conveyor_HMI      complexity:   6  nesting:  1  LOC:    14  🟢
-  FB_AxisRamp       complexity:   5  nesting:  1  LOC:    27  🟢
-  FB_SpeedCalc      complexity:   2  nesting:  1  LOC:    18  🟢
-  FB_Base           complexity:   1  nesting:  0  LOC:     6  🟢
+Top 10 by complexity:
+  FB_LineController  complexity:  26  nesting:  5  LOC:    86  🔴
+  FB_ConveyorState   complexity:  10  nesting:  2  LOC:    42  🟢
+  Conveyor_HMI       complexity:   6  nesting:  1  LOC:    16  🟢
+  FB_AxisRamp        complexity:   5  nesting:  1  LOC:    27  🟢
+  FB_SpeedCalc       complexity:   2  nesting:  1  LOC:    18  🟢
+  FB_Base            complexity:   1  nesting:  0  LOC:     6  🟢
+  FB_BaseV2          complexity:   1  nesting:  0  LOC:     8  🟢
+  FB_DiagUnit        complexity:   1  nesting:  0  LOC:    10  🟢
+  FB_Legacy          complexity:   1  nesting:  0  LOC:     9  🟢
+  FB_MetricsDemo     complexity:   1  nesting:  0  LOC:     9  🟢
 
 Dead code:
   FB_Legacy    (0 callers)
-  FB_Watchdog  (0 callers)
+  FB_Watchdog    (0 callers)
 
 Summary:
-  Avg complexity: 3.1  Avg nesting: 0.6  Doc coverage: 0%  Dependency depth: 2
-  All POUs within complexity thresholds
+  Avg complexity: 5  Avg nesting: 0.9  Doc coverage: 9.1%  Dependency depth: 3
+  🔴 1 POUs exceed complexity threshold (25)
 ```
 
+`FB_LineController` lands in the red band (complexity 26, past the error threshold of 25), and the dead-code list is short and pointed: two blocks nothing calls. A rendered call graph of the same fixtures is in [`docs/screenshots/metrics-example.svg`](docs/screenshots/metrics-example.svg).
+
 `--format dot` emits the call graph (pipe to Graphviz); `--format json` emits the full per-POU + project report for dashboards or CI gates.
-
-## Live demo
-
-[PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1) is kept open as the canonical demo, every check below fires at least once on that PR, with the exact inline comments the bot posts. Open it to see the tool in action on real ST.
 
 ## Checks
 
@@ -217,8 +211,6 @@ Each row links to a per-check section in [docs/checks-reference.md](docs/checks-
 | `CONSTANT_VALUE_CHANGED` | `info` (`warn` for safety-prefixed names) | A `VAR_GLOBAL CONSTANT`'s initial value changed. Prefixes like `SAFETY_`, `INTERLOCK_`, `SIL_` elevate severity. |
 | `COMMENT_ONLY` | `info` | The AST is structurally identical between revisions; only comments/whitespace changed. |
 | `ARRAY_BOUNDS_CHANGED` | `error` (shrink) / `warn` (grow) | An array declaration's `[lower..upper]` bounds changed. |
-| `STATE_UNHANDLED` | `info` | A `CASE` on an enum has no `ELSE` and doesn't cover every enum value, regardless of whether the enum changed. |
-| `UNREACHABLE_CODE` | `warn` | A new statement was added after `RETURN`/`EXIT`/`CONTINUE` in the same block. |
 | `LOOP_BOUNDS_CHANGED` | `info`/`warn` by ratio | A `FOR` loop's bounds changed; severity rises when the iteration count moves ≥10×. |
 | `POU_DELETED` | `error` (with callers) / `warn` | A POU was deleted; severity depends on whether call sites in the new revision still reference it. |
 | `POU_RENAMED` | `info` | Heuristic: a POU was deleted and another with an identical signature was added; suggests a rename. |
@@ -258,6 +250,30 @@ Code-quality + style:
 | `OUTPUT_VAR_READ_INTERNALLY` | `info` | `VAR_OUTPUT` read inside the POU; usually a sign you wanted a local. |
 | `NESTED_COMMENTS` | `info` | Block comment contains another block comment. |
 | `NAMING_CONVENTION` | `warn` (config-driven) | Declaration name doesn't match the configured prefix / suffix / regex. See [docs/preset-packs.md](docs/preset-packs.md). |
+| `DIRECT_ADDRESS_USED` | `info` | `%I0.0` / `%QW100`-style direct I/O address (PLCopen N1 / CP1). |
+| `IF_WITHOUT_ELSE` | `info` | `IF` / `ELSIF` chain with no terminal `ELSE` (PLCopen L17). |
+| `FORBIDDEN_STATEMENT` | `info` | `GOTO` / `EXIT` / `CONTINUE` use site (PLCopen L10). |
+| `POU_NOT_COMMENTED` | `warn` | POU declaration with no leading comment (PLCopen C2). |
+| `NAME_REUSED_DIFFERENT_KIND` | `warn` | Same name reused across declaration kinds, e.g. a global and an enum value (PLCopen N9). |
+| `INDIRECT_RECURSIVE_CALL` | `error` | Call-graph cycle through two or more POUs (PLCopen CP13 indirect). |
+| `IDENTIFIER_TOO_LONG` | `warn` | Identifier longer than `limits.max_identifier_length` (PLCopen N6). |
+| `IDENTIFIER_CHARSET` | `warn` | Identifier outside the `identifier_charset` regex (PLCopen N8). |
+| `TOO_MANY_PARAMETERS` | `warn` | POU parameter count above `limits.max_parameters` (PLCopen CP23). |
+| `TOO_MANY_GLOBALS_USED` | `warn` | POU touches more than `limits.max_globals_used_per_pou` globals (PLCopen CP18). |
+| `EXTERNAL_VAR_IN_FUNCTION` | `warn` | `VAR_EXTERNAL` inside `FUNCTION` / `FUNCTION_BLOCK` / `METHOD` (PLCopen CP6). |
+| `IMPLICIT_TYPE_CONVERSION` | `warn` | INT-family mixed with REAL-family in arithmetic (PLCopen CP25). |
+
+Security (IEC 62443 industrial-cybersecurity checks):
+
+| Category | Default severity | Trigger |
+|---|---|---|
+| `HARDCODED_CREDENTIALS` | `error` | Secret-named variable with a literal STRING initialiser (62443-4-2 CR 1.5). |
+| `HARDCODED_NETWORK_ENDPOINT` | `warn` | STRING literal that's an IPv4 dotted-quad or `http(s)`/`tcp`/`opc.tcp`/`mqtt(s)`/`modbus`/`ssh` URL (62443-4-1 SI-1). |
+| `UNVALIDATED_INPUT_USE` | `info` | `VAR_INPUT` used as array subscript or divisor with no in-POU relational guard (62443-4-2 CR 3.5). |
+| `DEBUG_PRAGMA_IN_PRODUCTION` | `warn` | `{attribute 'monitoring'}` / `'debug'` / `'force_init'` pragma in a non-test path (62443-4-1 SI-2). |
+| `PERSISTENT_PLAINTEXT_SECRET` | `error` | `VAR_GLOBAL PERSISTENT` / `RETAIN` of a secret-named variable (62443-4-2 CR 4.1). |
+
+See the [IEC 62443 mapping page](https://heytalepazguato.github.io/plc-st-review/standards/iec-62443/) for the per-clause cross-reference and suggested severity policy by Security Level. The companion [MISRA-C](https://heytalepazguato.github.io/plc-st-review/standards/misra-c/) and [IEC 61508](https://heytalepazguato.github.io/plc-st-review/standards/iec-61508/) mapping pages cover the rest of the standards-credibility surface.
 
 Single-revision integrity:
 
@@ -269,6 +285,15 @@ Single-revision integrity:
 | `DIVISION_BY_ZERO` | `error` | The divisor is a literal `0`, or a `VAR_GLOBAL CONSTANT` resolving to 0. |
 | `INFINITE_LOOP` | `error` | `WHILE TRUE DO ... END_WHILE;` with no `EXIT` inside the body. |
 | `LOOP_BOUNDS_REVERSED` | `error` | `FOR` loop bounds and step point opposite directions, per spec body never runs, on overflow-wrapping runtimes it runs ~unlimited times. |
+| `STATE_UNHANDLED` | `info` | A `CASE` on an enum has no `ELSE` and doesn't cover every enum value, regardless of whether the enum changed. |
+| `UNREACHABLE_CODE` | `warn` | A statement sits after `RETURN` / `EXIT` / `CONTINUE` in the same block. |
+| `FOR_LOOP_VAR_MODIFIED` | `warn` | Loop counter mutated inside the `FOR` body (PLCopen L12). |
+| `FOR_LOOP_VAR_USED_AFTER` | `info` | Loop counter read after `END_FOR` — the post-loop value is implementation-defined (PLCopen L13). |
+| `POINTER_ARITHMETIC` | `warn` | `+` / `-` / `*` / `/` applied to a `POINTER`-typed local (PLCopen E2). |
+| `POINTER_COMPARED` | `warn` | `<` / `>` / `<=` / `>=` applied to a `POINTER`-typed local (PLCopen E3). |
+| `UNINITIALIZED_VAR_USED` | `warn` | Local variable read before any assignment to it (PLCopen CP3). |
+| `TIME_EQUALITY` | `warn` | `=` / `<>` between `TIME` operands; brittle on tick-based runtimes (PLCopen CP28). |
+| `MULTI_WRITER_GLOBAL` | `error` | A global variable is written by more than one `PROGRAM`. Needs [`--project-scope`](docs/project-scope.md) (PLCopen CP26). |
 | `COUNTER_PV_ZERO` | `error` | `CTU`/`CTD`/`CTUD` initialized with `PV := 0`: Q always TRUE or counter useless. |
 | `TIMER_PT_ZERO` | `error` | `TON`/`TOF`/`TP` set with `PT := T#0s`: fires immediately or never. |
 | `TIMER_NOT_DRIVEN` | `warn` | A timer's `Q`/`ET` is read but no call site sets `IN`. |
@@ -282,6 +307,8 @@ Single-revision integrity:
 Create `.plc-st-review.yml` at the repo root:
 
 ```yaml
+case_sensitive: false          # identifier casing rules; see "Case sensitivity" below
+
 disabled_checks:
   - COMMENT_ONLY
 
@@ -309,17 +336,91 @@ metrics:                       # bands for the metric-regression checks
     nesting_depth:
       warn: 5
       error: 8
+
+parsing:
+  max_file_size_bytes: 1000000  # per-file size cap; see "Source-size cap" below
+
+limits:                        # numeric caps for the size-/count-checking PLCopen rules
+  max_identifier_length: 32    # PLCopen N6 — drives IDENTIFIER_TOO_LONG (null = off)
+  max_globals_used_per_pou: 10 # PLCopen CP18 — drives TOO_MANY_GLOBALS_USED (null = off)
+  max_parameters: 8            # PLCopen CP23 — drives TOO_MANY_PARAMETERS (null = off)
+
+identifier_charset: null       # PLCopen N8 — regex every identifier must match; null = off
+                               # e.g. '^[A-Za-z_][A-Za-z0-9_]*$' restricts to ASCII + underscore
 ```
 
 The `metrics` block is optional; the values shown are the defaults. `COMPLEXITY_INCREASED` and `NESTING_INCREASED` read these bands; `LOC_SPIKE` fires on any single-PR growth over 50%. See [`docs/checks-reference.md`](docs/checks-reference.md#metric-thresholds) for the full block (the `lines_of_code`, `comment_ratio`, and `fan_out` keys are accepted now and consumed by the upcoming standalone `--metrics` mode).
+
+### Case sensitivity
+
+Whether two identifiers that differ only in case (`Motor` vs `motor`) are the **same** symbol depends on your toolchain, so `plc-st-review` makes it configurable with one top-level key:
+
+```yaml
+case_sensitive: false   # default
+```
+
+- **`false` (default)** — identifiers are matched case-insensitively. This is what the IEC 61131-3 standard specifies and what **CODESYS** (and CODESYS-derived IDEs) and **Beckhoff TwinCAT** do. With this setting the engine resolves a constant declared `MaxCount` even when it is referenced as `MAXCOUNT`, and `IDENTIFIER_CASE_MISMATCH` reports references whose casing drifts from the declaration.
+- **`true`** — identifiers are matched exactly, byte-for-byte. Set this for **B&R Automation Studio**, which treats `Motor` and `motor` as two distinct variables. In this mode `IDENTIFIER_CASE_MISMATCH` is automatically disabled (a different case is a different symbol, not a style slip), and checks like `VARIABLE_SHADOWING` only fire on an exact-case match.
+
+Pick the value that matches the IDE your code is compiled in; the wrong setting can hide real bugs (too loose) or invent false ones (too strict).
+
+### Source-size cap
+
+Each `.st` file is parsed by a native tree-sitter binding. To keep a single pathological or hostile file from blowing up memory in the parser, the engine enforces a per-file source-length cap. Files over the cap are **skipped** with a one-line stderr warning naming the path and treated as empty by every check.
+
+```yaml
+parsing:
+  max_file_size_bytes: 1000000   # default: 1 MB
+```
+
+Set `0` to disable the cap entirely (every file is parsed regardless of size). A `--max-file-size <bytes>` CLI flag overrides whatever is in the config for the current run, so you can do:
+
+```sh
+plc-st-review --lint "src/**/*.st" --max-file-size 0          # parse everything, no cap
+plc-st-review --lint "src/**/*.st" --max-file-size 5000000    # raise the cap to 5 MB for this run
+```
+
+Almost every real ST file is far below the default; raise this only if you have legitimately huge generated FB files. Disable it only if you trust every file in scope (e.g. linting your own first-party code), since the cap is what stops a hostile file from exhausting parser memory.
+
+### PLCopen Coding Guidelines preset
+
+The repo ships one opinionated preset: [`presets/plcopen.yml`](presets/plcopen.yml), tuned to **[PLCopen Coding Guidelines v1.0](https://plcopen.org/guidelines/guidelines)**. Vendor-neutral, standards-body-published — use it as your baseline if your team doesn't already have a style guide:
+
+```yaml
+# .plc-st-review.yml
+extends:
+  - ./presets/plcopen.yml
+
+# Layer your own preferences on top.
+naming_conventions:
+  bool: { prefix: b }   # we use `b`, not PLCopen's `x`
+```
+
+The full rule-by-rule mapping (which PLCopen rules the preset enforces, which would need new checks, which are out of scope) is on the Pages site under [Presets → PLCopen Coding Guidelines](https://heytalepazguato.github.io/plc-st-review/presets/plcopen/).
 
 ## How it works
 
 Every change is reduced to an AST diff. The engine:
 
-1. Parses the `before` and `after` versions of every changed `.st` file with the tree-sitter grammar. 2. Builds a **symbol table** per revision: POUs (with parameter signatures), global variables, enums, timer instances, call sites, `CASE` statements. 3. Hands both tables to each registered check. Each check is a self-contained module under `src/engine/checks/`. 4. Renders the resulting findings to terminal / Markdown / JSON.
+1. Parses the `before` and `after` versions of every changed `.st` file with the tree-sitter grammar.
+2. Builds a **symbol table** per revision: POUs (with parameter signatures), global variables, enums, timer instances, call sites, `CASE` statements.
+3. Hands both tables to each registered check. Each check is a self-contained module under `src/engine/checks/`.
+4. Renders the resulting findings to terminal / Markdown / JSON.
 
 No LLM is involved. Findings are deterministic.
+
+## Deterministic by design — no LLM in the loop
+
+Every finding is produced by a check module under [`src/engine/checks/`](src/engine/checks) that operates on the tree-sitter AST and the symbol table. Each module is a pure function of `(before AST, after AST, config)` → `findings[]`. Same inputs, same outputs, byte for byte. No temperature, no sampling, no model version drift.
+
+That choice buys four properties an LLM-based reviewer can't match:
+
+- **Reproducible** — a finding that fires today fires tomorrow on the same input. CI reruns match. Two engineers see the same comments. Findings stay citable in code review and postmortems six months later.
+- **Auditable** — every finding maps to one named check with source code you can read. For regulated industries (medical, automotive, energy, pharma) this auditability is the difference between "evidence we can show an inspector" and "a black box we trust."
+- **Air-gappable** — the shipped Docker image bundles everything the analyzer needs. Mirrored to an internal registry, it runs on offline runners with **zero outbound traffic** — no model-host endpoints, no API tokens, no SaaS dependency.
+- **Your code never leaves the network** — parsing and analysis run in-process in the CI job. Nothing is sent to a third party. There's no "we promise we don't train on your code" disclaimer to evaluate; the architecture makes it impossible.
+
+PLC source typically encodes safety logic, vendor part numbers, calibration constants, customer-specific behavior, and timing assumptions that the customer never agreed to have anywhere but the runner that built it. On that kind of code, deterministic wins by default. See [Deterministic (no LLM)](https://heytalepazguato.github.io/plc-st-review/deterministic/) for the longer write-up.
 
 ## Development
 
@@ -330,7 +431,7 @@ No LLM is involved. Findings are deterministic.
 ```sh
 npm run bootstrap          # first-time only; see "Building from source" below
 npm run build              # tsc to dist/
-npm test                   # vitest, ~9s, 181 tests across 63 files
+npm test                   # vitest, ~7s, 270 tests across 70 files
 npm run lint               # tsc --noEmit
 ```
 
@@ -356,7 +457,7 @@ The `patches/tree-sitter+0.25.0.patch` file goes away once upstream tree-sitter 
 
 Likely additions, in rough priority order:
 
-- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. Skipped for 0.0.1 because the native deps (`tree-sitter`, `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle cleanly through `pkg` or `bun --compile` without per-platform asset handling. Revisit if real users without Node ask.
+- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. Not yet shipped because the native deps (`tree-sitter`, `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle cleanly through `pkg` or `bun --compile` without per-platform asset handling. Revisit if real users without Node ask.
 - **Optional LLM-powered explanations**: a `--explain` flag that paraphrases deterministic findings in plain English for less-experienced reviewers. Strictly additive, every explanation is grounded in a deterministic finding; the LLM never surfaces new issues.
 - **Vendor-specific checks**: PLCopen `MC_*` motion patterns, TwinCAT / CODESYS / ABB-specific library FBs. Currently the engine sticks to standard IEC 61131-3 to stay portable across vendors.
 

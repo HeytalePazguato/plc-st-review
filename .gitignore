@@ -29,6 +29,9 @@ Thumbs.db
 *.pem
 *.key
 
+# Internal planning / audit docs (not for publication)
+/docs/secret/
+
 # Node / TypeScript
 node_modules/
 npm-debug.log*

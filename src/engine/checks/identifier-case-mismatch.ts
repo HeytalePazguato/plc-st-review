@@ -1,15 +1,46 @@
+import { scopeChain } from '../scope.js';
 import type { Check, Finding, NamedDecl, SymbolTable } from '../types.js';
 
-function declMap(t: SymbolTable): Map<string, NamedDecl> {
-  const out = new Map<string, NamedDecl>();
+type ScopeDecls = Map<string, Map<string, NamedDecl>>; // scope -> lowerName -> decl
+
+function declsByScope(t: SymbolTable): ScopeDecls {
+  const out: ScopeDecls = new Map();
   for (const d of t.declarations) {
-    // First-seen wins; that's the canonical capitalization.
-    if (!out.has(d.name.toLowerCase())) out.set(d.name.toLowerCase(), d);
+    let inner = out.get(d.scope);
+    if (!inner) {
+      inner = new Map();
+      out.set(d.scope, inner);
+    }
+    const k = d.name.toLowerCase();
+    // First declaration with a given name in a given scope wins; that's the
+    // canonical casing the check measures references against.
+    if (!inner.has(k)) inner.set(k, d);
   }
   return out;
 }
 
-function key(file: string, line: number, name: string): string {
+/**
+ * Resolve a reference to the declaration it sees, walking the lexical scope
+ * chain so a `count` in POU A is matched against POU A's own decl rather than
+ * whatever first appeared in another POU. Returns null when no declaration in
+ * scope matches.
+ */
+function resolveRef(
+  refName: string,
+  refScope: string,
+  t: SymbolTable,
+  byScope: ScopeDecls,
+): NamedDecl | null {
+  const k = refName.toLowerCase();
+  for (const s of scopeChain(refScope, t)) {
+    const m = byScope.get(s);
+    const d = m?.get(k);
+    if (d) return d;
+  }
+  return null;
+}
+
+function dedupeKey(file: string, line: number, name: string): string {
   return `${file}::${line}::${name}`;
 }
 
@@ -17,34 +48,37 @@ export const identifierCaseMismatch: Check = {
   category: 'IDENTIFIER_CASE_MISMATCH',
   defaultSeverity: 'warn',
   run(ctx) {
+    // Only meaningful when identifiers are case-insensitive. Under a
+    // case-sensitive dialect (e.g. B&R) a differing case is a different (or
+    // undefined) symbol, not a style mismatch, so this check does not apply.
+    if (ctx.config.caseSensitive) return [];
+
     const findings: Finding[] = [];
-    const decls = declMap(ctx.after);
-    const beforeDecls = declMap(ctx.before);
+    const afterByScope = declsByScope(ctx.after);
+    const beforeByScope = declsByScope(ctx.before);
 
     // Identify mismatches present in `before` so we don't re-flag legacy cases.
     const beforeBad = new Set<string>();
     for (const ref of ctx.before.varReferences) {
-      const d = beforeDecls.get(ref.name.toLowerCase());
+      const d = resolveRef(ref.name, ref.scope, ctx.before, beforeByScope);
       if (d && d.name !== ref.name && d.name.toLowerCase() === ref.name.toLowerCase()) {
-        beforeBad.add(key(ref.file, ref.line, ref.name));
+        beforeBad.add(dedupeKey(ref.file, ref.line, ref.name));
       }
     }
 
     const seen = new Set<string>();
     for (const ref of ctx.after.varReferences) {
-      const d = decls.get(ref.name.toLowerCase());
+      const d = resolveRef(ref.name, ref.scope, ctx.after, afterByScope);
       if (!d) continue;
       if (d.name === ref.name) continue;
-      // Only fire on actual case difference, not unrelated names that collide
-      // on a case-insensitive compare.
+      // Defensive: must be a true case-only difference, not coincidental.
       if (d.name.toLowerCase() !== ref.name.toLowerCase()) continue;
-      const k = key(ref.file, ref.line, ref.name);
+      const k = dedupeKey(ref.file, ref.line, ref.name);
       if (beforeBad.has(k)) continue;
-      // Dedupe per (file, line, name), multiple identifiers on the same line
+      // Dedupe per (file, line, name) — multiple identifiers on the same line
       // are common (e.g. `iCount := iCount + 1;`).
-      const dedupe = `${ref.file}::${ref.line}::${ref.name}`;
-      if (seen.has(dedupe)) continue;
-      seen.add(dedupe);
+      if (seen.has(k)) continue;
+      seen.add(k);
       findings.push({
         severity: 'warn',
         category: 'IDENTIFIER_CASE_MISMATCH',

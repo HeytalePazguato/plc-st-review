@@ -60,6 +60,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Deterministic (no LLM): deterministic.md
   - Checks:
       - Overview: checks-reference.md
       - Limitations: check-limitations.md
@@ -73,8 +74,6 @@ nav:
           - CONSTANT_VALUE_CHANGED: checks/diff-based/constant_value_changed.md
           - COMMENT_ONLY: checks/diff-based/comment_only.md
           - ARRAY_BOUNDS_CHANGED: checks/diff-based/array_bounds_changed.md
-          - STATE_UNHANDLED: checks/diff-based/state_unhandled.md
-          - UNREACHABLE_CODE: checks/diff-based/unreachable_code.md
           - LOOP_BOUNDS_CHANGED: checks/diff-based/loop_bounds_changed.md
           - POU_DELETED: checks/diff-based/pou_deleted.md
           - POU_RENAMED: checks/diff-based/pou_renamed.md
@@ -94,6 +93,15 @@ nav:
           - DIVISION_BY_ZERO: checks/static-integrity/division_by_zero.md
           - INFINITE_LOOP: checks/static-integrity/infinite_loop.md
           - LOOP_BOUNDS_REVERSED: checks/static-integrity/loop_bounds_reversed.md
+          - STATE_UNHANDLED: checks/static-integrity/state_unhandled.md
+          - UNREACHABLE_CODE: checks/static-integrity/unreachable_code.md
+          - FOR_LOOP_VAR_MODIFIED: checks/static-integrity/for_loop_var_modified.md
+          - FOR_LOOP_VAR_USED_AFTER: checks/static-integrity/for_loop_var_used_after.md
+          - POINTER_ARITHMETIC: checks/static-integrity/pointer_arithmetic.md
+          - POINTER_COMPARED: checks/static-integrity/pointer_compared.md
+          - UNINITIALIZED_VAR_USED: checks/static-integrity/uninitialized_var_used.md
+          - TIME_EQUALITY: checks/static-integrity/time_equality.md
+          - MULTI_WRITER_GLOBAL: checks/static-integrity/multi_writer_global.md
       - FB-instance:
           - COUNTER_PV_ZERO: checks/fb-instance/counter_pv_zero.md
           - TIMER_PT_ZERO: checks/fb-instance/timer_pt_zero.md
@@ -123,10 +131,36 @@ nav:
           - OUTPUT_VAR_READ_INTERNALLY: checks/code-quality/output_var_read_internally.md
           - NESTED_COMMENTS: checks/code-quality/nested_comments.md
           - NAMING_CONVENTION: checks/code-quality/naming_convention.md
+          - DIRECT_ADDRESS_USED: checks/code-quality/direct_address_used.md
+          - IF_WITHOUT_ELSE: checks/code-quality/if_without_else.md
+          - FORBIDDEN_STATEMENT: checks/code-quality/forbidden_statement.md
+          - POU_NOT_COMMENTED: checks/code-quality/pou_not_commented.md
+          - NAME_REUSED_DIFFERENT_KIND: checks/code-quality/name_reused_different_kind.md
+          - INDIRECT_RECURSIVE_CALL: checks/code-quality/indirect_recursive_call.md
+          - IDENTIFIER_TOO_LONG: checks/code-quality/identifier_too_long.md
+          - IDENTIFIER_CHARSET: checks/code-quality/identifier_charset.md
+          - TOO_MANY_PARAMETERS: checks/code-quality/too_many_parameters.md
+          - TOO_MANY_GLOBALS_USED: checks/code-quality/too_many_globals_used.md
+          - EXTERNAL_VAR_IN_FUNCTION: checks/code-quality/external_var_in_function.md
+          - IMPLICIT_TYPE_CONVERSION: checks/code-quality/implicit_type_conversion.md
+      - Security (IEC 62443):
+          - HARDCODED_CREDENTIALS: checks/security/hardcoded_credentials.md
+          - HARDCODED_NETWORK_ENDPOINT: checks/security/hardcoded_network_endpoint.md
+          - UNVALIDATED_INPUT_USE: checks/security/unvalidated_input_use.md
+          - DEBUG_PRAGMA_IN_PRODUCTION: checks/security/debug_pragma_in_production.md
+          - PERSISTENT_PLAINTEXT_SECRET: checks/security/persistent_plaintext_secret.md
   - Configuration:
       - Tuning severities: tuning-severities.md
       - Preset packs: preset-packs.md
+      - Case sensitivity (dialects): case-sensitivity.md
+      - Parsing limits: parsing-limits.md
       - Writing custom checks: writing-custom-checks.md
+  - Presets:
+      - PLCopen Coding Guidelines: presets/plcopen.md
+  - Standards mapping:
+      - MISRA-C: standards/misra-c.md
+      - IEC 61508 (positioning): standards/iec-61508.md
+      - IEC 62443 (industrial cybersecurity): standards/iec-62443.md
   - Metrics:
       - Metrics mode: metrics-mode.md
       - Project scope: project-scope.md

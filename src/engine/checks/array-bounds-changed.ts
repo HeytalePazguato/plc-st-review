@@ -1,3 +1,4 @@
+import { parseStNumber } from '../literals.js';
 import type { ArrayDecl, Check, Finding } from '../types.js';
 
 function key(a: ArrayDecl): string {
@@ -15,9 +16,13 @@ export const arrayBoundsChanged: Check = {
       const before = beforeIdx.get(key(after));
       if (!before) continue;
       if (before.lower === after.lower && before.upper === after.upper) continue;
-      const beforeSpan = Number(before.upper) - Number(before.lower);
-      const afterSpan = Number(after.upper) - Number(after.lower);
-      const shrunk = Number.isFinite(beforeSpan) && Number.isFinite(afterSpan) && afterSpan < beforeSpan;
+      const bLo = parseStNumber(before.lower);
+      const bHi = parseStNumber(before.upper);
+      const aLo = parseStNumber(after.lower);
+      const aHi = parseStNumber(after.upper);
+      const shrunk =
+        bLo !== null && bHi !== null && aLo !== null && aHi !== null &&
+        aHi - aLo < bHi - bLo;
       findings.push({
         severity: shrunk ? 'error' : 'warn',
         category: 'ARRAY_BOUNDS_CHANGED',

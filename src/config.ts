@@ -27,6 +27,7 @@ interface RawMetricThreshold {
 
 interface RawConfig {
   extends?: string | string[];
+  case_sensitive?: boolean;
   disabled_checks?: string[];
   severity_overrides?: Record<string, string>;
   ignore_paths?: string[];
@@ -41,6 +42,15 @@ interface RawConfig {
   metrics?: {
     thresholds?: Record<string, RawMetricThreshold>;
   };
+  parsing?: {
+    max_file_size_bytes?: number;
+  };
+  limits?: {
+    max_identifier_length?: number | null;
+    max_globals_used_per_pou?: number | null;
+    max_parameters?: number | null;
+  };
+  identifier_charset?: string | null;
 }
 
 const NAMING_DIMENSIONS: NamingDimension[] = [
@@ -72,6 +82,14 @@ export const DEFAULT_CONFIG: ResolvedConfig = Object.freeze({
   namingConventions: {},
   namingIgnore: [],
   metricsThresholds: cloneMetricsThresholds(DEFAULT_METRICS_THRESHOLDS),
+  caseSensitive: false,
+  maxFileSize: 1_000_000,
+  limits: {
+    maxIdentifierLength: null,
+    maxGlobalsUsedPerPou: null,
+    maxParameters: null,
+  },
+  identifierCharsetPattern: null,
 });
 
 function cloneMetricsThresholds(m: MetricsThresholds): MetricsThresholds {
@@ -133,6 +151,7 @@ async function loadRawWithExtends(
 function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
   return {
     extends: override.extends ?? base.extends,
+    case_sensitive: override.case_sensitive ?? base.case_sensitive,
     disabled_checks: union(base.disabled_checks, override.disabled_checks),
     severity_overrides: { ...base.severity_overrides, ...override.severity_overrides },
     ignore_paths: union(base.ignore_paths, override.ignore_paths),
@@ -148,6 +167,9 @@ function mergeRawConfigs(base: RawConfig, override: RawConfig): RawConfig {
         ...override.metrics?.thresholds,
       },
     },
+    parsing: { ...base.parsing, ...override.parsing },
+    limits: { ...base.limits, ...override.limits },
+    identifier_charset: override.identifier_charset ?? base.identifier_charset,
   };
 }
 
@@ -158,6 +180,7 @@ function union(a: string[] | undefined, b: string[] | undefined): string[] {
 
 export function resolveConfig(raw: RawConfig): ResolvedConfig {
   const cfg = cloneDefault();
+  if (typeof raw.case_sensitive === 'boolean') cfg.caseSensitive = raw.case_sensitive;
   if (raw.disabled_checks) {
     for (const c of raw.disabled_checks) {
       if (isCategory(c)) cfg.disabledChecks.add(c);
@@ -183,6 +206,26 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
   if (raw.forbidden_symbols) cfg.forbiddenSymbols = [...raw.forbidden_symbols];
   if (raw.naming_ignore) cfg.namingIgnore = [...raw.naming_ignore];
   applyMetricThresholds(cfg.metricsThresholds, raw.metrics?.thresholds);
+  if (typeof raw.parsing?.max_file_size_bytes === 'number') {
+    // Negative values are coerced to 0 (disabled); fractional values are
+    // floored so the comparison stays consistent.
+    const n = Math.floor(raw.parsing.max_file_size_bytes);
+    cfg.maxFileSize = n < 0 ? 0 : n;
+  }
+  // Limits — each is null when unset (the corresponding check then no-ops),
+  // a positive integer when configured. Non-positive values disable the
+  // individual cap so users can opt back out via a preset overlay.
+  const lim = raw.limits;
+  if (lim) {
+    const pos = (n: unknown): number | null =>
+      typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : null;
+    if ('max_identifier_length' in lim) cfg.limits.maxIdentifierLength = pos(lim.max_identifier_length);
+    if ('max_globals_used_per_pou' in lim) cfg.limits.maxGlobalsUsedPerPou = pos(lim.max_globals_used_per_pou);
+    if ('max_parameters' in lim) cfg.limits.maxParameters = pos(lim.max_parameters);
+  }
+  if (typeof raw.identifier_charset === 'string' && raw.identifier_charset !== '') {
+    cfg.identifierCharsetPattern = raw.identifier_charset;
+  }
   if (raw.naming_conventions) {
     for (const [k, v] of Object.entries(raw.naming_conventions)) {
       if (!isNamingDimension(k) || !v) continue;
@@ -198,6 +241,38 @@ export function resolveConfig(raw: RawConfig): ResolvedConfig {
   return cfg;
 }
 
+/**
+ * Parse a YAML config string and resolve it. Used when the config is fetched
+ * from a remote ref (e.g. a PR's base commit) rather than read off disk.
+ * `extends:` chains are not followed here — the caller is responsible for
+ * supplying a self-contained config or fetching the chain itself.
+ */
+export function loadConfigFromText(text: string): ResolvedConfig {
+  const raw = (parseYaml(text) ?? {}) as RawConfig;
+  return resolveConfig(raw);
+}
+
+/**
+ * Try to fetch `.plc-st-review.yml` / `plc-st-review.yml` via the supplied
+ * `fetcher` (typically a platform `fetchFile` bound to a base commit SHA),
+ * and resolve it. Returns `null` when neither name exists at that ref, so
+ * the caller can fall back to the cwd default or the supplied defaults.
+ *
+ * This is the security-relevant config path for PR / MR review: the working
+ * directory in CI contains the PR-head code, which on a fork PR is attacker-
+ * controlled. Loading from the base commit means a malicious
+ * `.plc-st-review.yml` shipped inside the PR can't influence the review run.
+ */
+export async function loadConfigFromBaseRef(
+  fetcher: (name: string) => Promise<string | null>,
+): Promise<ResolvedConfig | null> {
+  for (const name of ['.plc-st-review.yml', 'plc-st-review.yml']) {
+    const text = await fetcher(name);
+    if (text !== null) return loadConfigFromText(text);
+  }
+  return null;
+}
+
 function cloneDefault(): ResolvedConfig {
   return {
     disabledChecks: new Set(DEFAULT_CONFIG.disabledChecks),
@@ -210,6 +285,10 @@ function cloneDefault(): ResolvedConfig {
     namingConventions: { ...DEFAULT_CONFIG.namingConventions },
     namingIgnore: [...DEFAULT_CONFIG.namingIgnore],
     metricsThresholds: cloneMetricsThresholds(DEFAULT_CONFIG.metricsThresholds),
+    caseSensitive: DEFAULT_CONFIG.caseSensitive,
+    maxFileSize: DEFAULT_CONFIG.maxFileSize,
+    limits: { ...DEFAULT_CONFIG.limits },
+    identifierCharsetPattern: DEFAULT_CONFIG.identifierCharsetPattern,
   };
 }
 

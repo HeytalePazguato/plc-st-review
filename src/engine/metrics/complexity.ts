@@ -18,10 +18,16 @@ const DECISION_NODES = new Set<string>([
 /**
  * McCabe cyclomatic complexity for a single POU subtree: start at 1, add 1
  * for every decision point (IF, ELSIF, FOR, WHILE, REPEAT, each CASE arm) and
- * 1 for every `AND`/`OR` operator inside a boolean expression. The grammar
- * exposes the operator only as an anonymous token, so we read the full child
- * list rather than the named children to recognise it.
+ * 1 for every `AND` / `OR` / `XOR` / `&` operator inside a binary expression.
+ * IEC 61131-3 treats `&` as a synonym for `AND` on BOOL operands, and `XOR`
+ * as a logical operator, so all four create a decision branch in the
+ * truthiness lattice and should each bump the count. The grammar exposes the
+ * operator only as an anonymous token (verified: token types are exactly
+ * `AND` / `OR` / `XOR` / `&`), so we read the full child list rather than the
+ * named children to recognise it.
  */
+const LOGICAL_OP_TYPES = new Set<string>(['AND', 'OR', 'XOR', '&']);
+
 export function cyclomaticComplexity(pou: StNode): number {
   let complexity = 1;
   const stack: StNode[] = [...childrenOf(pou)];
@@ -36,8 +42,11 @@ export function cyclomaticComplexity(pou: StNode): number {
 
 function isLogicalOperator(binary: StNode): boolean {
   for (const child of allChildrenOf(binary)) {
-    const t = child.type.toUpperCase();
-    if (t === 'AND' || t === 'OR') return true;
+    // `&` is case-irrelevant; `AND` / `OR` / `XOR` keywords come through the
+    // grammar uppercase regardless of source casing, but we upper-case
+    // defensively in case a future grammar change preserves source casing.
+    const t = child.type === '&' ? '&' : child.type.toUpperCase();
+    if (LOGICAL_OP_TYPES.has(t)) return true;
   }
   return false;
 }

@@ -2,6 +2,11 @@
 
 Every check `plc-st-review` ships with, what it catches, why it exists, how to configure it, an ST trigger, what the bot posts, and a suggested fix. See [`check-limitations.md`](check-limitations.md) for what each check deliberately *doesn't* catch.
 
+Two project-wide settings shape how **every** check resolves identifiers and which `.st` files it parses:
+
+- [**Case sensitivity**](case-sensitivity.md) — `case_sensitive: true|false` (default `false`). Pick the value that matches your toolchain (CODESYS / TwinCAT → `false`; B&R Automation Studio → `true`). Drives every identifier comparison and gates `IDENTIFIER_CASE_MISMATCH`.
+- [**Parsing limits**](parsing-limits.md) — `parsing.max_file_size_bytes` (default 1 MB) and the `--max-file-size` CLI flag control the per-file source-length cap. `0` disables.
+
 **Live demo:** every check in this document fires at least once on [PR #1](https://github.com/HeytalePazguato/plc-st-review/pull/1), where you can see the exact inline comments the bot posts.
 
 ## Common settings (apply to every check)
@@ -55,8 +60,6 @@ These compare the *before* and *after* trees of a PR. Every finding implies a ch
 - [CONSTANT_VALUE_CHANGED](checks/diff-based/constant_value_changed.md)
 - [COMMENT_ONLY](checks/diff-based/comment_only.md)
 - [ARRAY_BOUNDS_CHANGED](checks/diff-based/array_bounds_changed.md)
-- [STATE_UNHANDLED](checks/diff-based/state_unhandled.md)
-- [UNREACHABLE_CODE](checks/diff-based/unreachable_code.md)
 - [LOOP_BOUNDS_CHANGED](checks/diff-based/loop_bounds_changed.md)
 - [POU_DELETED](checks/diff-based/pou_deleted.md)
 - [POU_RENAMED](checks/diff-based/pou_renamed.md)
@@ -82,6 +85,15 @@ These run on the *after* tree alone and surface bugs that compile but mis-behave
 - [DIVISION_BY_ZERO](checks/static-integrity/division_by_zero.md)
 - [INFINITE_LOOP](checks/static-integrity/infinite_loop.md)
 - [LOOP_BOUNDS_REVERSED](checks/static-integrity/loop_bounds_reversed.md)
+- [STATE_UNHANDLED](checks/static-integrity/state_unhandled.md)
+- [UNREACHABLE_CODE](checks/static-integrity/unreachable_code.md)
+- [FOR_LOOP_VAR_MODIFIED](checks/static-integrity/for_loop_var_modified.md)
+- [FOR_LOOP_VAR_USED_AFTER](checks/static-integrity/for_loop_var_used_after.md)
+- [POINTER_ARITHMETIC](checks/static-integrity/pointer_arithmetic.md)
+- [POINTER_COMPARED](checks/static-integrity/pointer_compared.md)
+- [UNINITIALIZED_VAR_USED](checks/static-integrity/uninitialized_var_used.md)
+- [TIME_EQUALITY](checks/static-integrity/time_equality.md)
+- [MULTI_WRITER_GLOBAL](checks/static-integrity/multi_writer_global.md) — project-scoped (needs `--project-scope`).
 
 ## FB-instance checks
 
@@ -119,6 +131,32 @@ These are stylistic / hygiene checks. Most ship at `info` severity and stay off 
 - [OUTPUT_VAR_READ_INTERNALLY](checks/code-quality/output_var_read_internally.md)
 - [NESTED_COMMENTS](checks/code-quality/nested_comments.md)
 - [NAMING_CONVENTION](checks/code-quality/naming_convention.md)
+- [DIRECT_ADDRESS_USED](checks/code-quality/direct_address_used.md)
+- [IF_WITHOUT_ELSE](checks/code-quality/if_without_else.md)
+- [FORBIDDEN_STATEMENT](checks/code-quality/forbidden_statement.md)
+- [POU_NOT_COMMENTED](checks/code-quality/pou_not_commented.md)
+- [NAME_REUSED_DIFFERENT_KIND](checks/code-quality/name_reused_different_kind.md)
+- [INDIRECT_RECURSIVE_CALL](checks/code-quality/indirect_recursive_call.md)
+- [IDENTIFIER_TOO_LONG](checks/code-quality/identifier_too_long.md)
+- [IDENTIFIER_CHARSET](checks/code-quality/identifier_charset.md)
+- [TOO_MANY_PARAMETERS](checks/code-quality/too_many_parameters.md)
+- [TOO_MANY_GLOBALS_USED](checks/code-quality/too_many_globals_used.md)
+- [EXTERNAL_VAR_IN_FUNCTION](checks/code-quality/external_var_in_function.md)
+- [IMPLICIT_TYPE_CONVERSION](checks/code-quality/implicit_type_conversion.md)
+
+Several of the above also appear in the [PLCopen Coding Guidelines](presets/plcopen.md); the PLCopen preset bumps their severities and turns on the limit-gated ones. They're not PLCopen-exclusive though — they're general checks the engine ships standalone.
+
+## Security (IEC 62443) checks
+
+These five checks target [IEC 62443](standards/iec-62443.md) industrial-cybersecurity concerns that are statically inferable from ST source — hard-coded credentials, hard-coded network endpoints, unguarded use of `VAR_INPUT` in privileged operations, debug pragmas left in production, and persistent storage of secret-named variables.
+
+- [HARDCODED_CREDENTIALS](checks/security/hardcoded_credentials.md) — secret-named variable with a literal STRING initialiser.
+- [HARDCODED_NETWORK_ENDPOINT](checks/security/hardcoded_network_endpoint.md) — STRING global / local whose literal value is an IPv4 address or a `tcp://` / `opc.tcp://` / `mqtt(s)` / `modbus` / `http(s)` URL.
+- [UNVALIDATED_INPUT_USE](checks/security/unvalidated_input_use.md) — `VAR_INPUT` used as an array subscript or divisor with no in-POU relational guard.
+- [DEBUG_PRAGMA_IN_PRODUCTION](checks/security/debug_pragma_in_production.md) — debug / monitoring / force-init attribute pragmas in non-test source paths.
+- [PERSISTENT_PLAINTEXT_SECRET](checks/security/persistent_plaintext_secret.md) — `VAR_GLOBAL PERSISTENT` / `RETAIN` of a secret-named variable.
+
+See the [IEC 62443 mapping page](standards/iec-62443.md) for the per-clause cross-reference and suggested severity policy by Security Level.
 
 ## Using a check in your PR
 

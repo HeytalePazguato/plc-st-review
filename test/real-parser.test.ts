@@ -261,4 +261,621 @@ END_FUNCTION_BLOCK
       findings.filter((f) => f.category === 'OUTPUT_VAR_READ_INTERNALLY'),
     ).toHaveLength(1);
   });
+
+  it('does NOT flag OUTPUT_VAR_READ_INTERNALLY for a write-only output', async () => {
+    // Regression: refContext used object identity (`child === lhs`) to find
+    // the assignment target, but tree-sitter hands back a fresh wrapper on
+    // every access, so the identity never held and EVERY assignment LHS was
+    // misclassified as a read. A write-only output (assigned, never read on
+    // any RHS) was therefore flagged. refContext now compares node positions.
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_W
+VAR_OUTPUT
+    rOut : REAL;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'FB_W.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_W
+VAR_OUTPUT
+    rOut : REAL;
+END_VAR
+VAR
+    rLocal : REAL;
+END_VAR
+rLocal := 1.0;
+rOut := rLocal;
+END_FUNCTION_BLOCK
+`,
+      'FB_W.st',
+    );
+    const findings = review([before], [after]);
+    expect(
+      findings.filter((f) => f.category === 'OUTPUT_VAR_READ_INTERNALLY'),
+    ).toHaveLength(0);
+  });
+
+  // Case-sensitivity is dialect-dependent: generic IEC / TwinCAT / CODESYS are
+  // case-insensitive (the default), B&R Automation Studio is case-sensitive
+  // (`caseSensitive: true`). The symbol-table identifier maps key through the
+  // shared CaseMap so insertion and lookup always agree.
+
+  const shadowGlobals = `VAR_GLOBAL
+    Level : INT;
+END_VAR
+`;
+  const shadowBefore = `${shadowGlobals}FUNCTION_BLOCK FB_X
+END_FUNCTION_BLOCK
+`;
+  const shadowAfter = `${shadowGlobals}FUNCTION_BLOCK FB_X
+VAR
+    level : INT;
+END_VAR
+END_FUNCTION_BLOCK
+`;
+
+  it('case-insensitive (default): a local shadowing a different-cased global is flagged', async () => {
+    const before = await parseSource(shadowBefore, 'FB_X.st');
+    const after = await parseSource(shadowAfter, 'FB_X.st');
+    const findings = review([before], [after]);
+    expect(
+      findings.filter((f) => f.category === 'VARIABLE_SHADOWING'),
+    ).toHaveLength(1);
+  });
+
+  it('case-sensitive mode: a different-cased local does NOT shadow the global', async () => {
+    const before = await parseSource(shadowBefore, 'FB_X.st');
+    const after = await parseSource(shadowAfter, 'FB_X.st');
+    const findings = review([before], [after], { caseSensitive: true });
+    expect(
+      findings.filter((f) => f.category === 'VARIABLE_SHADOWING'),
+    ).toHaveLength(0);
+  });
+
+  it('case-insensitive (default): a lowercase `pt :=` still resolves for TIMER_PT_ZERO', async () => {
+    // M8: standard FB parameter names are looked up via namedArgs.get('PT').
+    // Before the CaseMap fix, a lowercase `pt :=` was missed.
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    T1 : TON;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    T1 : TON;
+END_VAR
+T1(IN := TRUE, pt := T#0s);
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    const findings = review([before], [after]);
+    expect(
+      findings.filter((f) => f.category === 'TIMER_PT_ZERO'),
+    ).toHaveLength(1);
+  });
+
+  it('case-insensitive (default): FB-typed local declared with off-case type resolves', async () => {
+    // Before extending `CaseMap` to `pous`, `inferLocalKind` (and the
+    // FB_INSTANCE_* checks) looked up the type-text against a raw `Map`, so a
+    // local typed `fb_helper` never matched the FB declared as `FB_Helper` in
+    // case-insensitive dialects — silently classified as `var_local`, which
+    // defangs FB_INSTANCE_NEVER_CALLED.
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_Helper
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_Outer
+VAR
+    fbInst : fb_helper;
+END_VAR
+fbInst.Q;
+END_FUNCTION_BLOCK
+`,
+      'fbs.st',
+    );
+    const table = buildSymbolTable([ast]);
+    // The type-text lookup now resolves through CaseMap.
+    expect(table.pous.get('fb_helper')?.kind).toBe('function_block');
+    // And the local is classified as an FB instance, not a plain `var_local`.
+    const local = table.declarations.find((d) => d.name === 'fbInst');
+    expect(local?.kind).toBe('fb_instance');
+    // FB_INSTANCE_NEVER_CALLED therefore sees the instance and fires.
+    const findings = review([], [ast]);
+    expect(
+      findings.filter((f) => f.category === 'FB_INSTANCE_NEVER_CALLED').length,
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it('case-sensitive mode: an FB-typed local with off-case type does NOT resolve', async () => {
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_Helper
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_Outer
+VAR
+    fbInst : fb_helper;
+END_VAR
+fbInst.Q;
+END_FUNCTION_BLOCK
+`,
+      'fbs.st',
+    );
+    const table = buildSymbolTable([ast], true);
+    expect(table.pous.get('fb_helper')).toBeUndefined();
+    const local = table.declarations.find((d) => d.name === 'fbInst');
+    expect(local?.kind).toBe('var_local');
+  });
+
+  it('UNREACHABLE_CODE flags every dead statement after RETURN, not just the first (L12)', async () => {
+    // Before this fix, `terminator` was reset after the first dead statement,
+    // so `RETURN; a; b; c;` only flagged `a`.
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_Dead
+VAR
+    a : INT;
+    b : INT;
+    c : INT;
+END_VAR
+RETURN;
+END_FUNCTION_BLOCK
+`,
+      'FB_Dead.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_Dead
+VAR
+    a : INT;
+    b : INT;
+    c : INT;
+END_VAR
+RETURN;
+a := 1;
+b := 2;
+c := 3;
+END_FUNCTION_BLOCK
+`,
+      'FB_Dead.st',
+    );
+    const findings = review([before], [after]);
+    const u = findings.filter((f) => f.category === 'UNREACHABLE_CODE');
+    expect(u).toHaveLength(3);
+  });
+
+  it('cross-file globals with the same name are both retained (H1)', async () => {
+    // Before this fix, the second file's decl overwrote the first in `globals`
+    // and `buildDeclarations` only saw one, blinding NAME_REUSED_DIFFERENT_KIND
+    // to cross-file collisions. The fix keeps every decl in `globalDecls` and
+    // routes `buildDeclarations` / metric aggregation through it.
+    const fileA = await parseSource(
+      `VAR_GLOBAL
+    gShared : INT;
+END_VAR
+`,
+      'a.st',
+    );
+    const fileB = await parseSource(
+      `VAR_GLOBAL
+    gShared : REAL;
+END_VAR
+`,
+      'b.st',
+    );
+    const table = buildSymbolTable([fileA, fileB]);
+    expect(table.globalDecls).toHaveLength(2);
+    expect(table.globalDecls.map((g) => g.file).sort()).toEqual(['a.st', 'b.st']);
+    const decls = table.declarations.filter((d) => d.name === 'gShared');
+    expect(decls).toHaveLength(2);
+  });
+
+  it('IDENTIFIER_CASE_MISMATCH fires by default but is disabled in case-sensitive mode', async () => {
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_M
+VAR
+    iCount : INT;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'FB_M.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_M
+VAR
+    iCount : INT;
+END_VAR
+ICOUNT := iCount + 1;
+END_FUNCTION_BLOCK
+`,
+      'FB_M.st',
+    );
+    const insensitive = review([before], [after]);
+    expect(
+      insensitive.filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH').length,
+    ).toBeGreaterThanOrEqual(1);
+    const sensitive = review([before], [after], { caseSensitive: true });
+    expect(
+      sensitive.filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH'),
+    ).toHaveLength(0);
+  });
+
+  // LOOP_BOUNDS_REVERSED with the real grammar. A negative literal step (`-2`)
+  // parses as a single signed integer_literal, but `(-2)` is a
+  // parenthesized_expression and `-STEP` a unary_expression; all three must be
+  // recognized as the BY step so a valid descending loop is not misread as
+  // ascending (default +1) and falsely flagged.
+  async function loopFb(bodyLoop: string): Promise<AstFile> {
+    return parseSource(
+      `VAR_GLOBAL CONSTANT
+    STEP : INT := 2;
+END_VAR
+FUNCTION_BLOCK FB_L
+VAR
+    i : INT;
+    x : INT;
+END_VAR
+${bodyLoop}
+END_FUNCTION_BLOCK
+`,
+      'FB_L.st',
+    );
+  }
+  const reversed = (fs: Awaited<ReturnType<typeof loopFb>>) =>
+    review([], [fs]).filter((f) => f.category === 'LOOP_BOUNDS_REVERSED');
+
+  it('does NOT flag valid descending loops with literal, parenthesized, or constant negative steps', async () => {
+    for (const step of ['-2', '(-2)', '-STEP']) {
+      const fs = await loopFb(`FOR i := 10 TO 1 BY ${step} DO\n    x := x + 1;\nEND_FOR;`);
+      expect(reversed(fs), `BY ${step} descending should be quiet`).toHaveLength(0);
+    }
+  });
+
+  it('flags genuinely reversed loops regardless of how the step is written', async () => {
+    const negSteps = ['-2', '(-2)', '-STEP']; // ascending bounds + negative step = never runs
+    for (const step of negSteps) {
+      const fs = await loopFb(`FOR i := 1 TO 10 BY ${step} DO\n    x := x + 1;\nEND_FOR;`);
+      expect(reversed(fs), `BY ${step} ascending should fire`).toHaveLength(1);
+    }
+    // descending bounds with a positive step also never runs
+    const pos = await loopFb(`FOR i := 10 TO 1 BY 1 DO\n    x := x + 1;\nEND_FOR;`);
+    expect(reversed(pos)).toHaveLength(1);
+  });
+
+  // M6: radix / underscore literals must decode to their real value, not the
+  // truncated `parseFloat` reading (`16#FF`->16, `1_000`->1, `2#1010`->2).
+  it('ARRAY_INDEX_OUT_OF_BOUNDS understands radix and underscore index literals', async () => {
+    const oob = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    arr : ARRAY[0..15] OF INT;
+    x : INT;
+END_VAR
+x := arr[2#10000];
+END_FUNCTION_BLOCK
+`,
+      'FB_A.st',
+    );
+    // 2#10000 = 16, which is out of [0..15]; a parseFloat reading of 2 would miss it.
+    expect(
+      review([], [oob]).filter((f) => f.category === 'ARRAY_INDEX_OUT_OF_BOUNDS'),
+    ).toHaveLength(1);
+
+    const inBounds = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    arr : ARRAY[0..16#FF] OF INT;
+    x : INT;
+END_VAR
+x := arr[16#FF];
+END_FUNCTION_BLOCK
+`,
+      'FB_A.st',
+    );
+    // 16#FF = 255 = upper bound; must NOT be flagged.
+    expect(
+      review([], [inBounds]).filter((f) => f.category === 'ARRAY_INDEX_OUT_OF_BOUNDS'),
+    ).toHaveLength(0);
+  });
+
+  it('VARIABLE_SHADOWING fires when a local FB instance shadows a global of the same name', async () => {
+    // A common bug: VAR_GLOBAL has an FB instance (e.g. a shared pump
+    // controller). Some POU declares a local instance with the same name —
+    // every reference inside that POU silently picks the local, leaving the
+    // global instance unread.
+    const before = await parseSource(
+      `VAR_GLOBAL
+    myPump : FB_Pump;
+END_VAR
+FUNCTION_BLOCK FB_Pump
+END_FUNCTION_BLOCK
+PROGRAM Main
+END_PROGRAM
+`,
+      'shadow.st',
+    );
+    const after = await parseSource(
+      `VAR_GLOBAL
+    myPump : FB_Pump;
+END_VAR
+FUNCTION_BLOCK FB_Pump
+END_FUNCTION_BLOCK
+PROGRAM Main
+VAR
+    myPump : FB_Pump;
+END_VAR
+END_PROGRAM
+`,
+      'shadow.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'VARIABLE_SHADOWING',
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toContain('myPump');
+    expect(findings[0].summary).toContain('shadows a global');
+  });
+
+  it('DIVISION_BY_ZERO understands a based-literal divisor of zero', async () => {
+    const fb = await parseSource(
+      `FUNCTION_BLOCK FB_D
+VAR
+    i : INT;
+    x : INT;
+END_VAR
+x := i / 16#0;
+END_FUNCTION_BLOCK
+`,
+      'FB_D.st',
+    );
+    expect(
+      review([], [fb]).filter((f) => f.category === 'DIVISION_BY_ZERO'),
+    ).toHaveLength(1);
+  });
+
+  // M7: positional calls drive the standard FB inputs (TON/TOF/TP take IN as
+  // positional 0; R_TRIG/F_TRIG take CLK as positional 0). The check must not
+  // demand a named `IN := ...` argument when a positional one is present.
+  it('TIMER_NOT_DRIVEN does NOT fire on a positional `T1(bStart, T#5s)` call', async () => {
+    const fb = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    bStart, bRes : BOOL;
+    T1 : TON;
+END_VAR
+T1(bStart, T#5s);
+bRes := T1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    expect(
+      review([], [fb]).filter((f) => f.category === 'TIMER_NOT_DRIVEN'),
+    ).toHaveLength(0);
+  });
+
+  it('TIMER_NOT_DRIVEN still fires when the timer is called with PT only (no IN)', async () => {
+    const fb = await parseSource(
+      `FUNCTION_BLOCK FB_T
+VAR
+    bRes : BOOL;
+    T1 : TON;
+END_VAR
+T1(PT := T#5s);
+bRes := T1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_T.st',
+    );
+    expect(
+      review([], [fb]).filter((f) => f.category === 'TIMER_NOT_DRIVEN'),
+    ).toHaveLength(1);
+  });
+
+  // H3/M10/M11: scope-aware reference resolution. With two POUs in one file
+  // each declaring the same name in different case, a reference in either POU
+  // must resolve to its own POU's declaration — not to whichever was declared
+  // first globally. And the unused-var check must count uses inside the POU
+  // (and any nested method), not file-wide.
+  it('IDENTIFIER_CASE_MISMATCH does NOT cross POU boundaries for same-name decls', async () => {
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    count : INT;
+END_VAR
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK FB_B
+VAR
+    Count : INT;
+END_VAR
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    count : INT;
+END_VAR
+count := 1;
+END_FUNCTION_BLOCK
+
+FUNCTION_BLOCK FB_B
+VAR
+    Count : INT;
+END_VAR
+Count := 2;
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    expect(
+      review([before], [after]).filter((f) => f.category === 'IDENTIFIER_CASE_MISMATCH'),
+    ).toHaveLength(0);
+  });
+
+  it('UNUSED_VAR_INTRODUCED scopes ref counting per POU, not file-wide', async () => {
+    const before = await parseSource(
+      `FUNCTION_BLOCK FB_A
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_B
+VAR
+    idx : INT;
+END_VAR
+idx := idx + 1;
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    const after = await parseSource(
+      `FUNCTION_BLOCK FB_A
+VAR
+    idx : INT;
+END_VAR
+END_FUNCTION_BLOCK
+FUNCTION_BLOCK FB_B
+VAR
+    idx : INT;
+END_VAR
+idx := idx + 1;
+END_FUNCTION_BLOCK
+`,
+      'two.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'UNUSED_VAR_INTRODUCED',
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0].summary).toContain('FB_A');
+  });
+
+  // H4: ENUM_VALUE_REMOVED must use exact arm matching (with optional
+  // `EnumName.` qualification) and honour the dialect's case sensitivity. The
+  // old substring match wrongly treated `EMERGENCY_STOP` as a reference to a
+  // removed `STOP`, and case-sensitive equality reported a case-only value
+  // rename (`idle` -> `IDLE`) as a removal.
+  it('ENUM_VALUE_REMOVED does not match a removed value as a substring of a surviving one', async () => {
+    const before = await parseSource(
+      `TYPE E_State : (IDLE, STOP, EMERGENCY_STOP); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.EMERGENCY_STOP: x := 1;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'e.st',
+    );
+    const after = await parseSource(
+      `TYPE E_State : (IDLE, EMERGENCY_STOP); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.EMERGENCY_STOP: x := 1;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'e.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'ENUM_VALUE_REMOVED',
+    );
+    // STOP is removed and not referenced anywhere — must be reported as the
+    // "no surviving references" warning, not the "still referenced" error.
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('warn');
+    expect(findings[0].summary).toContain('STOP');
+    expect(findings[0].summary).toContain('no surviving references');
+  });
+
+  it('ENUM_VALUE_REMOVED does not flag a case-only rename under the case-insensitive default', async () => {
+    const before = await parseSource(
+      `TYPE E_State : (idle, RUN); END_TYPE\n`,
+      'cr.st',
+    );
+    const after = await parseSource(
+      `TYPE E_State : (IDLE, RUN); END_TYPE\n`,
+      'cr.st',
+    );
+    expect(
+      review([before], [after]).filter((f) => f.category === 'ENUM_VALUE_REMOVED'),
+    ).toHaveLength(0);
+  });
+
+  it('ENUM_VALUE_REMOVED still fires when a value is genuinely removed and a CASE still references the qualified form', async () => {
+    const before = await parseSource(
+      `TYPE E_State : (IDLE, RUN, RUNNING); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.RUN: x := 1;
+    E_State.RUNNING: x := 2;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'r.st',
+    );
+    const after = await parseSource(
+      `TYPE E_State : (IDLE, RUNNING); END_TYPE
+FUNCTION_BLOCK FB_A
+VAR s : E_State; x : INT; END_VAR
+CASE s OF
+    E_State.IDLE: x := 0;
+    E_State.RUN: x := 1;
+    E_State.RUNNING: x := 2;
+END_CASE;
+END_FUNCTION_BLOCK
+`,
+      'r.st',
+    );
+    const findings = review([before], [after]).filter(
+      (f) => f.category === 'ENUM_VALUE_REMOVED',
+    );
+    expect(findings).toHaveLength(1);
+    expect(findings[0].severity).toBe('error');
+    expect(findings[0].summary).toContain('E_State.RUN');
+  });
+
+  it('EDGE_TRIG_REUSED handles positional CLK and case-insensitive named CLK', async () => {
+    const positionalDistinct = await parseSource(
+      `FUNCTION_BLOCK FB_R
+VAR
+    a, b, bRes : BOOL;
+    R1 : R_TRIG;
+END_VAR
+R1(a);
+R1(b);
+bRes := R1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_R.st',
+    );
+    expect(
+      review([], [positionalDistinct]).filter((f) => f.category === 'EDGE_TRIG_REUSED'),
+    ).toHaveLength(1);
+
+    const lowercaseNamed = await parseSource(
+      `FUNCTION_BLOCK FB_R
+VAR
+    a, b, bRes : BOOL;
+    R1 : R_TRIG;
+END_VAR
+R1(clk := a);
+R1(clk := b);
+bRes := R1.Q;
+END_FUNCTION_BLOCK
+`,
+      'FB_R.st',
+    );
+    expect(
+      review([], [lowercaseNamed]).filter((f) => f.category === 'EDGE_TRIG_REUSED'),
+    ).toHaveLength(1);
+  });
 });

@@ -1,3 +1,5 @@
+import type { CaseMap } from './case-map.js';
+
 export type Severity = 'info' | 'warn' | 'error';
 
 export const SEVERITY_RANK: Record<Severity, number> = {
@@ -62,7 +64,34 @@ export type Category =
   | 'COMPLEXITY_INCREASED'
   | 'NESTING_INCREASED'
   | 'LOC_SPIKE'
-  | 'DEAD_POU_INTRODUCED';
+  | 'DEAD_POU_INTRODUCED'
+  // PLCopen Coding Guidelines (single-revision unless noted).
+  | 'DIRECT_ADDRESS_USED'           // N1 / CP1
+  | 'IDENTIFIER_TOO_LONG'           // N6
+  | 'NAME_REUSED_DIFFERENT_KIND'    // N9
+  | 'POU_NOT_COMMENTED'             // C2
+  | 'FORBIDDEN_STATEMENT'           // L10  (EXIT / CONTINUE / GOTO)
+  | 'FOR_LOOP_VAR_MODIFIED'         // L12
+  | 'FOR_LOOP_VAR_USED_AFTER'       // L13
+  | 'IF_WITHOUT_ELSE'               // L17
+  | 'TOO_MANY_GLOBALS_USED'         // CP18
+  | 'TOO_MANY_PARAMETERS'           // CP23
+  | 'INDIRECT_RECURSIVE_CALL'       // CP13 indirect
+  | 'POINTER_ARITHMETIC'            // E2
+  | 'POINTER_COMPARED'              // E3
+  // PLCopen gap-rules implemented after the iec-checker comparison.
+  | 'UNINITIALIZED_VAR_USED'        // CP3
+  | 'EXTERNAL_VAR_IN_FUNCTION'      // CP6
+  | 'IMPLICIT_TYPE_CONVERSION'      // CP25
+  | 'MULTI_WRITER_GLOBAL'           // CP26
+  | 'TIME_EQUALITY'                 // CP28
+  | 'IDENTIFIER_CHARSET'            // N8
+  // IEC 62443 industrial-cybersecurity checks (single-revision).
+  | 'HARDCODED_CREDENTIALS'         // 62443-4-1 SI-1 / 62443-4-2 CR 1.5
+  | 'HARDCODED_NETWORK_ENDPOINT'    // 62443-4-1 SI-1 / 62443-4-2 CR 5.x
+  | 'UNVALIDATED_INPUT_USE'         // 62443-4-2 CR 3.5
+  | 'DEBUG_PRAGMA_IN_PRODUCTION'    // 62443-4-1 SI-2 / SVV
+  | 'PERSISTENT_PLAINTEXT_SECRET';  // 62443-4-2 CR 4.1
 
 /**
  * Categories that only make sense when comparing two revisions of the
@@ -156,6 +185,30 @@ export const ALL_CATEGORIES: Category[] = [
   'NESTING_INCREASED',
   'LOC_SPIKE',
   'DEAD_POU_INTRODUCED',
+  'DIRECT_ADDRESS_USED',
+  'IDENTIFIER_TOO_LONG',
+  'NAME_REUSED_DIFFERENT_KIND',
+  'POU_NOT_COMMENTED',
+  'FORBIDDEN_STATEMENT',
+  'FOR_LOOP_VAR_MODIFIED',
+  'FOR_LOOP_VAR_USED_AFTER',
+  'IF_WITHOUT_ELSE',
+  'TOO_MANY_GLOBALS_USED',
+  'TOO_MANY_PARAMETERS',
+  'INDIRECT_RECURSIVE_CALL',
+  'POINTER_ARITHMETIC',
+  'POINTER_COMPARED',
+  'UNINITIALIZED_VAR_USED',
+  'EXTERNAL_VAR_IN_FUNCTION',
+  'IMPLICIT_TYPE_CONVERSION',
+  'MULTI_WRITER_GLOBAL',
+  'TIME_EQUALITY',
+  'IDENTIFIER_CHARSET',
+  'HARDCODED_CREDENTIALS',
+  'HARDCODED_NETWORK_ENDPOINT',
+  'UNVALIDATED_INPUT_USE',
+  'DEBUG_PRAGMA_IN_PRODUCTION',
+  'PERSISTENT_PLAINTEXT_SECRET',
 ];
 
 export interface Position {
@@ -263,12 +316,67 @@ export interface ResolvedConfig {
   namingConventions: Partial<Record<NamingDimension, NamingRule>>;
   namingIgnore: string[];   // identifier patterns to skip for NAMING_CONVENTION
   metricsThresholds: MetricsThresholds;
+  /**
+   * Whether identifiers are compared case-sensitively. Dialect-dependent:
+   * generic IEC 61131-3, Beckhoff/TwinCAT and CODESYS are case-insensitive
+   * (the default, `false`); B&R Automation Studio is case-sensitive (`true`).
+   * Drives the symbol-table identifier maps and gates IDENTIFIER_CASE_MISMATCH.
+   */
+  caseSensitive: boolean;
+  /**
+   * Per-file source-length cap, in UTF-16 code units. Files larger than this
+   * are skipped by `parseSource` with a stderr warning, so a single huge or
+   * hostile file can't blow up the native parser. `0` disables the cap.
+   * Default: 1_000_000 (1 MB).
+   */
+  maxFileSize: number;
+  /**
+   * Numeric caps consumed by the size-/count-checking PLCopen rules
+   * (N6, CP18, CP23). Each is `null` when not configured — the
+   * corresponding check then does nothing.
+   */
+  limits: {
+    maxIdentifierLength: number | null;   // N6
+    maxGlobalsUsedPerPou: number | null;  // CP18
+    maxParameters: number | null;         // CP23
+  };
+  /**
+   * Regex any declared identifier must fully match — drives PLCopen N8.
+   * `null` (default) disables the check. Set to e.g.
+   * `'^[A-Za-z_][A-Za-z0-9_]*$'` to restrict identifiers to ASCII letters,
+   * digits, and underscore.
+   */
+  identifierCharsetPattern: string | null;
 }
 
 export interface SymbolTable {
-  pous: Map<string, Pou>;
-  globals: Map<string, GlobalVar>;
-  enums: Map<string, EnumDef>;
+  /**
+   * Whether identifier keys in this table are case-sensitive. Mirrors the
+   * resolved config; carried here so collectors that build per-call-site maps
+   * (e.g. named arguments) pick the same mode as `pous` / `pouLocals` /
+   * `globals` / `enums`.
+   */
+  caseSensitive: boolean;
+  /**
+   * POU table, keyed by qualified name (`Namespace.FB_X.Method1` etc.). Backed
+   * by `CaseMap` so a lookup by `fb_x` resolves the decl `FB_X` in case-
+   * insensitive dialects (TwinCAT / CODESYS / generic IEC) and stays strict in
+   * case-sensitive ones (B&R). Otherwise an FB-typed local declared as
+   * `: fb_x` and looked up as `FB_X` (or vice versa) would silently fail to
+   * resolve, defanging FB-instance checks.
+   */
+  pous: CaseMap<Pou>;
+  globals: CaseMap<GlobalVar>;
+  /**
+   * Every global declaration as it was seen, in source order, across every
+   * parsed file. `globals` deduplicates by name (last-write-wins) so its size
+   * counts unique names; `globalDecls` is the source of truth when a name is
+   * declared in more than one file (H1) — used by `buildDeclarations` (so
+   * NAME_REUSED_DIFFERENT_KIND sees every site) and by the project metrics
+   * (`totalGlobals`, orphan-type token scan).
+   */
+  globalDecls: GlobalVar[];
+  enums: CaseMap<EnumDef>;
   timerInstances: TimerInstance[];
   callSites: CallSite[];
   caseStatements: CaseSite[];
@@ -278,7 +386,13 @@ export interface SymbolTable {
   forLoops: ForLoop[];
   pragmas: Pragma[];
   unreachable: UnreachableStmt[];
-  pouLocals: Map<string, LocalVar[]>; // by POU qualified name
+  /**
+   * Per-POU local catalogue, keyed by the POU's qualified name. Backed by
+   * `CaseMap` for symmetry with `pous` — a check that grabs the locals for a
+   * scope spelled in one casing finds them even if a different code path
+   * stored them under another.
+   */
+  pouLocals: CaseMap<LocalVar[]>;
   memberAccesses: MemberAccess[];
   whileLoops: WhileLoop[];
   arrayAccesses: ArrayAccess[];
@@ -293,6 +407,51 @@ export interface SymbolTable {
   returnPoints: ReturnPoint[];
   declarations: NamedDecl[];
   addressOfExprs: AddressOfExpr[];
+  // PLCopen support collections.
+  directAddresses: DirectAddress[];
+  ifStatements: IfStatement[];
+  restrictedStatements: RestrictedStatement[];
+  pointerVars: PointerVar[];
+  binaryExpressions: BinaryExpression[];
+}
+
+export interface DirectAddress {
+  text: string;       // e.g. "%I0.0", "%QW100"
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface IfStatement {
+  file: string;
+  line: number;
+  scope: string;
+  hasElse: boolean;
+}
+
+export interface RestrictedStatement {
+  kind: 'EXIT' | 'CONTINUE' | 'GOTO' | 'RETURN';
+  file: string;
+  line: number;
+  scope: string;
+}
+
+export interface PointerVar {
+  name: string;
+  scope: string;
+  file: string;
+  line: number;
+}
+
+export interface BinaryExpression {
+  /** Operator token text — e.g. `+`, `-`, `=`, `<>`, `<`, `>`. */
+  op: string;
+  /** Operand text on either side, trimmed and lowercased. */
+  leftText: string;
+  rightText: string;
+  file: string;
+  line: number;
+  scope: string;
 }
 
 export interface AddressOfExpr {
@@ -323,7 +482,11 @@ export interface Pou {
   qualifiedName: string;
   parent?: string;
   file: string;
+  /** 1-based start line of the POU's declaration keyword (e.g. `FUNCTION_BLOCK`). */
   line: number;
+  /** 1-based end line of the POU's `END_*` keyword. Used to attribute a source
+   *  line to its enclosing scope. */
+  endLine: number;
   inputs: Parameter[];
   outputs: Parameter[];
   inOuts: Parameter[];
@@ -465,6 +628,7 @@ export type DeclKind =
   | 'var_output'
   | 'var_in_out'
   | 'var_temp'
+  | 'var_external'
   | 'constant'
   | 'fb_instance'
   | 'timer_instance'
@@ -520,6 +684,15 @@ export interface LocalVar {
   file: string;
   line: number;
   typeText: string;
+  /**
+   * The grammar node type of the enclosing var-block (`var_block`,
+   * `var_temp`, `var_external`, etc.). Lets checks distinguish VAR_EXTERNAL
+   * locals from regular VAR locals without losing the rest of the existing
+   * "everything in pouLocals" model.
+   */
+  section?: string;
+  /** Initial-value text from the declaration (e.g. `:= 0`), if any. */
+  initial?: string;
 }
 
 export interface MemberAccess {

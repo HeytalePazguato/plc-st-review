@@ -6,7 +6,10 @@ function localKey(d: NamedDecl): string {
 
 function shadowsGlobal(d: NamedDecl, t: SymbolTable): boolean {
   if (d.scope === '__global') return false;
-  return t.globals.has(d.name) || t.globals.has(d.name.toLowerCase());
+  // The globals map normalizes its own keys per the configured case mode, so a
+  // single lookup is correct: case-insensitive dialects match `Level`/`level`,
+  // case-sensitive dialects (B&R) require an exact match.
+  return t.globals.has(d.name);
 }
 
 export const variableShadowing: Check = {
@@ -14,7 +17,17 @@ export const variableShadowing: Check = {
   defaultSeverity: 'warn',
   run(ctx) {
     const findings: Finding[] = [];
-    const localKinds = new Set<NamedDecl['kind']>(['var_local', 'var_input', 'var_output', 'var_in_out', 'var_temp']);
+    // Every declaration kind that occupies a POU's local namespace and can
+    // therefore shadow a global of the same name — both value kinds (locals,
+    // params, temps) AND instance kinds (FB/timer/counter/edge-trig/bistable
+    // instances). The latter were missing in earlier versions, so a local
+    // `myPump : FB_Pump;` declared in a POU was not flagged when a global of
+    // the same name existed; this set closes that gap.
+    const localKinds = new Set<NamedDecl['kind']>([
+      'var_local', 'var_input', 'var_output', 'var_in_out', 'var_temp',
+      'fb_instance', 'timer_instance', 'counter_instance',
+      'edge_trig_instance', 'bistable_instance',
+    ]);
     const before = new Set<string>();
     for (const d of ctx.before.declarations) {
       if (!localKinds.has(d.kind)) continue;

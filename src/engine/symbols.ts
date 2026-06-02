@@ -12,6 +12,8 @@ import {
   lineOf,
   VAR_SECTION_NODES,
 } from './grammar.js';
+import { CaseMap } from './case-map.js';
+import { parseStNumber } from './literals.js';
 import type {
   ArrayAccess,
   ArrayDecl,
@@ -54,11 +56,18 @@ const POU_KIND_BY_NODE: Record<string, PouKind> = {
   [NODE.INTERFACE]: 'interface',
 };
 
-export function emptySymbolTable(): SymbolTable {
+export function emptySymbolTable(caseSensitive = false): SymbolTable {
   return {
-    pous: new Map(),
-    globals: new Map(),
-    enums: new Map(),
+    caseSensitive,
+    pous: new CaseMap(caseSensitive),
+    globals: new CaseMap(caseSensitive),
+    globalDecls: [],
+    enums: new CaseMap(caseSensitive),
+    directAddresses: [],
+    ifStatements: [],
+    restrictedStatements: [],
+    pointerVars: [],
+    binaryExpressions: [],
     timerInstances: [],
     callSites: [],
     caseStatements: [],
@@ -68,7 +77,7 @@ export function emptySymbolTable(): SymbolTable {
     forLoops: [],
     pragmas: [],
     unreachable: [],
-    pouLocals: new Map(),
+    pouLocals: new CaseMap(caseSensitive),
     memberAccesses: [],
     whileLoops: [],
     arrayAccesses: [],
@@ -86,8 +95,8 @@ export function emptySymbolTable(): SymbolTable {
   };
 }
 
-export function buildSymbolTable(files: AstFile[]): SymbolTable {
-  const t = emptySymbolTable();
+export function buildSymbolTable(files: AstFile[], caseSensitive = false): SymbolTable {
+  const t = emptySymbolTable(caseSensitive);
   for (const file of files) extractFile(file, t);
   t.declarations = buildDeclarations(t);
   return t;
@@ -149,8 +158,11 @@ function buildDeclarations(t: SymbolTable): NamedDecl[] {
       });
     }
   }
-  // Globals (constants and non-constants).
-  for (const g of t.globals.values()) {
+  // Globals (constants and non-constants). Iterate `globalDecls`, not
+  // `globals.values()`, so a name declared in two files surfaces both sites —
+  // NAME_REUSED_DIFFERENT_KIND can then spot the collision instead of being
+  // blinded by the last-write-wins `globals` index.
+  for (const g of t.globalDecls) {
     out.push({
       name: g.name,
       kind: g.constant ? 'constant' : 'var_global',
@@ -174,6 +186,10 @@ function buildDeclarations(t: SymbolTable): NamedDecl[] {
 }
 
 function inferLocalKind(l: LocalVar, t: SymbolTable): NamedDecl['kind'] {
+  // VAR_EXTERNAL gets its own kind so PLCopen CP6 can spot externals declared
+  // inside FUNCTION / FUNCTION_BLOCK / METHOD bodies (PLCopen forbids it). VAR
+  // and VAR_TEMP keep falling into `var_local` since CP6 doesn't apply to them.
+  if (l.section === NODE.VAR_EXTERNAL) return 'var_external';
   const tt = l.typeText.trim().toUpperCase();
   if (TIMER_TYPE_NAMES.has(tt)) return 'timer_instance';
   if (COUNTER_TYPE_NAMES.has(tt)) return 'counter_instance';
@@ -210,6 +226,10 @@ function extractFile(file: AstFile, t: SymbolTable): void {
   collectFileScopedStatements(file, t);
   collectAddressOfExprs(file, t);
   collectComments(file, t);
+  collectDirectAddresses(file, t);
+  collectIfStatements(file, t);
+  collectRestrictedStatements(file, t);
+  collectBinaryExpressions(file, t);
   // pragmas inside POUs
   for (const p of descendantsOfType(root, NODE.PRAGMA)) {
     if (childrenOf(root).includes(p)) continue; // already collected at top level
@@ -291,6 +311,7 @@ function collectPou(
     qualifiedName: qualified,
     file: file.path,
     line: lineOf(node),
+    endLine: node.endPosition.row + 1,
     inputs,
     outputs,
     inOuts,
@@ -324,6 +345,7 @@ function collectPou(
         parent: qualified,
         file: file.path,
         line: lineOf(child),
+        endLine: child.endPosition.row + 1,
         inputs: methodInputs,
         outputs: methodOutputs,
         inOuts: methodInOuts,
@@ -347,6 +369,17 @@ function collectPou(
           file: file.path,
           line: lineOf(decl),
           typeText: typeText,
+          section: varBlock.type,
+          initial: pickInitial(decl),
+        });
+      }
+      // POINTER-typed locals — used by POINTER_ARITHMETIC / POINTER_COMPARED.
+      if (declName && typeNode?.type === NODE.POINTER_TYPE) {
+        t.pointerVars.push({
+          name: declName,
+          scope: qualified,
+          file: file.path,
+          line: lineOf(decl),
         });
       }
       if (declName && TIMER_TYPE_NAMES.has(typeText)) {
@@ -478,11 +511,10 @@ function collectArrayAccesses(
     const arr = kids[0];
     const subscript = kids[1];
     const indexText = subscript.text.trim();
-    let indexValue: number | null = null;
-    if (subscript.type === NODE.INTEGER_LITERAL || subscript.type === NODE.REAL_LITERAL) {
-      const n = Number.parseFloat(indexText);
-      if (Number.isFinite(n)) indexValue = n;
-    }
+    // parseStNumber returns null for non-literal subscripts (variables,
+    // expressions), and correctly decodes radix/underscore/typed literals
+    // (`16#FF`, `1_000`, `INT#10`) that a bare parseFloat would misread.
+    const indexValue = parseStNumber(indexText);
     const access: ArrayAccess = {
       arrayName: arr.text.trim(),
       indexText,
@@ -528,6 +560,18 @@ function collectForLoops(
     (n.type === NODE.INTEGER_LITERAL ||
       n.type === NODE.REAL_LITERAL ||
       n.type === NODE.IDENTIFIER);
+  // The BY step (4th named child, when present) is not always a simple literal:
+  // `-2` is a single signed integer_literal, but `-STEP` parses as a
+  // unary_expression and `(-2)` as a parenthesized_expression. Capture any
+  // non-statement node in that slot so a valid descending loop with a
+  // non-literal negative step isn't mistaken for one with no BY clause (which
+  // defaults to +1 and would be misread as reversed). When there is no BY, this
+  // slot holds the first body statement instead, which is excluded here.
+  const isStepExpr = (n: StNode | undefined): boolean =>
+    !!n &&
+    !STATEMENT_TYPES.has(n.type) &&
+    n.type !== NODE.COMMENT &&
+    n.type !== 'empty_statement';
   for (const fs of descendantsOfType(pouNode, NODE.FOR_STATEMENT)) {
     // FOR <var> := <start> TO <end> [BY <by>] DO ... END_FOR
     // The first child is the loop variable identifier; bounds follow in order.
@@ -545,7 +589,7 @@ function collectForLoops(
       loopVar: loopVarNode.text,
       start: startNode.text,
       end: endNode.text,
-      by: isBoundExpr(byNode) ? byNode.text : undefined,
+      by: isStepExpr(byNode) ? byNode.text : undefined,
     };
     t.forLoops.push(loop);
   }
@@ -577,6 +621,11 @@ function collectUnreachable(
   t: SymbolTable,
 ): void {
   // Walk every node that holds an ordered list of statements as direct children.
+  // Once we see a terminator (RETURN / EXIT / CONTINUE) in a block, every
+  // subsequent statement in that same block is dead until the block ends —
+  // L12: `RETURN; a; b; c;` should flag a, b, AND c, not just a. The terminator
+  // sticks for the remainder of the loop over the current block's kids;
+  // descending into a child node resets the picture for that child's own kids.
   const stack: StNode[] = [pouNode];
   while (stack.length) {
     const n = stack.pop()!;
@@ -597,7 +646,8 @@ function collectUnreachable(
           reason,
         };
         t.unreachable.push(u);
-        terminator = null; // only flag the immediate next statement
+        // terminator stays set: every following statement in this block is
+        // also unreachable; only descending into a fresh block resets it.
       }
       if (TERMINATOR_TYPES.has(child.type)) terminator = child;
       stack.push(child);
@@ -713,6 +763,10 @@ function collectGlobals(file: AstFile, block: StNode, t: SymbolTable): void {
         constant,
         retain,
       };
+      // `globalDecls` holds every site (H1: cross-file same-name globals are a
+      // real bug we must not silently lose); `globals` keeps the last-write-
+      // wins by-name index that existing `has`/`get` callers depend on.
+      t.globalDecls.push(g);
       t.globals.set(name, g);
     }
   }
@@ -760,7 +814,7 @@ function collectCallSites(file: AstFile, t: SymbolTable): void {
     const argList =
       findChild(inv, NODE.ARGUMENT_LIST) ??
       descendantsOfType(inv, NODE.ARGUMENT_LIST)[0];
-    const namedArgs = new Map<string, string>();
+    const namedArgs = new CaseMap<string>(t.caseSensitive);
     const positional: string[] = [];
     if (argList) {
       for (const child of childrenOf(argList)) {
@@ -791,22 +845,28 @@ function collectCallSites(file: AstFile, t: SymbolTable): void {
 }
 
 /**
- * Best-effort lookup of the POU that contains a given (file, line) pair.
- * POUs in a file are listed in declaration order; we pick the latest one
- * whose start line is at or before the target line. Returns '<file>' as a
- * fallback for code outside any POU (rare in real ST).
+ * Lookup of the POU whose source range contains a given (file, line) pair.
+ * Requires the line to lie within `[p.line, p.endLine]`, so lines above the
+ * first POU, between POUs, or after the last POU are attributed to '<file>'.
+ * When two POUs nest (a method inside an FB), the latest start wins — that's
+ * the most specific (innermost) scope.
+ *
+ * Files containing exactly one top-level POU fall back to attributing any
+ * otherwise-uncontained line to it. That covers synthetic fixtures (single-
+ * line POU spans) without weakening the multi-POU case where the strict
+ * containment check is the whole point of this function.
  */
 function pouContainingLine(t: SymbolTable, file: string, line: number): string {
   let best: Pou | null = null;
-  const filePous: Pou[] = [];
+  const topLevel: Pou[] = [];
   for (const p of t.pous.values()) {
     if (p.file !== file) continue;
-    filePous.push(p);
-    if (line < p.line) continue;
+    if (!p.parent) topLevel.push(p);
+    if (line < p.line || line > p.endLine) continue;
     if (!best || p.line > best.line) best = p;
   }
   if (best) return best.qualifiedName;
-  if (filePous.length === 1) return filePous[0].qualifiedName;
+  if (topLevel.length === 1) return topLevel[0].qualifiedName;
   return '<file>';
 }
 
@@ -938,12 +998,27 @@ function refContext(node: StNode): VarReference['context'] {
   while (cur) {
     if (cur.type === NODE.ASSIGNMENT_STATEMENT) {
       const lhs = childrenOf(cur)[0];
-      return lhs && child === lhs ? 'write' : 'read';
+      return lhs && sameNode(child, lhs) ? 'write' : 'read';
     }
     child = cur;
     cur = cur.parent ?? null;
   }
   return 'read';
+}
+
+// The tree-sitter binding hands back a fresh wrapper object on every `.parent`
+// / child access, so the node reached by walking UP is never `===` the node
+// reached by indexing DOWN even when they are the same syntax node. Compare by
+// kind and source span instead, which is stable. Without this, an assignment's
+// LHS identifier is misclassified as a read.
+function sameNode(a: StNode, b: StNode): boolean {
+  return (
+    a.type === b.type &&
+    a.startPosition.row === b.startPosition.row &&
+    a.startPosition.column === b.startPosition.column &&
+    a.endPosition.row === b.endPosition.row &&
+    a.endPosition.column === b.endPosition.column
+  );
 }
 
 // `ADR(x)` parses as its own `address_of_expression` node (not a
@@ -1052,5 +1127,85 @@ function collectComments(file: AstFile, t: SymbolTable): void {
       scope: pouContainingLine(t, file.path, line),
     };
     t.comments.push(c);
+  }
+}
+
+// PLCopen N1 / CP1 — every `%I0.0` / `%Q1.2` etc. parses as `direct_address`.
+function collectDirectAddresses(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.DIRECT_ADDRESS)) {
+    const line = lineOf(node);
+    t.directAddresses.push({
+      text: node.text.trim(),
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    });
+  }
+}
+
+// PLCopen L17 — an IF without a final ELSE clause. ELSIF doesn't count.
+function collectIfStatements(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.IF_STATEMENT)) {
+    const line = lineOf(node);
+    const hasElse = childrenOf(node).some((c) => c.type === NODE.ELSE_CLAUSE);
+    t.ifStatements.push({
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+      hasElse,
+    });
+  }
+}
+
+// PLCopen L10 — flag EXIT / CONTINUE / GOTO use sites. RETURN is also
+// collected (already used by MULTIPLE_EXIT_POINTS via `returnPoints`, but
+// kept here too for a unified "restricted statement" view if needed later).
+function collectRestrictedStatements(file: AstFile, t: SymbolTable): void {
+  const kinds: Array<{ node: string; kind: 'EXIT' | 'CONTINUE' | 'GOTO' | 'RETURN' }> = [
+    { node: NODE.EXIT_STATEMENT, kind: 'EXIT' },
+    { node: NODE.CONTINUE_STATEMENT, kind: 'CONTINUE' },
+    { node: NODE.GOTO_STATEMENT, kind: 'GOTO' },
+  ];
+  for (const { node: type, kind } of kinds) {
+    for (const n of descendantsOfType(file.root, type)) {
+      const line = lineOf(n);
+      t.restrictedStatements.push({
+        kind,
+        file: file.path,
+        line,
+        scope: pouContainingLine(t, file.path, line),
+      });
+    }
+  }
+}
+
+// PLCopen E2 / E3 — binary expressions, used to spot arithmetic /
+// comparisons whose operand is a POINTER-typed local.
+function collectBinaryExpressions(file: AstFile, t: SymbolTable): void {
+  for (const node of descendantsOfType(file.root, NODE.BINARY_EXPRESSION)) {
+    const kids = childrenOf(node);
+    if (kids.length < 2) continue;
+    // The operator is one of the child *tokens* (non-named in tree-sitter),
+    // not a named child. Look across all raw children for a non-named one.
+    let op = '';
+    for (const raw of allChildrenOf(node)) {
+      if (kids.includes(raw)) continue; // named operand
+      const t2 = raw.type;
+      if (t2.length <= 3 && /[-+*/=<>&|]/.test(t2)) {
+        op = t2;
+        break;
+      }
+    }
+    const leftText = kids[0].text.trim();
+    const rightText = kids[kids.length - 1].text.trim();
+    const line = lineOf(node);
+    t.binaryExpressions.push({
+      op,
+      leftText,
+      rightText,
+      file: file.path,
+      line,
+      scope: pouContainingLine(t, file.path, line),
+    });
   }
 }

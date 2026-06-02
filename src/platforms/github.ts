@@ -139,6 +139,22 @@ export function createOctokitClient(opts: GitHubOptions): GitHubApi {
           tree_sha: ref,
           recursive: 'true',
         });
+        if (res.data.truncated) {
+          // GitHub truncates a recursive tree response beyond ~100k entries or
+          // 7 MB. The flat result would silently miss files, so fall back to a
+          // per-directory walk that fetches each subtree on its own.
+          process.stderr.write(
+            `plc-st-review: git tree at ${ref.slice(0, 8)} was truncated by GitHub; falling back to per-directory walk (this run may be slower)\n`,
+          );
+          return await walkTreeForStFiles(ref, async (treeSha) => {
+            const sub = await octokit.git.getTree({
+              owner: opts.owner,
+              repo: opts.repo,
+              tree_sha: treeSha,
+            });
+            return { tree: sub.data.tree, truncated: sub.data.truncated === true };
+          });
+        }
         const out: string[] = [];
         for (const item of res.data.tree) {
           if (item.type !== 'blob') continue;
@@ -245,6 +261,60 @@ function endsWithStExt(path: string): boolean {
   const dot = path.lastIndexOf('.');
   if (dot < 0) return false;
   return ST_EXTENSIONS.has(path.slice(dot));
+}
+
+/**
+ * Walk a git tree by SHA, calling `fetcher` per subtree (non-recursive), and
+ * collect every `.st` blob path. Used as the truncation fallback when the
+ * recursive Trees API response is capped (~100k entries / 7 MB) — the per-
+ * directory walk dodges that cap at the cost of one API call per subtree.
+ * Exported separately so the walk logic is unit-testable without an Octokit.
+ */
+export interface TreeEntry {
+  type?: string;
+  path?: string;
+  sha?: string;
+}
+export type TreeFetcher = (
+  treeSha: string,
+) => Promise<{ tree: readonly TreeEntry[]; truncated: boolean }>;
+
+export async function walkTreeForStFiles(
+  rootSha: string,
+  fetcher: TreeFetcher,
+): Promise<string[]> {
+  const out: string[] = [];
+  const visited = new Set<string>();
+  const stack: Array<{ sha: string; prefix: string }> = [
+    { sha: rootSha, prefix: '' },
+  ];
+  while (stack.length > 0) {
+    const { sha, prefix } = stack.pop()!;
+    if (visited.has(sha)) continue;
+    visited.add(sha);
+    let res: { tree: readonly TreeEntry[]; truncated: boolean };
+    try {
+      res = await fetcher(sha);
+    } catch {
+      continue;
+    }
+    if (res.truncated) {
+      process.stderr.write(
+        `plc-st-review: subtree ${sha.slice(0, 8)} is itself truncated; some files in this directory may be missing\n`,
+      );
+    }
+    for (const item of res.tree) {
+      const name = typeof item.path === 'string' ? item.path : '';
+      if (!name) continue;
+      const full = prefix ? `${prefix}/${name}` : name;
+      if (item.type === 'blob') {
+        if (endsWithStExt(full)) out.push(full);
+      } else if (item.type === 'tree' && typeof item.sha === 'string') {
+        stack.push({ sha: item.sha, prefix: full });
+      }
+    }
+  }
+  return out;
 }
 
 /**

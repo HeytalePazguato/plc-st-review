@@ -8,10 +8,13 @@ A `CTU` / `CTD` / `CTUD` is initialized with `PV := 0`.
 
 **Settings.** No check-specific config.
 
+**Literal forms understood.** `PV` is decoded across any standard ST numeric literal — `16#0`, `2#0`, `INT#0`, `0`, etc. — so a zero preset written in hex or binary isn't missed.
+
 **Trigger.**
 
 ```pascal
 C1(CU := xPulse, PV := 0);         (* fires *)
+C1(CU := xPulse, PV := 16#0);      (* fires *)
 ```
 
 **The bot posts.**

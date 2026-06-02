@@ -1,3 +1,4 @@
+import { parseStNumber } from '../literals.js';
 import type { ArrayAccess, ArrayDecl, Check, Finding } from '../types.js';
 
 function findArrayDecl(name: string, decls: readonly ArrayDecl[]): ArrayDecl | null {
@@ -9,9 +10,9 @@ function findArrayDecl(name: string, decls: readonly ArrayDecl[]): ArrayDecl | n
 
 function isOOB(acc: ArrayAccess, decl: ArrayDecl): boolean {
   if (acc.indexValue === null) return false;
-  const lo = Number.parseFloat(decl.lower);
-  const hi = Number.parseFloat(decl.upper);
-  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return false;
+  const lo = parseStNumber(decl.lower);
+  const hi = parseStNumber(decl.upper);
+  if (lo === null || hi === null) return false;
   return acc.indexValue < lo || acc.indexValue > hi;
 }
 

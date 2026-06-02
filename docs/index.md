@@ -29,7 +29,7 @@ FB instance T3 (TON) is read but never invoked
 Outputs of an FB only update when the instance is called.
 ```
 
-The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **55 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (The 56th, `DEAD_POU_INTRODUCED`, is opt-in, a whole-repo parse is too slow for every PR, so it's label-triggered; see [Project scope](project-scope.md).)
+The [live demo PR](https://github.com/HeytalePazguato/plc-st-review/pull/1) shows the **78 always-on categories** firing on a single PR, with the exact inline comments the bot posts. No mock-ups, no edited screenshots. (Two categories — `DEAD_POU_INTRODUCED` and `MULTI_WRITER_GLOBAL` — are opt-in: they need a whole-repo parse, which is too slow for every PR, so they're label-triggered; see [Project scope](project-scope.md).)
 
 ## Why this matters
 
@@ -43,11 +43,11 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 
 ## Three ways to use it
 
-- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 35 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, more). No PR workflow required.
-- **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 17 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
+- **Static linter on every push**: `plc-st-review --lint "src/**/*.st"`. 59 single-revision checks for ST bugs (division by zero, infinite loops, timer / counter misuse, output-var reads, unused vars, naming conventions, forbidden symbols, PLCopen-aligned rules, uninitialised-var use, TIME equality, implicit type conversions, IEC 62443 cybersecurity checks, more). No PR workflow required.
+- **PR / MR reviewer**: posts inline review comments anchored to the lines that triggered findings. Adds 21 diff-based checks (signature drift, outdated call sites, enum removals, `EXTENDS` swaps, pragma changes, timer / counter value bumps, etc.). Ships as a [GitHub Action](github-setup.md) and a [GitLab CI job](gitlab-setup.md).
 - **Team-style enforcer**: drop a `.plc-st-review.yml` listing your `naming_conventions` (prefix / suffix / pattern per declaration kind) and `forbidden_symbols`; both modes pick it up automatically.
 
-## The 56 check categories
+## The 80 check categories
 
 | Category | What fires it |
 |---|---|
@@ -73,13 +73,22 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 | `NESTING_INCREASED` | POU nesting depth rose past the threshold |
 | `LOC_SPIKE` | POU lines of code grew by more than 50% in one PR |
 | `DEAD_POU_INTRODUCED` | new POU nothing in the project calls (needs `--project-scope`) |
-| **Static integrity (6)**: single-revision, AST-level | |
+| **Static integrity (15)**: single-revision, AST-level | |
 | `ENUM_VALUE_UNUSED` | enum value declared but never referenced |
 | `ENUM_MEMBER_UNKNOWN` | `E_State.IDEL`-style typo against a known enum |
 | `ARRAY_INDEX_OUT_OF_BOUNDS` | literal index outside declared bounds |
 | `DIVISION_BY_ZERO` | literal `/ 0` or constant resolving to 0 |
 | `INFINITE_LOOP` | `WHILE TRUE` with no `EXIT` |
 | `LOOP_BOUNDS_REVERSED` | `FOR` step direction disagrees with start / end |
+| `STATE_UNHANDLED` | `CASE` on enum missing values + no `ELSE` |
+| `UNREACHABLE_CODE` | statement after `RETURN` / `EXIT` / `CONTINUE` |
+| `FOR_LOOP_VAR_MODIFIED` | loop counter mutated inside the `FOR` body |
+| `FOR_LOOP_VAR_USED_AFTER` | loop counter read after `END_FOR` |
+| `POINTER_ARITHMETIC` | `+` / `-` / `*` / `/` on a `POINTER`-typed local |
+| `POINTER_COMPARED` | `<` / `>` / `<=` / `>=` on a `POINTER`-typed local |
+| `UNINITIALIZED_VAR_USED` | local read before any assignment to it |
+| `TIME_EQUALITY` | `=` / `<>` between `TIME` operands |
+| `MULTI_WRITER_GLOBAL` | global written from more than one `PROGRAM` (needs `--project-scope`) |
 | **FB-instance integrity (7)**: standard IEC 61131-3 FB patterns | |
 | `COUNTER_PV_ZERO` | counter preset of 0 |
 | `TIMER_PT_ZERO` | `TON(PT := T#0s)` fires immediately |
@@ -88,7 +97,7 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 | `FB_INSTANCE_DOUBLE_CALL` | same instance called twice in one scope |
 | `FB_INSTANCE_NEVER_CALLED` | instance read but never invoked |
 | `BISTABLE_DOMINANCE_MISMATCH` | `SR` / `RS` choice mismatches the name's intent |
-| **Code quality / style (20)** | |
+| **Code quality / style (32)** | |
 | `EMPTY_STATEMENT` | lone `;` |
 | `UNUSED_RETURN_VALUE` | function called as a bare statement |
 | `ARRAY_SINGLE_ELEMENT` | `ARRAY [5..5]` |
@@ -109,6 +118,24 @@ Industrial PLC code rarely runs through the kind of pre-merge review that modern
 | `OUTPUT_VAR_READ_INTERNALLY` | `VAR_OUTPUT` read inside the same POU |
 | `NESTED_COMMENTS` | `(* outer (* nested *) *)` |
 | `NAMING_CONVENTION` | team-configured prefix / suffix / pattern violation |
+| `DIRECT_ADDRESS_USED` | `%I0.0` / `%QW100`-style direct I/O addresses (PLCopen N1 / CP1) |
+| `IF_WITHOUT_ELSE` | `IF` / `ELSIF` chain with no terminal `ELSE` (PLCopen L17) |
+| `FORBIDDEN_STATEMENT` | `GOTO` / `EXIT` / `CONTINUE` use sites (PLCopen L10) |
+| `POU_NOT_COMMENTED` | POU declaration with no leading comment (PLCopen C2) |
+| `NAME_REUSED_DIFFERENT_KIND` | same name reused across declaration kinds (PLCopen N9) |
+| `INDIRECT_RECURSIVE_CALL` | call-graph cycle through two or more POUs (PLCopen CP13) |
+| `IDENTIFIER_TOO_LONG` | identifier longer than `limits.max_identifier_length` (PLCopen N6) |
+| `IDENTIFIER_CHARSET` | identifier outside `identifier_charset` regex (PLCopen N8) |
+| `TOO_MANY_PARAMETERS` | POU parameter count above `limits.max_parameters` (PLCopen CP23) |
+| `TOO_MANY_GLOBALS_USED` | POU touches more than `limits.max_globals_used_per_pou` globals (PLCopen CP18) |
+| `EXTERNAL_VAR_IN_FUNCTION` | `VAR_EXTERNAL` inside `FUNCTION` / `FUNCTION_BLOCK` / `METHOD` (PLCopen CP6) |
+| `IMPLICIT_TYPE_CONVERSION` | INT-family mixed with REAL-family in arithmetic (PLCopen CP25) |
+| **Security / IEC 62443 (5)** | |
+| `HARDCODED_CREDENTIALS` | secret-named var with a literal STRING initialiser |
+| `HARDCODED_NETWORK_ENDPOINT` | STRING literal that's an IPv4 / `opc.tcp://` / `mqtt://` / `modbus://` URL |
+| `UNVALIDATED_INPUT_USE` | `VAR_INPUT` used as array index / divisor with no in-POU guard |
+| `DEBUG_PRAGMA_IN_PRODUCTION` | `{attribute 'monitoring'}` / `'debug'` / `'force_init'` in non-test path |
+| `PERSISTENT_PLAINTEXT_SECRET` | `VAR_GLOBAL PERSISTENT/RETAIN` of a secret-named variable |
 
 The [Checks reference](checks-reference.md) has a dedicated page per category, with an ST code example and a suggested fix.
 

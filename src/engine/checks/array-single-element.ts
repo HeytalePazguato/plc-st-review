@@ -1,3 +1,4 @@
+import { parseStNumber } from '../literals.js';
 import type { ArrayDecl, Check, Finding } from '../types.js';
 
 function key(a: ArrayDecl): string {
@@ -5,9 +6,9 @@ function key(a: ArrayDecl): string {
 }
 
 function isSingleElement(a: ArrayDecl): boolean {
-  const lo = Number.parseFloat(a.lower);
-  const hi = Number.parseFloat(a.upper);
-  return Number.isFinite(lo) && Number.isFinite(hi) && lo === hi;
+  const lo = parseStNumber(a.lower);
+  const hi = parseStNumber(a.upper);
+  return lo !== null && hi !== null && lo === hi;
 }
 
 export const arraySingleElement: Check = {

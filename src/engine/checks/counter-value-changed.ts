@@ -1,3 +1,4 @@
+import { parseStNumber } from '../literals.js';
 import type { Check, CounterPvAssignment, Finding } from '../types.js';
 
 function indexByKey(
@@ -9,9 +10,9 @@ function indexByKey(
 }
 
 function ratioOf(before: string, after: string): number | null {
-  const b = Number.parseFloat(before);
-  const a = Number.parseFloat(after);
-  if (!Number.isFinite(b) || !Number.isFinite(a) || b === 0) return null;
+  const b = parseStNumber(before);
+  const a = parseStNumber(after);
+  if (b === null || a === null || b === 0) return null;
   return a / b;
 }
 
