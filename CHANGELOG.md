@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-06-01
+
+### Fixed
+
+- **Parameters were double-counted as locals.** The symbol-table collector walked every `var_section` block (including `VAR_INPUT` / `VAR_OUTPUT` / `VAR_IN_OUT`) and pushed every variable declaration into `pouLocals`, so each parameter appeared as both a `var_input` (via `Pou.inputs`) AND a `var_local` (via `pouLocals`) `NamedDecl`. Two cascades surfaced when the v1.0 demo PR ran: `NAME_REUSED_DIFFERENT_KIND` fired on every parameter (`Name 'xCount' is reused across kinds (var_input, var_local)`), and `UNINITIALIZED_VAR_USED` fired on every parameter read (`'xCount' is read before any assignment`) — together adding ~100 false-positive findings on clean POUs and pushing the inline-comment count past the bot's 100-comment inline cap so PR #1 fell back to summary-only mode. The collector's local push is now gated to local-storage sections (`VAR_BLOCK`, `VAR_TEMP`, `VAR_EXTERNAL`); the timer / counter / edge-trigger / bistable / pointer / array indexes still walk every section so an FB-instance declared as a parameter (uncommon but valid) doesn't go unindexed. Real-parser regression test added.
+
 ## [1.0.0] - 2026-06-01
 
 `plc-st-review` reaches 1.0. This release adds 24 new check categories (bringing the engine to **80 categories** total), three new standards-mapping pages (PLCopen Coding Guidelines, MISRA-C, IEC 61508 positioning, IEC 62443 industrial cybersecurity), a configurable case-sensitivity model for dialect compatibility (CODESYS / TwinCAT / generic IEC default to case-insensitive; B&R Automation Studio opt-in case-sensitive), a `limits` config block for PLCopen-recommended size / count caps, base-ref config loading on PR / MR modes, a configurable per-file size cap, and ~12 correctness bugfixes covering case-handling, number-literal parsing, scope resolution, and unreachable / loop / FB-instance edge cases.

@@ -412,6 +412,52 @@ END_FUNCTION_BLOCK
     expect(local?.kind).toBe('var_local');
   });
 
+  it('VAR_INPUT parameters are NOT also catalogued as locals', async () => {
+    // Regression for a bug where every VAR_INPUT/VAR_OUTPUT/VAR_IN_OUT decl
+    // was double-pushed into pouLocals (the collector loop walked every
+    // var-section block but didn't restrict the locals push to local-storage
+    // blocks). Cascade was: every parameter name appeared with both
+    // `var_input` and `var_local` kinds, spuriously firing
+    // NAME_REUSED_DIFFERENT_KIND, and parameter reads looked like
+    // uninitialised-local reads, spuriously firing UNINITIALIZED_VAR_USED.
+    const ast = await parseSource(
+      `FUNCTION_BLOCK FB_P
+VAR_INPUT
+    xEnable : BOOL;
+END_VAR
+VAR_OUTPUT
+    rOut : REAL;
+END_VAR
+VAR
+    iCounter : INT;
+END_VAR
+IF xEnable THEN
+    iCounter := iCounter + 1;
+END_IF;
+rOut := 0.0;
+END_FUNCTION_BLOCK
+`,
+      'FB_P.st',
+    );
+    const table = buildSymbolTable([ast]);
+    const localsOf = table.pouLocals.get('FB_P') ?? [];
+    expect(localsOf.map((l) => l.name).sort()).toEqual(['iCounter']);
+    // VAR_INPUT and VAR_OUTPUT names still surface via Pou.inputs/outputs.
+    const pou = table.pous.get('FB_P')!;
+    expect(pou.inputs.map((p) => p.name)).toEqual(['xEnable']);
+    expect(pou.outputs.map((p) => p.name)).toEqual(['rOut']);
+    // Each name appears in exactly one NamedDecl kind.
+    const xEnableDecls = table.declarations.filter((d) => d.name === 'xEnable');
+    expect(xEnableDecls.map((d) => d.kind).sort()).toEqual(['var_input']);
+    const rOutDecls = table.declarations.filter((d) => d.name === 'rOut');
+    expect(rOutDecls.map((d) => d.kind).sort()).toEqual(['var_output']);
+    // And NAME_REUSED_DIFFERENT_KIND does not fire on a clean POU like this.
+    const findings = review([], [ast]);
+    expect(
+      findings.filter((f) => f.category === 'NAME_REUSED_DIFFERENT_KIND'),
+    ).toHaveLength(0);
+  });
+
   it('UNREACHABLE_CODE flags every dead statement after RETURN, not just the first (L12)', async () => {
     // Before this fix, `terminator` was reset after the first dead statement,
     // so `RETURN; a; b; c;` only flagged `a`.
