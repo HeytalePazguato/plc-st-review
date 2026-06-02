@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - next: 1.0.2
+
 ## [1.0.1] - 2026-06-01
 
 A bugfix sweep across the engine after 1.0.0's release surfaced five latent false-positive sources. None ship incorrect findings in the wrong direction — they all *over-report*, flooding clean POUs with spurious warnings. Together they pushed PR #1's inline-comment count past the 100-comment bot cap and forced summary-only mode. The fixes restore the demo PR to inline-comment mode and cut spurious findings on clean code to zero.
