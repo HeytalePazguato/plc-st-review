@@ -9,25 +9,27 @@ interface Violation {
 
 /**
  * For each FOR loop, scan references whose name matches the loop counter
- * within the same scope. The engine doesn't track each loop's end line
- * precisely, so a reference is reported when it sits well below the loop's
- * declaration line but inside the same POU — a heuristic that catches the
- * common "I'll use `i` after the loop" mistake without firing on each
- * iteration step inside the body.
+ * within the same scope. The collector now records the loop's actual
+ * `END_FOR` line (via the AST node's `endPosition`), so a reference past
+ * that line is post-loop with no false positives from long loop bodies.
+ *
+ * Earlier revisions used a fixed 200-line "body window" because the loop's
+ * end wasn't tracked. That heuristic produced false positives on POUs
+ * whose FOR body exceeded the window — a legitimate ref inside the body,
+ * but >200 lines below the `FOR` header, was wrongly flagged as
+ * post-loop. The fixed-window approach is gone.
  */
 function violations(t: SymbolTable): Violation[] {
   const out: Violation[] = [];
-  const BODY_WINDOW = 200; // lines below the FOR considered the loop body
   for (const loop of t.forLoops) {
     for (const ref of t.varReferences) {
       if (ref.file !== loop.file) continue;
       if (ref.scope !== loop.scope) continue;
       if (ref.name.toLowerCase() !== loop.loopVar.toLowerCase()) continue;
-      // The declaration / FOR header itself sits at loop.line; refs there
-      // are part of the loop, not "after". Anything within BODY_WINDOW is
-      // assumed to still be the body (POU-aware end-line tracking is on the
-      // backlog). Past that, the ref is post-loop.
-      if (ref.line <= loop.line + BODY_WINDOW) continue;
+      // The loop spans `[loop.line, loop.endLine]` (FOR header through the
+      // matching END_FOR, inclusive). Refs strictly past endLine are
+      // post-loop; everything else is inside the body.
+      if (ref.line <= loop.endLine) continue;
       out.push({
         file: loop.file,
         line: ref.line,

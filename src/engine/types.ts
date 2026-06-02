@@ -658,7 +658,14 @@ export interface ArrayDecl {
 export interface ForLoop {
   scope: string;
   file: string;
+  /** Line of the `FOR` keyword. */
   line: number;
+  /**
+   * Line of the corresponding `END_FOR` (inclusive). Used by
+   * `FOR_LOOP_VAR_USED_AFTER` to distinguish refs inside the loop body
+   * from refs that actually live past `END_FOR`.
+   */
+  endLine: number;
   loopVar: string;
   start: string;
   end: string;

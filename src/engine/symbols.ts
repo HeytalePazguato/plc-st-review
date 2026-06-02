@@ -605,6 +605,7 @@ function collectForLoops(
       scope,
       file: file.path,
       line: lineOf(fs),
+      endLine: fs.endPosition.row + 1,
       loopVar: loopVarNode.text,
       start: startNode.text,
       end: endNode.text,
@@ -1062,6 +1063,14 @@ function collectVarReferences(file: AstFile, t: SymbolTable): void {
   for (const ref of descendantsOfType(file.root, NODE.IDENTIFIER)) {
     const refText = ref.text;
     if (!refText) continue;
+    // Skip identifiers that are decl-sites themselves, not uses:
+    //   - an enum-value declaration like `(RED, GREEN, BLUE)` — the names
+    //     RED/GREEN/BLUE are members being declared, not references to
+    //     anything that exists yet. Treating them as references made
+    //     UNQUALIFIED_ENUM_CONSTANT flag the values at their own declaration
+    //     line ("consider writing RED as E_Color.RED" inside the very TYPE
+    //     block that defines E_Color).
+    if (ref.parent?.type === NODE.ENUMERATOR) continue;
     const line = lineOf(ref);
     const v: VarReference = {
       name: refText,

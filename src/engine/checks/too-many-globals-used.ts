@@ -2,14 +2,21 @@ import type { Check, Finding, Pou, SymbolTable } from '../types.js';
 
 function countGlobalsUsed(p: Pou, t: SymbolTable): number {
   // A "global use" is a reference whose name resolves to a VAR_GLOBAL decl,
-  // counted with multiplicity (so a POU that touches 5 distinct globals
-  // twice each counts 5 — distinct global names). The case-aware globals
-  // map gives us name resolution per the configured dialect.
+  // counted as a set of distinct global names referenced inside the POU
+  // (so touching the same global five times still counts as one).
+  //
+  // Dedup key honours the dialect's case-sensitivity. In a case-insensitive
+  // dialect (default; CODESYS / TwinCAT / generic IEC) `myGlobal` and
+  // `MYGLOBAL` are the same global and should count as one — lowercase the
+  // dedup key. In a case-sensitive dialect (B&R), they are distinct globals,
+  // and the dedup must preserve case so the count matches the dialect's view.
   const used = new Set<string>();
+  const dedupKey = (name: string): string =>
+    t.caseSensitive ? name : name.toLowerCase();
   for (const ref of t.varReferences) {
     if (ref.file !== p.file) continue;
     if (ref.scope !== p.qualifiedName) continue;
-    if (t.globals.has(ref.name)) used.add(ref.name.toLowerCase());
+    if (t.globals.has(ref.name)) used.add(dedupKey(ref.name));
   }
   return used.size;
 }

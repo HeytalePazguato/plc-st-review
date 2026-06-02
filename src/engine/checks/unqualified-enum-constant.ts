@@ -1,5 +1,9 @@
 import type { Check, EnumDef, Finding, SymbolTable } from '../types.js';
 
+function isInPouBody(scope: string): boolean {
+  return scope !== '__global' && scope !== '<file>';
+}
+
 function memberIndex(t: SymbolTable): Map<string, EnumDef[]> {
   const out = new Map<string, EnumDef[]>();
   for (const e of t.enums.values()) {
@@ -30,7 +34,7 @@ export const unqualifiedEnumConstant: Check = {
     const beforeBad = new Set<string>();
     for (const ref of ctx.before.varReferences) {
       const enums = beforeIdx.get(ref.name.toLowerCase());
-      if (enums && enums.length > 0 && ref.scope !== '__global') {
+      if (enums && enums.length > 0 && isInPouBody(ref.scope)) {
         // Heuristic: the qualified form would be `EnumName.MEMBER`. If the
         // member access already exists at this exact line for one of the
         // enums, the unqualified ref is fine. Without that data we just
@@ -42,7 +46,14 @@ export const unqualifiedEnumConstant: Check = {
       const enums = idx.get(ref.name.toLowerCase());
       if (!enums || enums.length === 0) continue;
       if (enums.length > 1) continue; // ambiguous, different check might handle
-      if (ref.scope === '__global') continue;
+      // Only flag refs that live inside an actual POU body. `__global` is the
+      // namespace scope for declarations; `<file>` is what pouContainingLine
+      // returns for a line that isn't inside any POU (e.g. the identifiers
+      // inside a `TYPE E_X : (FOO, BAR, BAZ); END_TYPE` declaration — those
+      // appear as varReferences with file scope and would otherwise be
+      // wrongly flagged as "consider writing it qualified" on their own
+      // declaration line).
+      if (!isInPouBody(ref.scope)) continue;
       const k = key(ref.file, ref.line, ref.name);
       if (beforeBad.has(k)) continue;
       // Filter out cases where the reference is the right-hand side of an
