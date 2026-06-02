@@ -110,7 +110,7 @@ Drop this into `.gitlab-ci.yml` (full example at [`examples/gitlab-ci.yml`](exam
 
 ```yaml
 plc-st-review:
-  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :0.2.1 to pin an exact version
+  image: ghcr.io/heytalepazguato/plc-st-review:v0      # or :1.0.0 to pin an exact version
   stage: review
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"

@@ -4,7 +4,11 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - next: 0.2.2
+## [1.0.0] - 2026-06-01
+
+`plc-st-review` reaches 1.0. This release adds 24 new check categories (bringing the engine to **80 categories** total), three new standards-mapping pages (PLCopen Coding Guidelines, MISRA-C, IEC 61508 positioning, IEC 62443 industrial cybersecurity), a configurable case-sensitivity model for dialect compatibility (CODESYS / TwinCAT / generic IEC default to case-insensitive; B&R Automation Studio opt-in case-sensitive), a `limits` config block for PLCopen-recommended size / count caps, base-ref config loading on PR / MR modes, a configurable per-file size cap, and ~12 correctness bugfixes covering case-handling, number-literal parsing, scope resolution, and unreachable / loop / FB-instance edge cases.
+
+The 1.0 contract: `.plc-st-review.yml` schema keys, CLI flags, JSON output format, and per-check default behavior are stable. Future breaking changes to any of those require a 2.0 bump. Additive changes (new check categories, new config keys with safe defaults, severity adjustments via `severity_overrides`) stay in 1.x.
 
 ### Added
 
