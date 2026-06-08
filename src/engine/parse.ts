@@ -1,11 +1,13 @@
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { Language, Parser } from 'web-tree-sitter';
 import type { AstFile, StNode } from './types.js';
 
 /**
  * Per-file source-length cap, in UTF-16 code units. Real-world ST files are
  * typically well under this; the cap is a safety net so a single pathologically
- * large or hostile file can't blow up memory or time in the tree-sitter native
- * parser. When exceeded, the file is skipped with a stderr warning and
+ * large or hostile file can't blow up memory or time in the tree-sitter
+ * WebAssembly parser. When exceeded, the file is skipped with a stderr warning and
  * represented in the symbol table by an empty AST so downstream checks treat
  * it as a no-op rather than crashing.
  *
@@ -35,45 +37,49 @@ function emptyRoot(): StNode {
   };
 }
 
-interface ParserCtor {
-  new (): ParserInstance;
-}
+/**
+ * A ready-to-use parser whose language is the IEC 61131-3 ST grammar. We hold a
+ * single shared instance: `web-tree-sitter` is async to initialise (it boots a
+ * WebAssembly runtime and loads the grammar's `.wasm`), so we do that once and
+ * reuse it for every file in the run.
+ */
+let loaded: Parser | null = null;
+let loadPromise: Promise<Parser> | null = null;
 
-interface ParserInstance {
-  setLanguage(lang: unknown): void;
-  parse(source: string): { rootNode: StNode };
-}
-
-interface LoadedParser {
-  Parser: ParserCtor;
-  language: unknown;
-}
-
-let loaded: LoadedParser | null = null;
-let loadError: Error | null = null;
-
-async function loadParser(): Promise<LoadedParser> {
+async function loadParser(): Promise<Parser> {
   if (loaded) return loaded;
-  if (loadError) throw loadError;
-  try {
-    const treeSitter = await import('tree-sitter');
-    const grammar = await import('tree-sitter-iec61131-3-st');
-    const Parser = (treeSitter as { default?: ParserCtor }).default ??
-      (treeSitter as unknown as ParserCtor);
-    const language =
-      (grammar as { default?: unknown }).default ??
-      (grammar as unknown);
-    loaded = { Parser, language };
-    return loaded;
-  } catch (err) {
-    loadError = new Error(
-      'Failed to load tree-sitter-iec61131-3-st native binding. ' +
-        'Ensure the grammar is built (see README "Grammar build" section). ' +
-        `Underlying cause: ${(err as Error).message}`,
-      { cause: err as Error },
-    );
-    throw loadError;
+  // Collapse concurrent first-time loads onto a single init: parsing kicks off
+  // many files in parallel, and `Parser.init()` must run exactly once.
+  if (!loadPromise) {
+    loadPromise = initParser().catch((err) => {
+      // Reset so a transient failure can be retried on the next call rather
+      // than poisoning the cached promise for the rest of the process.
+      loadPromise = null;
+      throw new Error(
+        'Failed to initialise the tree-sitter-iec61131-3-st WebAssembly parser. ' +
+          'Ensure `web-tree-sitter` and `tree-sitter-iec61131-3-st` are installed. ' +
+          `Underlying cause: ${(err as Error).message}`,
+        { cause: err as Error },
+      );
+    });
   }
+  loaded = await loadPromise;
+  return loaded;
+}
+
+async function initParser(): Promise<Parser> {
+  const require = createRequire(import.meta.url);
+  // The grammar package ships the wasm at its root as
+  // `tree-sitter-iec61131_3_st.wasm` (note the `_3_st`, not `-3-st`); resolve
+  // it through the package so we never hardcode a node_modules path.
+  const wasmPath = require.resolve(
+    'tree-sitter-iec61131-3-st/tree-sitter-iec61131_3_st.wasm',
+  );
+  await Parser.init();
+  const language = await Language.load(wasmPath);
+  const parser = new Parser();
+  parser.setLanguage(language);
+  return parser;
 }
 
 export async function parseSource(
@@ -86,11 +92,15 @@ export async function parseSource(
     );
     return { path, source: '', root: emptyRoot() };
   }
-  const { Parser, language } = await loadParser();
-  const parser = new Parser();
-  parser.setLanguage(language);
+  const parser = await loadParser();
   const tree = parser.parse(source);
-  return { path, source, root: tree.rootNode };
+  if (!tree) {
+    process.stderr.write(
+      `plc-st-review: parser returned no tree for ${path}; treated as empty\n`,
+    );
+    return { path, source: '', root: emptyRoot() };
+  }
+  return { path, source, root: tree.rootNode as unknown as StNode };
 }
 
 export async function parseFile(absPath: string, relPath: string): Promise<AstFile> {

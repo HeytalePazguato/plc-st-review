@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased] - next: 1.0.2
 
+### Changed
+
+- **The tree-sitter parser now runs as WebAssembly instead of a native addon.** The engine loads the IEC 61131-3 ST grammar through [`web-tree-sitter`](https://www.npmjs.com/package/web-tree-sitter) (`^0.26`) and the `.wasm` shipped inside `tree-sitter-iec61131-3-st` (`^0.1.1`), replacing the `tree-sitter` native binding. `parseSource` keeps the same async signature and the `StNode` shape downstream checks consume is unchanged, so there are no behaviour or API changes — all 274 tests pass against the wasm parser. The win is install: a plain `npm install` no longer compiles anything, so there's no C++ toolchain, no `node-gyp`, and no per-platform prerequisites. This removes the entire native-build apparatus: the `tree-sitter+0.25.0.patch` (C++17→C++20 workaround), `patch-package`, and the `bootstrap` / `postinstall` scripts are all deleted. CI gains a Windows runner (previously omitted because the native build needed Visual Studio's clang-cl toolset), and the Docker build stage drops `build-essential` / `python3` and its patch-and-rebuild steps.
+
+### Added
+
+- **IEC 62443 mapping page now carries a demo screenshot** (`docs/screenshots/iec62443-demo.png`) showing `HARDCODED_CREDENTIALS` and `PERSISTENT_PLAINTEXT_SECRET` firing as inline PR comments, mapped to 62443-4-2 CR 1.5 and CR 4.1.
+
+### Dependencies
+
+- Dev-dependency patch bumps (folded in from the Dependabot `npm-dev` group): `@types/node` 25.9.1 → 25.9.2, `tsx` 4.22.3 → 4.22.4, `vitest` 4.1.7 → 4.1.8. No API or behaviour changes.
+
 ## [1.0.1] - 2026-06-01
 
 A bugfix sweep across the engine after 1.0.0's release surfaced five latent false-positive sources. None ship incorrect findings in the wrong direction — they all *over-report*, flooding clean POUs with spurious warnings. Together they pushed PR #1's inline-comment count past the 100-comment bot cap and forced summary-only mode. The fixes restore the demo PR to inline-comment mode and cut spurious findings on clean code to zero.

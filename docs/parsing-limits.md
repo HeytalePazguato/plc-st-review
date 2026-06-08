@@ -1,6 +1,6 @@
 # Parsing limits
 
-Each `.st` file is parsed by a native tree-sitter binding. To keep a single pathological or hostile file from blowing up memory in the parser, the engine enforces a per-file **source-length cap**. Files larger than the cap are skipped with a one-line stderr warning naming the path and treated as **empty** by every downstream check (so they neither fire findings nor crash the run).
+Each `.st` file is parsed by the tree-sitter grammar running as WebAssembly. To keep a single pathological or hostile file from blowing up memory in the parser, the engine enforces a per-file **source-length cap**. Files larger than the cap are skipped with a one-line stderr warning naming the path and treated as **empty** by every downstream check (so they neither fire findings nor crash the run).
 
 ## The knobs
 

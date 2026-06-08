@@ -21,7 +21,7 @@ plc-st-review:
     - plc-st-review --gitlab --mr "$CI_MERGE_REQUEST_IID"
 ```
 
-That's the whole job. The `image` ships with `node`, `tree-sitter`, `tree-sitter-iec61131-3-st`, and the patched bindings already built.
+That's the whole job. The `image` ships with `node`, `tree-sitter-iec61131-3-st`, and the WebAssembly parser (`web-tree-sitter` plus the grammar's `.wasm`) bundled in — nothing is compiled at job time.
 
 ## Permissions
 
