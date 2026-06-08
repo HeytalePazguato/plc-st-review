@@ -4,7 +4,9 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - next: 1.0.2
+## [Unreleased] - next: 1.0.3
+
+## [1.0.2] - 2026-06-08
 
 ### Changed
 
@@ -16,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Dependencies
 
+- **`commander` bumped 14.0.3 → 15.0.0** (Dependabot `npm-prod` group, PR #46). Major bump; the CLI's option/argument wiring is unaffected — `--help`, flag parsing, and a full lint run verified against the new major, and all 274 tests pass.
 - Dev-dependency patch bumps (folded in from the Dependabot `npm-dev` group): `@types/node` 25.9.1 → 25.9.2, `tsx` 4.22.3 → 4.22.4, `vitest` 4.1.7 → 4.1.8. No API or behaviour changes.
 
 ## [1.0.1] - 2026-06-01
