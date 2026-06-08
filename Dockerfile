@@ -1,24 +1,15 @@
 # syntax=docker/dockerfile:1.7
 
-# Build stage: install deps (with native build toolchain), apply patch, compile TS.
+# Build stage: install deps and compile TS. The parser is WebAssembly
+# (`web-tree-sitter` + the grammar's `.wasm`), so there's no native build
+# toolchain to install and nothing to patch or rebuild.
 FROM node:20-bookworm AS builder
-
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-        build-essential \
-        python3 \
-        ca-certificates \
-        git \
- && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 
 COPY package.json package-lock.json* ./
-COPY patches ./patches
 
-RUN npm install --ignore-scripts \
- && npx patch-package \
- && npm rebuild tree-sitter tree-sitter-iec61131-3-st
+RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src

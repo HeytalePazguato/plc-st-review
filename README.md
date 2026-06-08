@@ -366,7 +366,7 @@ Pick the value that matches the IDE your code is compiled in; the wrong setting 
 
 ### Source-size cap
 
-Each `.st` file is parsed by a native tree-sitter binding. To keep a single pathological or hostile file from blowing up memory in the parser, the engine enforces a per-file source-length cap. Files over the cap are **skipped** with a one-line stderr warning naming the path and treated as empty by every check.
+Each `.st` file is parsed by the tree-sitter grammar running as WebAssembly. To keep a single pathological or hostile file from blowing up memory in the parser, the engine enforces a per-file source-length cap. Files over the cap are **skipped** with a one-line stderr warning naming the path and treated as empty by every check.
 
 ```yaml
 parsing:
@@ -429,35 +429,25 @@ PLC source typically encodes safety logic, vendor part numbers, calibration cons
 > building from source.
 
 ```sh
-npm run bootstrap          # first-time only; see "Building from source" below
+npm install                # plain install — nothing compiles
 npm run build              # tsc to dist/
-npm test                   # vitest, ~7s, 270 tests across 70 files
+npm test                   # vitest, ~7s, 274 tests across 70 files
 npm run lint               # tsc --noEmit
 ```
 
 ### Building from source
 
 ```sh
-npm run bootstrap
+npm install
 ```
 
-`bootstrap` runs `npm install --ignore-scripts`, applies the local `tree-sitter` C++20 patch, and rebuilds the two native deps in the right order. This dance is needed because `tree-sitter` 0.25.0's `binding.gyp` specifies `/std:c++17`, but Node 20+'s V8 headers require C++20, and a plain `npm install` triggers tree-sitter's source build before `postinstall: patch-package` ever gets a chance to fix it.
-
-A plain `npm install` works once `node_modules/` already exists and the patch has been applied (the `postinstall` hook keeps the patch fresh on subsequent installs).
-
-### Native build prerequisites
-
-- **Windows:** Visual Studio 2022 with the **Desktop development with C++** workload, plus the individual components **C++ Clang Compiler for Windows** and **MSBuild support for LLVM (clang-cl) toolset**. Both are required: `node-addon-api` 8.5+ uses the `ClangCL` MSBuild platform toolset.
-- **Linux/macOS:** standard `gcc`/`clang` + `make` chain.
-- **All platforms:** npm ≥ 10 (bundles `node-gyp` ≥ 10 with VS2022 detection on Windows).
-
-The `patches/tree-sitter+0.25.0.patch` file goes away once upstream tree-sitter publishes a release with C++20 set as the default.
+That's the whole setup. The parser ships as **WebAssembly**: `web-tree-sitter` boots the tree-sitter runtime and loads the grammar's `tree-sitter-iec61131_3_st.wasm` (published inside the `tree-sitter-iec61131-3-st` package). There's no native addon to compile, so no C++ toolchain, no `node-gyp`, and no platform-specific prerequisites — `npm install` runs the same on Windows, Linux, and macOS, on any supported Node version.
 
 ## Roadmap
 
 Likely additions, in rough priority order:
 
-- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. Not yet shipped because the native deps (`tree-sitter`, `tree-sitter-iec61131-3-st`) ship as `.node` files that don't bundle cleanly through `pkg` or `bun --compile` without per-platform asset handling. Revisit if real users without Node ask.
+- **Standalone CLI binaries**: `plc-st-review-linux-x64`, `-darwin-arm64`, etc. as GitHub Release assets, for shops that don't have Node installed. More tractable now that the parser is a single platform-independent `.wasm` rather than per-platform `.node` addons — the remaining work is bundling the two wasm files (the grammar's and `web-tree-sitter`'s runtime) alongside the packed binary. Revisit if real users without Node ask.
 - **Optional LLM-powered explanations**: a `--explain` flag that paraphrases deterministic findings in plain English for less-experienced reviewers. Strictly additive, every explanation is grounded in a deterministic finding; the LLM never surfaces new issues.
 - **Vendor-specific checks**: PLCopen `MC_*` motion patterns, TwinCAT / CODESYS / ABB-specific library FBs. Currently the engine sticks to standard IEC 61131-3 to stay portable across vendors.
 

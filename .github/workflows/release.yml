@@ -132,9 +132,9 @@ jobs:
         if: steps.guard.outputs.exists == 'false'
         run: npm install -g npm@latest
 
-      - name: Bootstrap (install + patch + rebuild)
+      - name: Install
         if: steps.guard.outputs.exists == 'false'
-        run: npm run bootstrap
+        run: npm ci
 
       - name: Build
         if: steps.guard.outputs.exists == 'false'
