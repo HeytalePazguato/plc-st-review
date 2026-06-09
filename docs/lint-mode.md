@@ -24,7 +24,10 @@ plc-st-review --lint src                           # walk a directory
 plc-st-review --lint "src/**/*.st"                 # recursive glob
 plc-st-review --lint "src/**/*.st" "lib/*.st"      # mix them
 plc-st-review --lint "src" --output json           # any output format
+plc-st-review --lint "src" --compact               # one line per finding
 ```
+
+`--compact` collapses each finding to a single line (severity + category + location) and drops the per-finding description paragraph — handy for a quick scan, a screenshot, or a terse CI log. The file grouping and the `Summary:` counts are kept.
 
 Quote globs in your shell to stop the shell from expanding them. The CLI expands `*` and `**` itself, so the same command works the same way on Linux, macOS, and PowerShell.
 

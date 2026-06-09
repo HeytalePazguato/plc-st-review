@@ -10,6 +10,12 @@ const ICON: Record<Severity, string> = {
 
 export interface TerminalOptions {
   color?: boolean;
+  /**
+   * One line per finding: severity + category + location, with the per-finding
+   * description (`summary`, `detail`, and `related`) omitted. Keeps the file
+   * grouping and the trailing counts. Handy for screenshots and CI logs.
+   */
+  compact?: boolean;
 }
 
 export function renderTerminal(
@@ -17,6 +23,7 @@ export function renderTerminal(
   opts: TerminalOptions = {},
 ): string {
   const useColor = opts.color ?? isTTY();
+  const compact = opts.compact ?? false;
   const out: string[] = [];
   const byFile = groupBy(findings, (f) => f.file);
   const files = [...byFile.keys()].sort();
@@ -30,6 +37,7 @@ export function renderTerminal(
       out.push(
         `  ${sev} ${ICON[finding.severity]} ${paint(useColor, 'dim', finding.category)} (line ${finding.line})`,
       );
+      if (compact) continue;
       out.push(`    ${finding.summary}`);
       if (finding.detail) {
         for (const line of finding.detail.split('\n')) {

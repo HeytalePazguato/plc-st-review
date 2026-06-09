@@ -24,6 +24,19 @@ limits:
 
 [How `extends` works.](../preset-packs.md)
 
+## See it in action
+
+The repo ships a self-contained sample that deliberately violates every PLCopen rule the engine can catch in a single file. Run it to watch the full PLCopen check set fire at once:
+
+```sh
+plc-st-review --lint examples/demo/plcopen_violations.st \
+  --config examples/demo/plcopen-lint.yml --compact
+```
+
+![plc-st-review --compact output: every single-revision PLCopen check firing on the sample file](../screenshots/plcopen-demo-compact.png){ width="720" }
+
+`--compact` prints one line per finding (severity + category + line) — easy to scan or screenshot; drop it for the full per-finding explanation. This run surfaces all **29 single-revision PLCopen checks**. Four more PLCopen rules — `DEAD_POU_INTRODUCED` (CP2), `COMPLEXITY_INCREASED` / `NESTING_INCREASED` (CP9), `UNUSED_VAR_INTRODUCED` (CP24), and `MULTI_WRITER_GLOBAL` (CP26) — are diff- or project-scoped, so they appear in a PR review or with `--project-scope`, not in a single-file `--lint`.
+
 ## What the preset turns on
 
 The preset:

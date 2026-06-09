@@ -31,6 +31,23 @@ describe('renderers', () => {
     expect(out).toContain('Summary');
   });
 
+  it('compact terminal output drops the per-finding description but keeps the finding line', () => {
+    const full = renderTerminal(sample, { color: false });
+    const compact = renderTerminal(sample, { color: false, compact: true });
+    // The category line, file grouping, and counts survive.
+    expect(compact).toContain('MAIN.st');
+    expect(compact).toContain('CALL_SITE_OUTDATED (line 12)');
+    expect(compact).toContain('Summary');
+    // The summary and detail text are omitted.
+    expect(compact).not.toContain('Call to FB_Pump.Cycle() is out of date');
+    expect(compact).not.toContain('Missing required arguments');
+    // One finding line per finding: no line is more indented than the
+    // category line (no 4-space summary / 6-space detail lines remain).
+    expect(compact.split('\n').some((l) => /^\s{4,}\S/.test(l))).toBe(false);
+    // And it really is shorter than the full render.
+    expect(compact.split('\n').length).toBeLessThan(full.split('\n').length);
+  });
+
   it('markdown output is well-formed', () => {
     const out = renderMarkdown(sample);
     expect(out).toContain('| Severity | Category | Location | Summary |');

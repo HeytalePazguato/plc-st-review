@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased] - next: 1.0.3
 
+### Added
+
+- **`--compact` terminal flag.** Collapses each finding to a single line — severity + category + `(line N)` — and omits the per-finding description paragraph (`summary`, `detail`, and `related`). The file grouping and the `Summary:` counts are unchanged. Useful when a run produces many findings and the full multi-line output is too tall to scan, screenshot, or skim in a CI log; e.g. `plc-st-review --lint "src/**/*.st" --compact`. Terminal output only; `--output json` / `--output markdown` are unaffected.
+- **`examples/demo/plcopen_violations.st` + `examples/demo/plcopen-lint.yml`** — a self-contained "do it yourself" sample (one file, five POUs) that deliberately trips every single-revision PLCopen check, so `plc-st-review --lint examples/demo/plcopen_violations.st --config examples/demo/plcopen-lint.yml` prints the full PLCopen check set firing at once.
+
 ## [1.0.2] - 2026-06-08
 
 ### Changed
