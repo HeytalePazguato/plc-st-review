@@ -4,7 +4,14 @@ All notable changes to this project are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - next: 1.0.3
+## [Unreleased] - next: 1.0.4
+
+## [1.0.3] - 2026-06-08
+
+### Added
+
+- **`--compact` terminal flag.** Collapses each finding to a single line — severity + category + `(line N)` — and omits the per-finding description paragraph (`summary`, `detail`, and `related`). The file grouping and the `Summary:` counts are unchanged. Useful when a run produces many findings and the full multi-line output is too tall to scan, screenshot, or skim in a CI log; e.g. `plc-st-review --lint "src/**/*.st" --compact`. Terminal output only; `--output json` / `--output markdown` are unaffected.
+- **PLCopen preset page now shows the full check set firing** ([`docs/presets/plcopen.md`](docs/presets/plcopen.md)) — a `--compact` screenshot of one deliberately-bad file tripping all 29 single-revision PLCopen rules at once, with a note on the four diff-/project-scoped rules that only surface in a PR review or under `--project-scope`.
 
 ## [1.0.2] - 2026-06-08
 

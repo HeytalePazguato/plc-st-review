@@ -24,6 +24,14 @@ limits:
 
 [How `extends` works.](../preset-packs.md)
 
+## See it in action
+
+A single deliberately-bad function block can trip nearly the entire PLCopen set at once. With the preset enabled, `plc-st-review --lint <file> --compact` prints one line per finding:
+
+![plc-st-review --compact output: every single-revision PLCopen check firing on one bad-example file](../screenshots/plcopen-demo-compact.png){ width="720" }
+
+`--compact` collapses each finding to a single line (severity + category + line); drop it for the full per-finding explanation. This surfaces all **29 single-revision PLCopen checks** in one run. Four more — `DEAD_POU_INTRODUCED` (CP2), `COMPLEXITY_INCREASED` / `NESTING_INCREASED` (CP9), `UNUSED_VAR_INTRODUCED` (CP24), and `MULTI_WRITER_GLOBAL` (CP26) — are diff- or project-scoped, so they appear in a PR review or with `--project-scope`, not in a single-file `--lint`.
+
 ## What the preset turns on
 
 The preset:

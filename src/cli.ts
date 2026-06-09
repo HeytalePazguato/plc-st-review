@@ -52,6 +52,7 @@ interface CliOptions {
   config?: string;
   outFile?: string;
   noColor?: boolean;
+  compact?: boolean;
   maxFileSize?: string;
   metrics?: string[];
   sort?: string;
@@ -110,6 +111,11 @@ async function main(): Promise<void> {
     .option('--config <path>', 'path to .plc-st-review.yml')
     .option('--out-file <path>', 'write output to file instead of stdout')
     .option('--no-color', 'disable ANSI color')
+    .option(
+      '--compact',
+      'terminal output: one line per finding (severity + category + location), ' +
+        'omit the per-finding description. Handy for screenshots and CI logs',
+    )
     .option(
       '--max-file-size <bytes>',
       'skip .st files larger than <bytes>; 0 disables (default 1000000 / 1 MB; overrides parsing.max_file_size_bytes from config)',
@@ -223,7 +229,7 @@ async function main(): Promise<void> {
   let rendered: string;
   if (opts.output === 'json') rendered = renderJson(findings);
   else if (opts.output === 'markdown') rendered = renderMarkdown(findings);
-  else rendered = renderTerminal(findings, { color: !opts.noColor });
+  else rendered = renderTerminal(findings, { color: !opts.noColor, compact: opts.compact });
 
   if (opts.outFile) {
     await writeFile(opts.outFile, rendered + (rendered.endsWith('\n') ? '' : '\n'), 'utf8');
