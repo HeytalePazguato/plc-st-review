@@ -12,6 +12,6 @@ END_VAR
 VAR_OUTPUT
     xAlive : BOOL;
 END_VAR
-(* heartbeat is forwarded straight through *)
+(* forward the heartbeat signal directly to the alive output *)
 xAlive := xHeartbeat;
 END_FUNCTION_BLOCK

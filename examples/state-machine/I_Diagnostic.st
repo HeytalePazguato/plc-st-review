@@ -1,11 +1,15 @@
 (*
  * I_Diagnostic — diagnostic contract implemented by FB_DiagUnit.
  *
- * The demo PR adds a second method (SelfTest) to this interface without
- * adding it to the implementer, surfacing METHOD_ADDED_TO_INTERFACE.
+ * This revision adds a second method (SelfTest). FB_DiagUnit does NOT
+ * gain a matching method, which plc-st-review flags as
+ * METHOD_ADDED_TO_INTERFACE.
  *)
 
 INTERFACE I_Diagnostic
 METHOD Reset : BOOL
+END_METHOD
+
+METHOD SelfTest : BOOL
 END_METHOD
 END_INTERFACE

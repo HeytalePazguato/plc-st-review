@@ -1,11 +1,11 @@
 (*
- * FB_SpeedCalc — converts a raw pulse count to a speed estimate.
+ * FB_SpeedCalculator — converts a raw pulse count to a speed estimate.
  *
- * The demo PR renames this POU to FB_SpeedCalculator (keeping the exact
- * same input/output signature) to surface POU_RENAMED.
+ * Renamed from FB_SpeedCalc (the input/output signature is unchanged),
+ * which is what plc-st-review flags as POU_RENAMED.
  *)
 
-FUNCTION_BLOCK FB_SpeedCalc
+FUNCTION_BLOCK FB_SpeedCalculator
 VAR_INPUT
     iPulseCount : INT;
     rScale      : REAL;
