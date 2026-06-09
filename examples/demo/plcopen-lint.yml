@@ -1,0 +1,12 @@
+# Config for the PLCopen --lint demo (examples/demo/plcopen_violations.st).
+# Full PLCopen preset; the charset regex is tightened so N8 fires on a
+# double-underscore name, and a few non-PLCopen single-revision checks are
+# muted so the screenshot is purely PLCopen findings.
+extends:
+  - ../../presets/plcopen.yml
+
+# N8 — stricter than the preset default: forbid consecutive underscores.
+identifier_charset: '^(?!.*__)[A-Za-z_][A-Za-z0-9_]*$'
+
+disabled_checks:
+  - EMPTY_STATEMENT
